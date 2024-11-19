@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { APIError } from "src/utils/error";
+
 import { LoginControllerSchema, RegisterControllerSchema, updateRoleControllerSchema } from "./validation";
 import { createUserService, getUserById, loginService, updateroleservice } from "./service";
 import { updateBookService } from "../book/service";
+import { APIError } from "../../utils/error";
 
 export async function registerController(
   req: Request,
