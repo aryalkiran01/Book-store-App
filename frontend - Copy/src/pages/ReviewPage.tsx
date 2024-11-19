@@ -1,5 +1,5 @@
 // src/pages/review.tsx
-import React from "react";
+
 import Reviews from "../components/review/review"; // Assuming this is where your reviews are defined
 
 export function ReviewPage() {

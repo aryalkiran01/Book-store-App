@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getReviews } from "../../api/review/fetch"; // Assuming fetch function is correctly imported
 
 const Reviews = ({ bookId }: { bookId: string }) => {

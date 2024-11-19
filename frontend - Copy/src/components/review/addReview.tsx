@@ -3,18 +3,14 @@ import { errorToast, successToast } from "../toaster";
 import { GoCodeReview } from "react-icons/go";
 import { UseaddReviewBookMutation } from "../../api/review/query";
 
-export function ReviewBook({
-  bookId,
-}: {
-  bookId: string;
-}) {
+export function HomeReviewBook({ bookId }: { bookId: string }) {
   const addReviewMutation = UseaddReviewBookMutation();
   const [isReviewing, setIsReviewing] = useState(false);
   const [formData, setFormData] = useState({
     rating: 0,
     reviewText: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false); // Track form submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addReview = async () => {
     if (formData.rating < 1 || formData.rating > 5) {
@@ -38,8 +34,8 @@ export function ReviewBook({
         {
           onSuccess(data) {
             successToast(data.message);
-            setIsReviewing(false); // Close the modal on success
-            setFormData({ rating: 0, reviewText: "" }); // Reset the form data
+            setIsReviewing(false); // Close the modal
+            setFormData({ rating: 0, reviewText: "" }); // Reset the form
           },
           onError(error) {
             console.error("error", error);
@@ -51,19 +47,24 @@ export function ReviewBook({
       console.error("error", error);
       errorToast("Something went wrong");
     } finally {
-      setIsSubmitting(false); // Reset submitting state
+      setIsSubmitting(false); // End submitting state
     }
   };
 
   return (
     <>
+      {/* Button to Open Modal */}
       <div className="flex gap-10">
-        <button onClick={() => setIsReviewing(true)} className="flex items-center gap-1">
+        <button 
+          onClick={() => setIsReviewing(true)} 
+          className="flex items-center gap-1"
+        >
           <span>Edit Reviews</span>
-          <GoCodeReview />
+          <GoCodeReview /> {/* Ensure this renders as a span, not a button */}
         </button>
       </div>
 
+      {/* Modal */}
       {isReviewing && (
         <div
           className="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-gray-900 bg-opacity-50"
@@ -81,7 +82,7 @@ export function ReviewBook({
               max="5"
               onChange={(e) => setFormData({ ...formData, rating: +e.target.value })}
               className="border rounded-lg w-full p-2 mb-2"
-              disabled={isSubmitting} // Disable input when submitting
+              disabled={isSubmitting}
             />
             <label className="block mb-2">Review</label>
             <textarea
@@ -89,20 +90,20 @@ export function ReviewBook({
               onChange={(e) => setFormData({ ...formData, reviewText: e.target.value })}
               className="border rounded-lg w-full p-2 mb-4"
               placeholder="Write your review here"
-              disabled={isSubmitting} // Disable input when submitting
+              disabled={isSubmitting}
             />
             <div className="flex gap-2">
               <button
                 onClick={addReview}
                 className="bg-black text-white px-4 py-2 rounded-lg flex-1"
-                disabled={isSubmitting} // Disable button while submitting
+                disabled={isSubmitting}
               >
                 {isSubmitting ? "Submitting..." : "Submit"}
               </button>
               <button
                 onClick={() => setIsReviewing(false)}
                 className="bg-gray-500 text-white px-4 py-2 rounded-lg flex-1"
-                disabled={isSubmitting} // Disable cancel button while submitting
+                disabled={isSubmitting}
               >
                 Cancel
               </button>

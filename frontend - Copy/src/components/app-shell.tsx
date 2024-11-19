@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Menu,
   MenuButton,
@@ -14,36 +15,29 @@ import { IoBookSharp } from "react-icons/io5";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", current: false },
-  { name: "Books", href: "/dashboard", current: false }, // Assuming this is a page listing books
-  { name: "Review", href: "/review", current: false },  // This points to the review page
+  { name: "Books", href: "/dashboard", current: false },
+  { name: "Review", href: "/review", current: false },
   { name: "Authors", href: "/authors", current: false },
   { name: "Genres", href: "/genres", current: false },
 ];
 
-
-export function AppShell({ children }) {
+export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-full bg-gray-50">
-      {/* Desktop Navigation */}
       <nav className="bg-gradient-to-r from-slate-900 to-purple-700 shadow-lg">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            {/* Logo and Website Name */}
             <div className="flex items-center space-x-2">
-            <IoBookSharp className="fill-white text-xl"/>
-              <div className="text-white text-xl font-semibold ">
+              <IoBookSharp className="fill-white text-xl" />
+              <div className="text-white text-xl font-semibold">
                 Book Review App
               </div>
             </div>
-
-            {/* Quote in the middle of the Nav Bar */}
-            <div className=" ml-22 flex-1 flex justify-center items-center">
+            <div className="ml-22 flex-1 flex justify-center items-center">
               <div className="text-sm italic text-white opacity-80">
                 “A room without books is like a body without a soul.”
               </div>
             </div>
-
-            {/* Navigation Links */}
             <div className="ml-10 flex items-baseline space-x-8">
               {navigation.map((item) => (
                 <Link
@@ -60,16 +54,11 @@ export function AppShell({ children }) {
                 </Link>
               ))}
             </div>
-
-            {/* noti and profile */}
             <div className="flex items-center space-x-4">
-             
               <button className="relative p-1 rounded-full text-indigo-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-700">
                 <span className="sr-only">View notifications</span>
                 <BellIcon className="h-6 w-6" aria-hidden="true" />
               </button>
-
-             {/* profile */}
               <Menu as="div" className="relative">
                 <MenuButton className="flex items-center rounded-full bg-indigo-600 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-700">
                   <span className="sr-only">Open user menu</span>
@@ -85,8 +74,6 @@ export function AppShell({ children }) {
           </div>
         </div>
       </nav>
-
-      {/* Main Content Area */}
       <main>
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           {children}

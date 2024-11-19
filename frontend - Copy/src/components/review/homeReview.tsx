@@ -69,13 +69,13 @@ export function HomeReviewBook({
 
   return (
     <>
-      <button 
-        onClick={() => setIsReviewing(true)} 
-        className="flex items-center gap-2 text-white bg-indigo-600 px-4 py-2 rounded-xl shadow-md hover:bg-indigo-700 transition duration-300"
+      <div
+        onClick={() => setIsReviewing(true)}
+        className="flex items-center gap-2 text-white bg-indigo-600 px-4 py-2 rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 cursor-pointer"
       >
         <GoCodeReview className="text-xl" />
         <span className="font-semibold">Add a Review</span>
-      </button>
+      </div>
 
       {isReviewing && (
         <div
@@ -92,19 +92,21 @@ export function HomeReviewBook({
               <label className="block text-lg font-medium text-gray-700 mb-2">Rating</label>
               <div className="flex gap-1 justify-center mb-6">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <button
+                  <div
                     key={star}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleRatingChange(star)}
                     onMouseEnter={() => handleStarHover(star)}
                     onMouseLeave={handleStarLeave}
-                    className="text-yellow-500 hover:text-yellow-400 transition duration-200"
+                    className="text-yellow-500 hover:text-yellow-400 transition duration-200 cursor-pointer"
                   >
                     {hoveredRating !== null ? (
                       hoveredRating >= star ? <BsStarFill size={24} /> : <BsStar size={24} />
                     ) : (
                       formData.rating >= star ? <BsStarFill size={24} /> : <BsStar size={24} />
                     )}
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -140,3 +142,4 @@ export function HomeReviewBook({
     </>
   );
 }
+
