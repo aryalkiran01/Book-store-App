@@ -7,6 +7,8 @@ export type TBook = {
   genre: string;
   description: string;
   created_at: string;
+  rating:number;
+  reviewText:string;
 };
 
 /**

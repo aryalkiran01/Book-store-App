@@ -34,7 +34,7 @@ export function ListReviewsUpdate() {
           className="border rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow duration-300"
         >
           <div>
-            <UpdateReviewBook book={book} />
+            <UpdateReviewBook book={book}/>
           </div>
           <div className="mt-4">
             <p className="font-bold text-lg mb-2">{book.title}</p>
