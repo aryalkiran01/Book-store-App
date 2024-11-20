@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { APIError } from "src/utils/error";
+import { APIError } from "../../utils/error"
 import {
   AddReviewControllerSchema,
   UpdateReviewControllerSchema,

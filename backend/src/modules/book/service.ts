@@ -1,4 +1,4 @@
-import { APIError } from "src/utils/error";
+import { APIError } from "../../utils/error"
 import { BookModel } from "./model";
 import {
   TAddBookControllerInput,

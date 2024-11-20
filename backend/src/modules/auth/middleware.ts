@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { TTokenPayload, verifyToken } from "src/utils/auth";
+import { TTokenPayload, verifyToken } from "../../utils/auth";
 
 export async function checkAuth(
   req: Request,
