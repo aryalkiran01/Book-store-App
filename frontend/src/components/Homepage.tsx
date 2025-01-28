@@ -323,8 +323,8 @@ export function HomePage() {
                         Register Now
                       </button>
 </div>
-<div className="flex flex-row items-end justify-end mt-16 w-[350px] h-[500px] absolute end-1/4 right-0 pb-32 ml-16">
-<img src={finance} alt=""  className="rounded-lg shadow"/>
+<div className="flex flex-row items-end justify-end mt-16 w-[350px] h-[500px] absolute end-1/4 right-0 pb-32 ">
+<img src={finance} alt=""  className="rounded-lg shadow mr-80"/>
 </div>
 <div className="font-bold font-mono text-[40px] mt-16">
   <h1>THE MORE YOU LEARN, <br /><span>THE MORE YOU EARN....</span></h1>

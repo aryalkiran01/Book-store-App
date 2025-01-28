@@ -19,4 +19,5 @@ export type TUpdateReviewControllerInput = z.TypeOf<
 export type TReviewCtx = {
   userId: string;
   bookId: string;
+  role?: string;
 };

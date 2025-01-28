@@ -7,7 +7,7 @@ import cookieParser from "cookie-parser";
 import { createDBConnection } from "./utils/db";
 import { bookRouter } from "./modules/book/router";
 import { reviewRouter } from "./modules/review/router";
-
+import { multerErrorHandler } from "./modules/auth/middleware";
 createDBConnection()
   .then(() => {
     console.log("Database connected successfully");
@@ -44,6 +44,8 @@ app.use("/api/books", bookRouter);
 // review routes
 app.use("/api/reviews", reviewRouter);
 
+// Error Handling Middleware (Including Multer Errors)
+app.use(multerErrorHandler); // Global error handler for file uploads
 app.use((error: APIError, req: Request, res: Response, next: NextFunction) => {
   console.error(error);
   if (error instanceof APIError) {

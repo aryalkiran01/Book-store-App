@@ -1,25 +1,20 @@
 import { Router } from "express";
+import { checkAuth } from "../auth/middleware";
 import {
   addReviewController,
-  updateReviewController,
+  deleteReviewController,
   getReviewsByBookIdController,
+  updateReviewController,
 } from "./controller";
-import { checkAuth } from "../auth/middleware";
 
-// Creating a review router for all review-related endpoints
 function createReviewRouter() {
   const router = Router();
 
-  // Route to add a review for a specific book
-  router.post("/:bookId", checkAuth, addReviewController);
-
-  // Route to update a specific review by reviewId (use PUT for update)
-  router.put("/update/:reviewId", checkAuth, updateReviewController);  // Use PUT for update
-
-  // Route to fetch all reviews for a specific book by bookId
-  router.get("/:bookId", getReviewsByBookIdController);
+  router.post("/addReview/:bookId", checkAuth, addReviewController);
+  router.post("/updateReview/:reviewId", checkAuth, updateReviewController);
+  router.delete("/deleteReview/:reviewId", checkAuth, deleteReviewController);
+  router.get("/getReview/:bookId", getReviewsByBookIdController);
 
   return router;
 }
-
 export const reviewRouter = createReviewRouter();

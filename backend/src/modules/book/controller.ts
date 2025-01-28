@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { APIError } from "src/utils/error";
-import {
-  AddBookControllerSchema,
-  UpdateBookControllerSchema,
-} from "./validation";
+import { AddBookControllerSchema } from "./validation";
 import {
   createBookService,
   deleteBookService,
@@ -11,6 +8,7 @@ import {
   getBooksService,
   updateBookService,
 } from "./service";
+import { getReviewsByBookIdService } from "../review/service";
 
 export async function addBookController(
   req: Request,
@@ -37,7 +35,15 @@ export async function addBookController(
     res.status(201).json({
       message: "Book created sucessfully",
       isSuccess: true,
-      data: book,
+      data: {
+        image: book.image,
+        id: book._id,
+        Title: book.title,
+        author: book.author,
+        description: book.description,
+        genres: book.genre,
+        price: book.price,
+      },
     });
   } catch (error) {
     if (error instanceof APIError) {
@@ -58,7 +64,7 @@ export async function updateBookController(
 
     const bookId = req.params.bookId;
 
-    const { success, error, data } = UpdateBookControllerSchema.safeParse(body);
+    const { success, error, data } = AddBookControllerSchema.safeParse(body);
     if (!success) {
       const errors = error.flatten().fieldErrors;
       res.status(400).json({
@@ -136,18 +142,30 @@ export async function getBookByIdController(
   next: NextFunction
 ) {
   try {
-    const bookId = req.params.bookId;
-    const book = await getBookByIdService(bookId);
+    const id = req.params.id;
+
+    if (!id) {
+      res.status(400).json({
+        message: "id not found",
+        data: null,
+        isSuccess: false,
+      });
+      return;
+    }
+
+    const result = await getBookByIdService(id); // Fetch the book by ID
+    const review = await getReviewsByBookIdService(id); // Fetch and sort reviews by created_at
+
     res.status(200).json({
-      message: "Book retrieved successfully",
+      message: "Book found successfully",
+      data: { result, review },
       isSuccess: true,
-      data: book,
     });
-  } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
+  } catch (e) {
+    if (e instanceof APIError) {
+      next(e);
     } else {
-      next(new APIError(500, (error as Error).message));
+      next(new APIError(500, (e as Error).message));
     }
   }
 }
