@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { useMeQuery } from "../../api/auth/query";
+import { useUserDetailsStore } from "../../store/useUsersDetails";
 
 export const userData = {
   name: "Tom Cook",
@@ -9,6 +11,18 @@ export const userData = {
 
 export function User() {
   const { data, isLoading, isError, error } = useMeQuery();
+  const {setUserDetails} = useUserDetailsStore();
+
+  useEffect(() => {
+    if (data) {
+      setUserDetails({
+        id: data.data.id,
+        email: data.data.email,
+        role: data.data.role,
+        username: data.data.username
+      })
+    }
+  }, [])
 
   if (isLoading) {
     return <div className="text-white">Loading...</div>;
@@ -22,14 +36,19 @@ export function User() {
     return <div>No data</div>;
   }
 
+  
+
   return (
-    <div className="flex-shrink-0 flex items-center w-9">
+    <div className="flex items-center space-x-3">
       <img
         alt={data.data.username}
         src={userData.imageUrl}
-        className="h-8 w-10 rounded-full"
+        className="h-8 w-8 rounded-full"
       />
-      <span className="ml-3 font-medium text-white">{data.data.username}</span>
+      <div className="text-white">
+        <div className="font-medium">{data.data.username}</div>
+       
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { env } from "../../config";
 
 export type TBook = {
-  _id: string;
+  id: string;
   title: string;
   author: string;
   genre: string;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useGetBooksQuery } from "../../api/book/query";
 import { useState } from "react";
 import { CreateReview } from "../review/create-review";
@@ -5,7 +6,7 @@ import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { Homebooks } from "../auth/home";
 import { DeleteBooks } from "./delete-book";
 import { UpdateBook } from "./update-book";
-
+import { CreateBook } from "./create-book";
 export function UserListBooks() {
   const { data, isLoading, isError, error } = useGetBooksQuery();
   const [visibleBooks, setVisibleBooks] = useState(6);
@@ -46,7 +47,9 @@ export function UserListBooks() {
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-black via-purple-400 via-white-600 to-black">
+     
       <div className="max-w-6xl mx-auto px-4 py-12">
+      <CreateBook />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {bookData.slice(0, visibleBooks).map((book) => {
             const isDescriptionExpanded = expandedDescriptions[book._id];
@@ -54,7 +57,7 @@ export function UserListBooks() {
             return (
               <div
                 key={book._id}
-                className="group bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-500 transform hover:scale-105 relative"
+                className="group  from- via-slate-100 to-blue-950 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-500 transform hover:scale-105"
               >
                 {/* Update/Delete Buttons at the top-right corner */}
                 <div className="absolute top-4 right-4 z-10 flex gap-2">
@@ -63,18 +66,20 @@ export function UserListBooks() {
                 </div>
 
                 {/* Image Section */}
-                <div className={`relative h-64 w-full flex items-center justify-center bg-[url('${book.image}')]`}>
+                <div className="relative h-96">
                   <img
                     src={book.image || "https://static-01.daraz.com.np/p/813072290c5c5d1e80d9c1c7794e2b8f.jpg width=200 height=200"}
                     alt={book.title}
-                    className="w-72 h-full transition-transform duration-700"
+                   className="w-full h-full object-contain transition-transform duration-700 "
                   />
-                  <div className={`w-full h-full absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-75`}></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6">
-                    <h2 className="text-xl font-bold text-white">{book.title}</h2>
-                    <p className="text-sm text-amber-200">by {book.author}</p>
-                  </div>
+                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-75"></div>
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h2 className="text-xl font-bold text-white">
+                    {book.title}
+                  </h2>
+                  <p className="text-sm text-amber-200">by {book.author}</p>
                 </div>
+              </div>
 
                 {/* Content Section */}
                 <div className="p-6">
@@ -92,13 +97,13 @@ export function UserListBooks() {
 
                   {/* Description */}
                   <div className="mb-4">
-                    <h3 className="text-sm font-medium text-purple-800 mb-2 flex items-center gap-2">
+                    <h3 className="text-sm font-medium text-slate-200 mb-2 flex items-center gap-2">
                       <BookOpen size={16} />
                       Description
                     </h3>
                     <div className="relative">
                       <p
-                        className={`text-sm text-gray-600 leading-relaxed ${
+                        className={`text-sm text-slate-100 leading-relaxed ${
                           !isDescriptionExpanded && "line-clamp-3"
                         }`}
                       >
@@ -106,7 +111,7 @@ export function UserListBooks() {
                       </p>
                       {book.description && book.description.length > 25 && (
                         <button
-                          className="mt-2 text-purple-600 text-sm font-medium flex items-center gap-1 hover:text-purple-800 transition"
+                          className="mt-2 text-blue-300 text-sm font-medium flex items-center gap-1 hover:text-purple-800 transition"
                           onClick={() => toggleDescription(book._id)}
                         >
                           {isDescriptionExpanded ? (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetBooksQuery } from "../api/book/query";
 import { MdNavigateNext } from "react-icons/md";
 import { GrFormPrevious } from "react-icons/gr";
@@ -11,17 +11,43 @@ import book2 from "../assets/book3.png";
 import book3 from "../assets/book1-1.png";
 import book4 from "../assets/book4.png";
 import book5 from "../assets/book5.png";
-import { useNavigate } from 'react-router-dom';
-import k1 from"../assets/IMG-20250128-WA0001.jpg"
-import k2 from"../assets/IMG-20250128-WA0002.jpg"
-import k3 from"../assets/IMG-20250128-WA0003.jpg"
-import k4 from"../assets/IMG-20250128-WA0004.jpg"
-import k5 from"../assets/IMG-20250128-WA0005.jpg"
-import k6 from"../assets/IMG-20250128-WA0006.jpg"
-import k7 from "../assets/IMG-20250128-WA0007.jpg"
-import k8 from "../assets/vanjababu.jpg"
-import finance from "../assets/finance_book-removebg-preview.png"
+import { useNavigate } from "react-router-dom";
+import k1 from "../assets/IMG-20250128-WA0001.jpg";
+import k2 from "../assets/IMG-20250128-WA0002.jpg";
+import k3 from "../assets/IMG-20250128-WA0003.jpg";
+import k4 from "../assets/IMG-20250128-WA0004.jpg";
+import k5 from "../assets/IMG-20250128-WA0005.jpg";
+import k6 from "../assets/IMG-20250128-WA0006.jpg";
+import k7 from "../assets/IMG-20250128-WA0007.jpg";
+import k8 from "../assets/vanjababu.jpg";
+import finance from "../assets/finance_book-removebg-preview.png";
+
+import { AppShell } from "./AppShell";
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  price: number;
+}
 export function HomePage() {
+  const [cartItems, setCartItems] = useState<Book[]>([]);
+
+  useEffect(() => {
+    const savedCart = localStorage.getItem("cart");
+    if (savedCart) {
+      setCartItems(JSON.parse(savedCart) as Book[]);
+    }
+  }, []);
+
+  const addToCart = (book: Book) => {
+    const updatedCart = [...cartItems, book];
+    setCartItems(updatedCart);
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+    window.dispatchEvent(new Event("storage"));
+  };
+
+
+  
   const { data, isLoading, isError, error } = useGetBooksQuery();
 
   const [visibleBooks, setVisibleBooks] = useState(3);
@@ -49,13 +75,12 @@ export function HomePage() {
   };
   const navigate = useNavigate();
   const handleLoginClick = () => {
-    navigate('./login'); 
+    navigate("./login");
   };
-
 
   const navigater = useNavigate();
   const handleRegisterClick = () => {
-    navigater('./register'); 
+    navigater("./register");
   };
   const genres = [
     { name: "Arts & Photography", icon: "🎨" },
@@ -97,10 +122,13 @@ export function HomePage() {
     );
   }
 
+  
+
   const bookData = data?.data || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-purple-700 via-slate-100 to-blue-600">
+     < AppShell />
       <Component />
       {/* Genres Section */}
       <div className="p-8">
@@ -122,7 +150,7 @@ export function HomePage() {
               </button>
             </div>
           </div>
-          <p className=" text-amber-950 text-sm mb-6">
+          <p className=" text-amber-950 text-lg mb-6">
             Browse Our Extensive Collection of Books Across Different Genres.
           </p>
           <div className="flex overflow-hidden relative">
@@ -133,7 +161,7 @@ export function HomePage() {
               {genres.map((genre, index) => (
                 <div
                   key={index}
-                  className="flex flex-col items-center space-y-2 text-center p-4 rounded-lg"
+                  className="flex flex-col items-center space-y-2 text-center p-4  hover:shadow-2xl  "
                 >
                   <div className="text-4xl">{genre.icon}</div>
                   <p className="text-sm font-medium">{genre.name}</p>
@@ -157,16 +185,16 @@ export function HomePage() {
       {/* Book Slider Section */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="relative">
-          
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 transition-all duration-500 transform"
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 transition-all duration-500 transform"
             style={{ transform: `translateX(-${bookScrollIndex * 100}%)` }}
           >
             {bookData.slice(0, visibleBooks).map((book) => {
-              const isDescriptionExpanded = expandedDescriptions[book._id];
+              const isDescriptionExpanded = expandedDescriptions[book.id];
 
               return (
                 <div
-                  key={book._id}
+                  key={book.id}
                   className="group  from- via-slate-100 to-blue-950 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-500 transform hover:scale-105"
                 >
                   {/* Image Section */}
@@ -209,17 +237,15 @@ export function HomePage() {
                       </p>
                       <button
                         className="text-black text-xs mt-2"
-                        onClick={() => toggleDescription(book._id)}
+                        onClick={() => toggleDescription(book.id)}
                       >
                         {isDescriptionExpanded ? "Show Less" : "Show More"}
                       </button>
                     </div>
-                    <p className="text-lg text-black mb-2">
-                      Rs {book.price}
-                    </p>
+                    <p className="text-lg text-black mb-2">Rs {book.price}</p>
                     <div className="flex flex-col justify-center items-center mt-4">
                       {/* Add to Cart Button */}
-                      <button className="px-9 py-2 border border-blue-500 text-blue-950 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg">
+                      <button  onClick={() => addToCart(book)} className="px-9 py-2 border border-blue-500 text-blue-950 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg">
                         Add to Cart
                       </button>
                     </div>
@@ -283,15 +309,19 @@ export function HomePage() {
             />
           </div>
 
-          <div className="absolute   bottom-1/4 right-0 mr-52"> 
+          <div className="absolute   bottom-1/4 right-0 mr-52">
             <img src={tablepng} alt="Table" className="h-52 w-[500px] " />
           </div>
         </div>
       </div>
       <div className="bg-slate-200 w-full mx-auto  flex flex-col items-center justify-center">
         <div className="flex flex-col items-center justify-center">
-        <p className="bold text-[20px] font-inter mt-20">Explore From Our Amazing Collection of    </p>
-        <p className=" pr-10 font-bold text-black font-inter text-[40px]  pl-20">Thousand of Nepali Books</p>
+          <p className="bold text-[20px] font-inter mt-20">
+            Explore From Our Amazing Collection of{" "}
+          </p>
+          <p className=" pr-10 font-bold text-black font-inter text-[40px]  pl-20">
+            Thousand of Nepali Books
+          </p>
         </div>
         <div className="w-[170px] flex flexrow justify-center items-center absolute end-1/5 mt-16  ">
           <img src={book1} alt="" />
@@ -301,84 +331,134 @@ export function HomePage() {
           <img src={book5} alt="" />
         </div>
 
-     <div>
-      <img src={tablepng} alt="Table" className="w-[850px]" />
-     </div>
-     <button className=" px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mt-16 mb-24">
-            Explore Books
-          </button>
-      
+        <div>
+          <img src={tablepng} alt="Table" className="w-[850px]" />
+        </div>
+        <button className=" px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mt-16 mb-24">
+          Explore Books
+        </button>
       </div>
-<div className="bg-slate-300 w-full h-[600px]  mx-auto flex flex-col items-start justify-start">
-  <div className="flex flex-col items-start justify-start pl-44 h-80 mt-16">
-<h1 className="text-2xl font-semibold mb-2">Our picks for you</h1>
-<p className="font-seif">We will curate special book recommendations for you <br />based on your genre preferences.</p>
-<p className="mt-5 font-semibold">Login or create account to get started.</p>
+      <div className="bg-slate-300 w-full h-[600px]  mx-auto flex flex-col items-start justify-start">
+        <div className="flex flex-col items-start justify-start pl-44 h-80 mt-16">
+          <h1 className="text-2xl font-semibold mb-2">Our picks for you</h1>
+          <p className="font-seif">
+            We will curate special book recommendations for you <br />
+            based on your genre preferences.
+          </p>
+          <p className="mt-5 font-semibold">
+            Login or create account to get started.
+          </p>
 
-<div className="flex mt-5">
-<button className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mr-5" onClick={handleLoginClick}>
-                       Login
-                      </button>
-                      <button className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"onClick={handleRegisterClick}>
-                        Register Now
-                      </button>
-</div>
-<div className="flex flex-row items-end justify-end mt-16 w-[350px] h-[500px] absolute end-1/4 right-0 pb-32 ">
-<img src={finance} alt=""  className="rounded-lg shadow mr-80"/>
-</div>
-<div className="font-bold font-mono text-[40px] mt-16">
-  <h1>THE MORE YOU LEARN, <br /><span>THE MORE YOU EARN....</span></h1>
-</div>
-  </div>
-
-
-</div>
-<div className="bg-slate-200 w-full mx-auto flex flex-row items-start justify-start">
-  <div className="flex flex-col items-start justify-start pl-44 h-80 mt-16 " >
-
-    <h1 className="font-bold text-[30px]">
-    Bestselling Authors
-    </h1>
-    <p>
-    Discover Books by Bestselling Authors in Our Collection, Ranked by Popularity.
-    </p>
-    <div className="flex flex-row items-center justify-center mt-6 space-x-5">
-  <div className="flex flex-col items-center">
-    <img src={k1} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px font-mono">Rajan Bhai</p>
-  </div>
-  <div className="flex flex-col items-center">
-    <img src={k2} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px font-mono">Asthetic Bhai</p>
-  </div>
-  <div className="flex flex-col items-center">
-    <img src={k3} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px] font-mono">Mr.Kapilbastu</p>
-  </div>
-  <div className="flex flex-col items-center">
-    <img src={k5} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px] font-mono">Chikil</p>
-  </div>
-  <div className="flex flex-col items-center">
-    <img src={k6} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px] font-mono">Amit Bhai</p>
-  </div>
-  <div className="flex flex-col items-center">
-    <img src={k4} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px] font-mono">Fucche Bhai</p>
-  </div>
-  <div className="flex flex-col items-center">
-    <img src={k7} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px] font-mono">Taliwan</p>
-  </div>
-  <div className="flex flex-col items-center">
-    <img src={k8} alt="" className="w-[150px] h-[150px] mt-6 rounded-full" />
-    <p className="text-center mt-2 text-[16px] font-mono">Vanje </p>
-  </div>
-</div>
-
-  </div>
-  </div>
+          <div className="flex mt-5">
+            <button
+              className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mr-5"
+              onClick={handleLoginClick}
+            >
+              Login
+            </button>
+            <button
+              className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
+              onClick={handleRegisterClick}
+            >
+              Register Now
+            </button>
+          </div>
+          <div className="flex flex-row items-end justify-end mt-16 w-[350px] h-[500px] absolute end-1/4 right-0 pb-32 ">
+            <img src={finance} alt="" className="rounded-lg shadow mr-80" />
+          </div>
+          <div className="font-bold font-mono text-[40px] mt-16">
+            <h1>
+              THE MORE YOU LEARN, <br />
+              <span>THE MORE YOU EARN....</span>
+            </h1>
+          </div>
+        </div>
+      </div>
+      <div className="bg-slate-200 w-full mx-auto flex flex-row items-start justify-start">
+        <div className="flex flex-col items-start justify-start pl-44 h-80 mt-16 ">
+          <h1 className="font-bold text-[30px]">Bestselling Authors</h1>
+          <p>
+            Discover Books by Bestselling Authors in Our Collection, Ranked by
+            Popularity.
+          </p>
+          <div className="flex flex-row items-center justify-center mt-6 space-x-5">
+            <div className="flex flex-col items-center">
+              <img
+                src={k1}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px font-mono">
+                Rajan Bhai
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src={k2}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px font-mono">
+                Asthetic Bhai
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src={k3}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px] font-mono">
+                Mr.Kapilbastu
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src={k5}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px] font-mono">Chikil</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src={k6}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px] font-mono">
+                Amit Bhai
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src={k4}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px] font-mono">
+                Roshan Bhai
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src={k7}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px] font-mono">Taliwan</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <img
+                src={k8}
+                alt=""
+                className="w-[150px] h-[150px] mt-6 rounded-full"
+              />
+              <p className="text-center mt-2 text-[16px] font-mono">Vanje </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

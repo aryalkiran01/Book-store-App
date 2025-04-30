@@ -42,9 +42,13 @@ export function UpdateBook({ book }: { book: { _id: string, title: string, autho
 
   return (
     <>
-      <button onClick={() => setIsEditing(true)}>
-        <FiEdit />
-      </button>
+<button
+  onClick={() => setIsEditing(true)}
+  className="p-2 rounded-lg bg-gray-100 hover:bg-blue-500 hover:text-white transition duration-300"
+>
+  <FiEdit className="text-black hover:text-white" size={20} />
+</button>
+
 
       {isEditing && (
         <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-gray-900 bg-opacity-50">
@@ -77,6 +81,23 @@ export function UpdateBook({ book }: { book: { _id: string, title: string, autho
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="border rounded-lg w-full p-2 mb-4"
             />
+             <label className="block mb-2">Price</label>
+             <input
+  type="number"
+  value={formData.price}
+  onChange={(e) =>
+    setFormData({ ...formData, price: Number(e.target.value) })
+  }
+  className="border rounded-lg w-full p-2 mb-2"
+/>
+<label className="block mb-2">Image</label>
+            <input
+              type="text"
+              value={formData.image}
+              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+              className="border rounded-lg w-full p-2 mb-2"
+            />
+
             <button
               onClick={updateBook}
               className="bg-blue-500 text-white px-4 py-2 rounded-lg mr-2"

@@ -4,11 +4,11 @@ import { Footer } from "./Footer";
 export function RegisterPage() {
   return (
     <div className="flex flex-col min-h-screen">
-    <AppShell>
+    <AppShell/>
       <div className="max-w-3xl mx-auto">
         <RegisterForm />
       </div>
-    </AppShell>
+
     <Footer />
     </div>
   );

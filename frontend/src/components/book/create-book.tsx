@@ -18,7 +18,7 @@ const createBookSchema = z.object({
   genre: z.string().min(1),
   description: z.string(),
   image: z.string().optional(),
-  price: z.string().min(1), // Price as a string to handle form input
+  price: z.string().min(1), 
 });
 
 export function CreateBook() {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getReviews } from "../api/review/fetch";
 const Reviews = ({ bookId }: { bookId: string }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [reviews, setReviews] = useState<any[]>([]);  // State to store reviews
   const [error, setError] = useState<string>("");
 
@@ -13,6 +14,7 @@ const Reviews = ({ bookId }: { bookId: string }) => {
         } else {
           setError(fetchedReviews.message || "Failed to load reviews");
         }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         setError(`Failed to load reviews: ${error.message}`);
       }

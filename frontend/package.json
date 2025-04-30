@@ -16,6 +16,8 @@
     "@tailwindcss/forms": "^0.5.9",
     "@tanstack/react-query": "^5.59.20",
     "@tanstack/react-query-devtools": "^5.59.16",
+    "axios": "^1.7.9",
+    "axois": "^0.0.1-security",
     "clsx": "^2.1.1",
     "flowbite-react": "^0.10.2",
     "lucide-react": "^0.473.0",
@@ -27,7 +29,8 @@
     "react-loader-spinner": "^6.1.6",
     "react-router-dom": "^6.27.0",
     "tailwind": "^4.0.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

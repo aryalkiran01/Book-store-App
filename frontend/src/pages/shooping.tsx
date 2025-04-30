@@ -2,17 +2,13 @@ import { AppShell } from "../components/AppShell";
 // import { ListBooks } from "../components/book/list-book";
 import { Footer } from "./Footer";
 // import { Homebooks } from "../components/auth/home";
-import UserListBooks from "../components/book/list-book";
+import ShoppingCart from "../components/shoopingcart";
 
-export function HomePage() {
+export function ShoppingCarts() {
   return (
     <div className="flex flex-col min-h-screen">
-      <AppShell>
- 
-      </AppShell>
-
-      <UserListBooks />
-
+      <AppShell/>
+      <ShoppingCart/>
       <Footer />
     </div>
   );

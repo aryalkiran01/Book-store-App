@@ -16,7 +16,7 @@ function createBookRouter() {
 
   router.get("/", checkAuth, getBooksController);
   router.get("/:bookId", getBookByIdController);
-
+router.get("/search",)
   return router;
 }
 

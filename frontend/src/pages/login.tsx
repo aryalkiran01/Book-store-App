@@ -6,12 +6,12 @@ export function LoginPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-    <AppShell>
+    <AppShell/>
       <div className="max-w-3xl mx-auto">
       
         <LoginForm />
       </div>
-    </AppShell>
+ 
     <Footer/>
     </div>
   );
