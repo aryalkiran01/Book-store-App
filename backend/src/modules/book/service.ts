@@ -1,12 +1,9 @@
 import { APIError } from "../../utils/error"
 import { BookModel } from "./model";
-import {
-  TAddBookControllerInput,
-  TUpdateBookControllerInput,
-} from "./validation";
+import { TAddBookControllerInput } from "./validation";
 
 export async function createBookService(input: TAddBookControllerInput) {
-  const { title, genre, author, description } = input;
+  const { title, genre, author, description, image, price } = input;
 
   const book = await BookModel.findOne({ title });
   if (book) {
@@ -18,6 +15,8 @@ export async function createBookService(input: TAddBookControllerInput) {
     genre,
     author,
     description,
+    image: image || "/rich and poor dad.jpg",
+    price,
   });
 
   await newBook.save();
@@ -27,9 +26,9 @@ export async function createBookService(input: TAddBookControllerInput) {
 
 export async function updateBookService(
   bookId: string,
-  input: TUpdateBookControllerInput
+  input: TAddBookControllerInput
 ) {
-  const { title, genre, author, description } = input;
+  const { title, genre, author, description, image, price } = input;
 
   const book = await BookModel.findById(bookId);
   if (!book) {
@@ -40,8 +39,9 @@ export async function updateBookService(
   book.genre = genre;
   book.author = author;
   book.description = description;
-
-  await book.replaceOne({ _id: bookId });
+  book.price = price;
+  book.image = image;
+  await book.save();
 
   return book;
 }

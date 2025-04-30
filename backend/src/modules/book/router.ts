@@ -14,9 +14,9 @@ function createBookRouter() {
   router.post("/:bookId", checkAuth, checkAdmin, updateBookController);
   router.delete("/:bookId", checkAuth, checkAdmin, deleteBookController);
 
-  router.get("/", getBooksController);
+  router.get("/", checkAuth, getBooksController);
   router.get("/:bookId", getBookByIdController);
-
+router.get("/search",)
   return router;
 }
 

@@ -1,4 +1,12 @@
-import { APIError } from "../../utils/error"
+
+import { UserModel } from "./model";
+import {
+  TLoginControllerInput,
+  TRegisterControllerInput,
+  TUpdateRolecontrollerInput,
+} from "./validation";
+import { comparePassword, generateToken, hashPassword } from "src/utils/auth";
+import { APIError } from "src/utils/error";
 import { UserModel } from "./model";
 import { TLoginControllerInput, TRegisterControllerInput, TUpdateRolecontrollerInput } from "./validation";
 import { comparePassword, generateToken, hashPassword } from "../../utils/auth"
@@ -66,19 +74,15 @@ export async function getUserById(id: string) {
 }
 
 export async function logoutService() {
-  return true
+  return true;
 }
 
-
-export async function updateroleservice(
-  input:TUpdateRolecontrollerInput)
-{
-
-  const role=await UserModel.findById(input.userId);
-  if(!role){
+export async function updateroleservice(input: TUpdateRolecontrollerInput) {
+  const role = await UserModel.findById(input.userId);
+  if (!role) {
     throw APIError.notFound("Role not found");
   }
-  role.role =input.userRole;
-await role.save();
-return role;
+  role.role = input.userRole;
+  await role.save();
+  return role;
 }
