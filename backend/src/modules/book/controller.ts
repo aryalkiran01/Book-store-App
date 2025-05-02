@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from "express";
 import { APIError } from "src/utils/error";
 import { AddBookControllerSchema } from "./validation";
 import {
+  AddBookControllerSchema,
+  UpdateBookControllerSchema,
+} from "./validation";
+import {
   createBookService,
   deleteBookService,
   getBookByIdService,
