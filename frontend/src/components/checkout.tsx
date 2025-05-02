@@ -11,7 +11,7 @@ import { useUserDetailsStore } from "../store/useUsersDetails";
 
 interface Book {
 
-  id: string;
+  _id: string;
   title: string;
   author: string;
   price: number;
@@ -34,7 +34,7 @@ export const CheckoutPage = () => {
     const savedCart = localStorage.getItem("cart");
 
     if (savedCart) {
-      const jsonParsedCard = JSON.parse(savedCart);
+     
       setCartItems(JSON.parse(savedCart) as Book[]);
     }
   }, []);
@@ -119,7 +119,7 @@ export const CheckoutPage = () => {
                 <h2 className="text-lg font-bold mb-2">Your order list ({cartItems.length} items)</h2>
                 {cartItems.length > 0 ? (
                   cartItems.map((book) => (
-                    <div key={book.id} className="flex items-center gap-4 border-b pb-4">
+                    <div key={book._id} className="flex items-center gap-4 border-b pb-4">
                       <img src={book.image} alt={book.title} className="w-16 h-24 object-cover rounded" />
                       <div>
                         <h3 className="text-lg font-semibold">{book.title}</h3>

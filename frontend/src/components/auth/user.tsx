@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMeQuery } from "../../api/auth/query";
 import { useUserDetailsStore } from "../../store/useUsersDetails";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const userData = {
   name: "Tom Cook",
   email: "tom@example.com",
@@ -22,7 +23,7 @@ export function User() {
         username: data.data.username
       })
     }
-  }, [])
+  }, [data, setUserDetails])
 
   if (isLoading) {
     return <div className="text-white">Loading...</div>;
