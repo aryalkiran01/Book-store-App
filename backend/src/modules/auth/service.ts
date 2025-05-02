@@ -1,5 +1,3 @@
-
-import { UserModel } from "./model";
 import {
   TLoginControllerInput,
   TRegisterControllerInput,
@@ -8,8 +6,6 @@ import {
 import { comparePassword, generateToken, hashPassword } from "src/utils/auth";
 import { APIError } from "src/utils/error";
 import { UserModel } from "./model";
-import { TLoginControllerInput, TRegisterControllerInput, TUpdateRolecontrollerInput } from "./validation";
-import { comparePassword, generateToken, hashPassword } from "../../utils/auth"
 import { TUpdateBookControllerInput } from "../book/validation";
 
 export async function createUserService(input: TRegisterControllerInput) {

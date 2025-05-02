@@ -17,5 +17,7 @@ export const TUpdateBookControllerSchema = z.object({
   price: z.number(),
 });
 
-
 export type TAddBookControllerInput = z.TypeOf<typeof AddBookControllerSchema>;
+export type TUpdateBookControllerInput = z.TypeOf<
+  typeof TUpdateBookControllerSchema
+>;
