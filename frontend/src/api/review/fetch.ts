@@ -4,8 +4,10 @@ export type TReview = {
   length: number;
   rating: number;
   reviewText: string;
-  id: string;
+  _id: string;
+
   username: string;
+  created_at: string;
 };
 
 export type TReviewUserOutput = {

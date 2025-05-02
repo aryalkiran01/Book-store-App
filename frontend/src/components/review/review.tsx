@@ -35,7 +35,7 @@ export const Reviews = ({ bookId }: { bookId: string}) => {
               <p className="review-text mt-2 text-gray-800">
                 Review Text: {review.reviewText}
               </p>
-              <p className="text-sm text-gray-500 mt-1">By: {review.userId}</p>
+              <p className="text-sm text-gray-500 mt-1">By: {review._id}</p>
               <div className="flex gap-2 mt-2">
                 {/* Update Review Button */}
                 <Updatereview review={review} onUpdateSuccess={refetch} />

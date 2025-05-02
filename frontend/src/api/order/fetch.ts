@@ -2,6 +2,11 @@
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:3000/api/order";
+interface CreateOrderResponse {
+  data: {
+    payment_url: string;
+  };
+}
 
 //  Fetch all orders for a user
 export async function fetchOrdersByUser(userId: string) {
@@ -24,9 +29,13 @@ export async function createOrder(orderData: any) {
   console.log("orderData in axios ", orderData);
 
   try {
-    const response = await axios.post(API_BASE_URL, orderData, {
-      withCredentials: true,
-    });
+    const response = await axios.post<CreateOrderResponse>(
+      API_BASE_URL,
+      orderData,
+      {
+        withCredentials: true,
+      }
+    );
     return response.data.data;
   } catch (error: any) {
     console.error(

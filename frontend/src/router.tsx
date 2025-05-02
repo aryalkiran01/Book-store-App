@@ -10,7 +10,6 @@ import { MainPage } from "./pages/main";
 import { MemesPage } from "./components/memespage";
 import { ShoppingCarts } from "./pages/shooping";
 import {CheckoutPage} from "./components/checkout";
-import Payment from "./components/payment";
 const router = createBrowserRouter([
   {
     path: "/",
@@ -59,10 +58,10 @@ const router = createBrowserRouter([
   path:"/Checkout",
   element:<CheckoutPage />
  },
- {
-  path:"/payment",
-  element:<Payment />
- }
+//  {
+//   path:"/payment",
+//   element:<Payment />
+//  }
 
 ]);
 
