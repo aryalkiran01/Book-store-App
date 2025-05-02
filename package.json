@@ -2,7 +2,7 @@
   "name": "book-review-app",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
+  "scrpipts": {
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev"
   },

@@ -22,6 +22,7 @@ export async function initiatePayment(
       withCredentials: true,
     });
     return response.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error(
       "Error initiating payment:",
@@ -40,6 +41,7 @@ export async function verifyPayment(pidx: string) {
       { withCredentials: true }
     );
     return response.data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error(
       "Error verifying payment:",

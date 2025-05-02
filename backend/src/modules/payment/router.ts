@@ -6,7 +6,7 @@ import {
 
 const router = express.Router();
 
-router.post("/initiate", initiatePaymentController);
-router.post("/verify", verifyPaymentController);
+// router.post("/initiate", initiatePaymentController);
+// router.post("/verify", verifyPaymentController);
 
 export default router;

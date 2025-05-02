@@ -3,7 +3,7 @@ import { FaTrash, FaRegBookmark, FaChevronLeft } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 interface Book {
-  id: string;
+  _id: string;
   title: string;
   author: string;
   price: number;
@@ -32,7 +32,7 @@ const ShoppingCart = () => {
 
   const updateQuantity = (id: string, amount: number) => {
     const updatedCart = cartItems.map((book) =>
-      book.id === id ? { ...book, quantity: Math.max(1, book.quantity + amount) } : book
+      book._id === id ? { ...book, quantity: Math.max(1, book.quantity + amount) } : book
     );
     setCartItems(updatedCart);
     localStorage.setItem("cart", JSON.stringify(updatedCart));
@@ -40,7 +40,7 @@ const ShoppingCart = () => {
   };
 
   const removeFromCart = (id: string) => {
-    const updatedCart = cartItems.filter((book) => book.id !== id);
+    const updatedCart = cartItems.filter((book) => book._id !== id);
     setCartItems(updatedCart);
     localStorage.setItem("cart", JSON.stringify(updatedCart));
     window.dispatchEvent(new Event("storage"));
@@ -64,7 +64,7 @@ const ShoppingCart = () => {
         ) : (
           <div className="space-y-6">
             {cartItems.map((book) => (
-              <div key={book.id} className="flex items-center gap-4 border-b pb-4">
+              <div key={book._id} className="flex items-center gap-4 border-b pb-4">
                 <img src={book.image} alt={book.title} className="w-20 h-28 object-cover rounded" />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold">{book.title}</h3>
@@ -74,19 +74,19 @@ const ShoppingCart = () => {
                   <p className="text-lg font-bold">Rs. {book.price}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <button
-                      onClick={() => updateQuantity(book.id, -1)}
+                      onClick={() => updateQuantity(book._id, -1)}
                       className="border px-2 py-1 rounded"
                     >
                       -
                     </button>
                     <span>{book.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(book.id, 1)}
+                      onClick={() => updateQuantity(book._id, 1)}
                       className="border px-2 py-1 rounded"
                     >
                       +
                     </button>
-                    <button onClick={() => removeFromCart(book.id)} className="text-red-500">
+                    <button onClick={() => removeFromCart(book._id)} className="text-red-500">
                       <FaTrash />
                     </button>
                     <button className="text-gray-500">

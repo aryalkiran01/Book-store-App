@@ -12,19 +12,11 @@ import book3 from "../assets/book1-1.png";
 import book4 from "../assets/book4.png";
 import book5 from "../assets/book5.png";
 import { useNavigate } from "react-router-dom";
-import k1 from "../assets/IMG-20250128-WA0001.jpg";
-import k2 from "../assets/IMG-20250128-WA0002.jpg";
-import k3 from "../assets/IMG-20250128-WA0003.jpg";
-import k4 from "../assets/IMG-20250128-WA0004.jpg";
-import k5 from "../assets/IMG-20250128-WA0005.jpg";
-import k6 from "../assets/IMG-20250128-WA0006.jpg";
-import k7 from "../assets/IMG-20250128-WA0007.jpg";
-import k8 from "../assets/vanjababu.jpg";
 import finance from "../assets/finance_book-removebg-preview.png";
 
 import { AppShell } from "./AppShell";
 interface Book {
-  id: string;
+  _id: string;
   title: string;
   author: string;
   price: number;
@@ -190,11 +182,11 @@ export function HomePage() {
             style={{ transform: `translateX(-${bookScrollIndex * 100}%)` }}
           >
             {bookData.slice(0, visibleBooks).map((book) => {
-              const isDescriptionExpanded = expandedDescriptions[book.id];
+              const isDescriptionExpanded = expandedDescriptions[book._id];
 
               return (
                 <div
-                  key={book.id}
+                  key={book._id}
                   className="group  from- via-slate-100 to-blue-950 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-500 transform hover:scale-105"
                 >
                   {/* Image Section */}
@@ -237,7 +229,7 @@ export function HomePage() {
                       </p>
                       <button
                         className="text-black text-xs mt-2"
-                        onClick={() => toggleDescription(book.id)}
+                        onClick={() => toggleDescription(book._id)}
                       >
                         {isDescriptionExpanded ? "Show Less" : "Show More"}
                       </button>
@@ -284,181 +276,173 @@ export function HomePage() {
           </div>
         </div>
       </div>
-      <div className="w-full mx-auto relative min-h-[450px] bg-slate-100 flex items-center">
-        <div className="flex flex-col items-start justify-start pl-44 h-80">
-          <div className="flex items-center mt-24">
-            <MdBookmarkAdded className="text-6xl" />
-            <h2 className="text-2xl font-semibold mb-2 pl-4">
-              Used Books Starting at Just <br /> Rs. 250
-            </h2>
-          </div>
-          <p className="text-lg mt-4">
-            Explore a Wide Range of Popular Used Books in Excellent Condition.
-          </p>
-          <button className="mt-4 px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg">
-            Explore Books
-          </button>
-        </div>
+<div className="w-full mx-auto relative min-h-[450px] bg-slate-100 flex items-center">
+  <div className="flex flex-col items-start justify-start pl-44 h-80">
+    <div className="flex items-center mt-24">
+      <MdBookmarkAdded className="text-6xl" />
+      <h2 className="text-2xl font-semibold mb-2 pl-4">
+        Used Books Starting at Just <br /> Rs. 250
+      </h2>
+    </div>
+    <p className="text-lg mt-4">
+      Explore a Wide Range of Popular Used Books in Excellent Condition.
+    </p>
+    <button className="mt-4 px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg">
+      Explore Books
+    </button>
+  </div>
 
-        <div>
-          <div className="absolute top-1 right-0 z-30 mt-10 mr-52">
-            <img
-              src={bookcollection}
-              alt="Book Collection"
-              className="w-[500px]"
-            />
-          </div>
+  <div>
+    {/* Book collection image visible only on desktop */}
+    <div className="absolute top-1 right-0 z-30 mt-10 mr-52 hidden md:block">
+      <img
+        src={bookcollection}
+        alt="Book Collection"
+        className="w-[500px]"
+      />
+    </div>
 
-          <div className="absolute   bottom-1/4 right-0 mr-52">
-            <img src={tablepng} alt="Table" className="h-52 w-[500px] " />
-          </div>
-        </div>
-      </div>
-      <div className="bg-slate-200 w-full mx-auto  flex flex-col items-center justify-center">
-        <div className="flex flex-col items-center justify-center">
-          <p className="bold text-[20px] font-inter mt-20">
-            Explore From Our Amazing Collection of{" "}
-          </p>
-          <p className=" pr-10 font-bold text-black font-inter text-[40px]  pl-20">
-            Thousand of Nepali Books
-          </p>
-        </div>
-        <div className="w-[170px] flex flexrow justify-center items-center absolute end-1/5 mt-16  ">
-          <img src={book1} alt="" />
-          <img src={book2} alt="" />
-          <img src={book3} alt="" />
-          <img src={book4} alt="" />
-          <img src={book5} alt="" />
-        </div>
+    {/* Table image visible only on desktop */}
+    <div className="absolute bottom-1/4 right-0 mr-52 hidden md:block">
+      <img
+        src={tablepng}
+        alt="Table"
+        className="h-52 w-[500px]"
+      />
+    </div>
+  </div>
+</div>
 
-        <div>
-          <img src={tablepng} alt="Table" className="w-[850px]" />
-        </div>
-        <button className=" px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mt-16 mb-24">
-          Explore Books
-        </button>
-      </div>
-      <div className="bg-slate-300 w-full h-[600px]  mx-auto flex flex-col items-start justify-start">
-        <div className="flex flex-col items-start justify-start pl-44 h-80 mt-16">
-          <h1 className="text-2xl font-semibold mb-2">Our picks for you</h1>
-          <p className="font-seif">
-            We will curate special book recommendations for you <br />
-            based on your genre preferences.
-          </p>
-          <p className="mt-5 font-semibold">
-            Login or create account to get started.
-          </p>
+<div className="bg-slate-200 w-full mx-auto flex flex-col items-center justify-center relative">
+  <div className="flex flex-col items-center justify-center">
+    <p className="bold text-[20px] font-inter mt-20">
+      Explore From Our Amazing Collection of
+    </p>
+    <p className="pr-10 font-bold text-black font-inter text-[40px] pl-20">
+      Thousand of Nepali Books
+    </p>
+  </div>
 
-          <div className="flex mt-5">
-            <button
-              className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mr-5"
-              onClick={handleLoginClick}
-            >
-              Login
-            </button>
-            <button
-              className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
-              onClick={handleRegisterClick}
-            >
-              Register Now
-            </button>
-          </div>
-          <div className="flex flex-row items-end justify-end mt-16 w-[350px] h-[500px] absolute end-1/4 right-0 pb-32 ">
-            <img src={finance} alt="" className="rounded-lg shadow mr-80" />
-          </div>
-          <div className="font-bold font-mono text-[40px] mt-16">
-            <h1>
-              THE MORE YOU LEARN, <br />
-              <span>THE MORE YOU EARN....</span>
-            </h1>
-          </div>
+
+  <div className="w-[170px] hidden sm:flex flex-row justify-center items-center absolute end1/5 mt-16 ml-20">
+    <img src={book1} alt="" />
+    <img src={book2} alt="" />
+    <img src={book3} alt="" />
+    <img src={book4} alt="" />
+    <img src={book5} alt="" />
+  </div>
+
+  {/* Table image: hidden on mobile */}
+  <div className="mt-36 sm:mt-44">
+    <img
+      src={tablepng}
+      alt="Table"
+      className="w-[990px] hidden sm:block"
+    />
+  </div>
+
+  <button className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mt-16 mb-24">
+    Explore Books
+  </button>
+</div>
+
+<div className="bg-slate-300 w-full min-h-[600px] mx-auto flex flex-col items-start justify-start relative">
+  <div className="flex flex-col items-start justify-start pl-6 sm:pl-10 md:pl-20 lg:pl-44 mt-16">
+    <h1 className="text-2xl font-semibold mb-2">Our picks for you</h1>
+
+    <p className="font-serif text-base sm:text-lg">
+      We will curate special book recommendations for you <br className="hidden sm:block" />
+      based on your genre preferences.
+    </p>
+
+    <p className="mt-5 font-semibold">Login or create account to get started.</p>
+
+    <div className="flex flex-col sm:flex-row mt-5 gap-4">
+      <button
+        className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
+        onClick={handleLoginClick}
+      >
+        Login
+      </button>
+      <button
+        className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
+        onClick={handleRegisterClick}
+      >
+        Register Now
+      </button>
+    </div>
+
+    <div className="font-bold font-mono text-[28px] sm:text-[36px] lg:text-[40px] mt-10">
+      <h1>
+        THE MORE YOU LEARN, <br />
+        <span>THE MORE YOU EARN....</span>
+      </h1>
+    </div>
+  </div>
+
+
+  <div className="absolute right-[10%] bottom-0 pb-32 hidden lg:block">
+    <img src={finance} alt="Finance" className="rounded-lg shadow w-[350px] h-auto" />
+  </div>
+</div>
+
+<div className="bg-slate-200 w-full mx-auto flex flex-col lg:flex-row items-start justify-start px-4 sm:px-10 lg:px-44 py-10">
+  <div className="flex flex-col items-start justify-start w-full">
+    <h1 className="font-bold text-[24px] sm:text-[30px]">Bestselling Authors</h1>
+    <p className="text-base sm:text-lg mt-2">
+      Discover Books by Bestselling Authors in Our Collection, Ranked by Popularity.
+    </p>
+
+    {/* Scrollable row of authors */}
+    <div className="flex flex-row items-center mt-6 space-x-5 overflow-x-auto w-full pb-4">
+      {[
+        {
+          name: "J.K. Rowling",
+          src: "https://upload.wikimedia.org/wikipedia/commons/5/5d/J._K._Rowling_2010.jpg",
+        },
+        {
+          name: "George R.R. Martin",
+          src: "https://hips.hearstapps.com/hmg-prod/images/gettyimages-187751114.jpg?crop=1.00xw:1.00xh;0,0&resize=1200:*",
+        },
+        {
+          name: "Stephen King",
+          src: "https://upload.wikimedia.org/wikipedia/commons/e/e3/Stephen_King%2C_Comicon.jpg",
+        },
+        {
+          name: "James Clear",
+          src: "https://images.squarespace-cdn.com/content/v1/5da5150079965b6c99a48868/1707175216487-8W0INSCEMXMMXEO0HJDK/James+Clear+Big+Image.jpg?format=1500w",
+        },
+        {
+          name: "Paulo Coelho",
+          src: "https://images3.penguinrandomhouse.com/author/5234",
+        },
+        {
+          name: "Michelle Obama",
+          src: "https://hips.hearstapps.com/hmg-prod/images/michelle-obama-gettyimages-85246899.jpg",
+        },
+        {
+          name: "Colleen Hoover",
+          src: "https://compote.slate.com/images/8cec4fe5-14b8-422e-b3b6-9edd3947b273.jpeg?crop=1560%2C1040%2Cx0%2Cy0",
+        },
+        {
+          name: "Yuval Noah Harari",
+          src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTGpIIv9u8iQ3fNwq5pgh46fuZSl38WUwqWA&s",
+        },
+      ].map((author, index) => (
+        <div className="flex flex-col items-center min-w-[150px]" key={index}>
+          <img
+            src={author.src}
+            alt={author.name}
+            className="w-[120px] h-[120px] sm:w-[150px] sm:h-[150px] rounded-full object-cover"
+          />
+          <p className="text-center mt-2 text-[14px] sm:text-[16px] font-mono">{author.name}</p>
         </div>
-      </div>
-      <div className="bg-slate-200 w-full mx-auto flex flex-row items-start justify-start">
-        <div className="flex flex-col items-start justify-start pl-44 h-80 mt-16 ">
-          <h1 className="font-bold text-[30px]">Bestselling Authors</h1>
-          <p>
-            Discover Books by Bestselling Authors in Our Collection, Ranked by
-            Popularity.
-          </p>
-          <div className="flex flex-row items-center justify-center mt-6 space-x-5">
-            <div className="flex flex-col items-center">
-              <img
-                src={k1}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px font-mono">
-                Rajan Bhai
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                src={k2}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px font-mono">
-                Asthetic Bhai
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                src={k3}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px] font-mono">
-                Mr.Kapilbastu
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                src={k5}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px] font-mono">Chikil</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                src={k6}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px] font-mono">
-                Amit Bhai
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                src={k4}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px] font-mono">
-                Roshan Bhai
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                src={k7}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px] font-mono">Taliwan</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                src={k8}
-                alt=""
-                className="w-[150px] h-[150px] mt-6 rounded-full"
-              />
-              <p className="text-center mt-2 text-[16px] font-mono">Vanje </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+
     </div>
   );
 }

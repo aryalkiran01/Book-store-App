@@ -63,7 +63,7 @@ export function AppShell() {
               <span className="text-white text-xl font-semibold whitespace-nowrap">Book Store</span>
             </div>
             <div className="hidden md:flex flex-1 justify-center items-center">
-              <div className="text-sm italic text-white opacity-80 whitespace-nowrap overflow-hidden text-ellipsis px-2">“K Ma Hancy Haiina Raa Paraa!!.”</div>
+              <div className="text-sm italic text-white opacity-80 whitespace-nowrap overflow-hidden text-ellipsis px-2">“Where books are, dreams begin.”</div>
             </div>
             <div className="hidden lg:flex items-center space-x-4">
               <Navigation />
