@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:3000/api/payments";
+const API_BASE_URL =
+  "const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/api/payments`";
 
 // Initiate a payment for Khalti
 export async function initiatePayment(
