@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx --watch src/main.ts",
     "build": "tsc",
+     "vercel-build": "tsc",
     "start": "npm run build && node dist/main.js"
   },
   "keywords": [],
