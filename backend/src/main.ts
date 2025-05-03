@@ -31,7 +31,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173","https://book-review-app-lhw4-mzzozc4dm-aryalkiran21s-projects.vercel.app"],
+    origin: ["http://localhost:5173", "https://frontend-books-ten.vercel.app/"],
 
     credentials: true,
   })
