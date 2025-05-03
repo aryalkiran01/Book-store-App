@@ -1,5 +1,5 @@
 import { OrderModel } from "./model";
-import { APIError } from "src/utils/error";
+import { APIError } from "../../utils/error";
 import { TCreateOrderInput, TUpdateOrderStatusInput } from "./validation";
 
 export async function createOrderService(input: TCreateOrderInput) {

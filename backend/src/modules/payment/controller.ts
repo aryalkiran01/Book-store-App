@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { initiatePaymentService, verifyPaymentService } from "./service";
 import { InitiatePaymentSchema, VerifyPaymentSchema } from "./validation";
-import { APIError } from "src/utils/error";
+import { APIError } from "../../utils/error";
 
 export async function initiatePaymentController(
   req: Request,

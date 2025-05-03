@@ -1,6 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
-import { APIError } from "src/utils/error";
+import { APIError } from "../../utils/error";
 
 dotenv.config();
 

@@ -3,8 +3,8 @@ import {
   TRegisterControllerInput,
   TUpdateRolecontrollerInput,
 } from "./validation";
-import { comparePassword, generateToken, hashPassword } from "src/utils/auth";
-import { APIError } from "src/utils/error";
+import { comparePassword, generateToken, hashPassword } from "../../utils/auth";
+import { APIError } from "../../utils/error";
 import { UserModel } from "./model";
 import { TUpdateBookControllerInput } from "../book/validation";
 
