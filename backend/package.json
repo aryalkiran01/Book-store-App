@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "dev": "tsx --watch src/main.ts",
-    "build": "tsc",
-     "vercel-build": "tsc",
-    "start": "npm run build && node dist/main.js"
-  },
+"scripts": {
+  "dev": "tsx --watch src/main.ts",
+  "build": "tsc",
+  "vercel-build": "tsc",
+  "start": "set NODE_OPTIONS=--max-old-space-size=4096 && ts-node src/main.ts"
+}
+
+
+,
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -22,6 +25,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.9.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   },
