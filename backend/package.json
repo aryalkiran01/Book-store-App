@@ -7,8 +7,9 @@
   "dev": "tsx --watch src/main.ts",
   "build": "tsc",
   "vercel-build": "tsc",
-  "start": "set NODE_OPTIONS=--max-old-space-size=4096 && ts-node src/main.ts"
+  "start": "node --max-old-space-size=4096 dist/main.js"
 }
+
 
 
 ,
