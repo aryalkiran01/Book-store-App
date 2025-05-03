@@ -179,6 +179,7 @@ app.use((error: APIError, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.listen(env.PORT, () =>
-  console.log(`Server started on: http://localhost:${env.PORT}`)
-);
+// app.listen(env.PORT, () =>
+//   console.log(`Server started on: http://localhost:${env.PORT}`)
+// );
+export default app;
