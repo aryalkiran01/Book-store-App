@@ -11,8 +11,8 @@ export async function initiatePayment(
 ) {
   try {
     const paymentData = {
-      return_url: "http://localhost:5173/books",
-      website_url: "http://localhost:5173",
+      return_url: "{ //`${import.meta.env.VITE_FRONTEND_URL}/books` }",
+      website_url: "{ //`${import.meta.env.VITE_FRONTEND_URL}` }",
       amount,
       purchase_order_id: orderId,
       purchase_order_name: "Your Item Name",
