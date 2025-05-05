@@ -31,15 +31,12 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://books-86ji3xkab-aryalkiran21s-projects.vercel.app/",
-    ],
+    origin: ["http://localhost:5173", "https://books-backend-ruby.vercel.app"],
 
     credentials: true,
   })
 );
-//elastic search client
+//elastic search clienten
 const client = new Client({
   node: "http://localhost:9200",
   auth: {
