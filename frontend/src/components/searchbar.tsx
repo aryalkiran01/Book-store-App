@@ -25,7 +25,7 @@ const SearchBar: React.FC = () => {
     }
 
     try {
-      const response = await axios.get<SearchResult[]>("http://localhost:3000/search", {
+      const response = await axios.get<SearchResult[]>("VITE_BACKEND_URL/search", {
         params: { query: searchQuery },
       });
       setSuggestions(response.data);

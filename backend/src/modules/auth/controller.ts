@@ -1,11 +1,18 @@
 import { Request, Response, NextFunction } from "express";
-import { LoginControllerSchema, RegisterControllerSchema, updateRoleControllerSchema } from "./validation";
-import { createUserService, getUserById, loginService, updateroleservice } from "./service";
+import {
+  LoginControllerSchema,
+  RegisterControllerSchema,
+  updateRoleControllerSchema,
+} from "./validation";
+import {
+  createUserService,
+  getUserById,
+  loginService,
+  updateroleservice,
+} from "./service";
 import { updateBookService } from "../book/service";
 
-import { APIError } from "../../utils/error"
-
-
+import { APIError } from "../../utils/error";
 
 export async function registerController(
   req: Request,
@@ -69,11 +76,11 @@ export async function loginController(
     }
 
     const loginOutput = await loginService(data);
-
+    const { token, user } = loginOutput;
     res.cookie("token", loginOutput.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production" ? true : false,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // ✅ allow for dev
       maxAge: 1000 * 60 * 60, // 1 hour
       path: "/",
     });
@@ -81,7 +88,7 @@ export async function loginController(
     res.status(200).json({
       message: "User logged in successfully",
       isSuccess: true,
-      data: loginOutput,
+      data: user,
     });
   } catch (error) {
     if (error instanceof APIError) {
@@ -154,32 +161,31 @@ export async function updateRoleController(
   req: Request,
   res: Response,
   next: NextFunction
-){
-try {
-  const body= req.body
-const{success,error,data}=updateRoleControllerSchema.safeParse(body);
-if(!success){
-  const errors=error.flatten().fieldErrors;
-  res.status(400).json({
-    message:"Invalid rfequest",
-    data:null,
-    isSuccess:false,
-    errors:errors,
-  });
-  return;
-}
-const role=await updateroleservice(data);
-res.status(201).json({
-  message:"role updated sucessfull",
-  data:null,
-  isSuccess:true
-})
-} catch (error) {
-  if (error instanceof APIError) {
-    next(error);
-  } else {
-    next(new APIError(500, (error as Error).message));
+) {
+  try {
+    const body = req.body;
+    const { success, error, data } = updateRoleControllerSchema.safeParse(body);
+    if (!success) {
+      const errors = error.flatten().fieldErrors;
+      res.status(400).json({
+        message: "Invalid rfequest",
+        data: null,
+        isSuccess: false,
+        errors: errors,
+      });
+      return;
+    }
+    const role = await updateroleservice(data);
+    res.status(201).json({
+      message: "role updated sucessfull",
+      data: null,
+      isSuccess: true,
+    });
+  } catch (error) {
+    if (error instanceof APIError) {
+      next(error);
+    } else {
+      next(new APIError(500, (error as Error).message));
+    }
   }
-}
-
 }

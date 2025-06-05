@@ -103,11 +103,77 @@ export function AppShell() {
             </div>
           </div>
         </div>
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-slate-800 p-4 space-y-2">
-            <Navigation mobile={true} />
-          </div>
-        )}
+{mobileMenuOpen && (
+  <div className="lg:hidden bg-slate-900 text-white px-6 py-8 space-y-6 flex flex-col items-center rounded-b-lg shadow-md transition-all duration-300 ease-in-out">
+    
+    {/* Navigation Links */}
+    <div className="w-full space-y-2">
+      {[
+        { name: "Dashboard", href: "/dashboard" },
+        { name: "Books", href: "/books" },
+        { name: "Your Books", href: "/" },
+      ].map((item) => (
+        <Link
+          key={item.name}
+          to={item.href}
+          className="block text-center w-full text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
+        >
+          {item.name}
+        </Link>
+      ))}
+    </div>
+
+    {/* Search Bar */}
+    <div className="w-full">
+      <SearchBar />
+    </div>
+
+    {/* Cart Link */}
+    <Link
+      to="/cart"
+      className="flex items-center justify-center space-x-2 w-full text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
+    >
+      <FaOpencart className="h-5 w-5" />
+      <span>Cart</span>
+      {cartCount > 0 && (
+        <span className="ml-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+          {cartCount}
+        </span>
+      )}
+    </Link>
+
+    {/* Auth Section */}
+    {localStorage.getItem("token") ? (
+      <div className="flex flex-col items-center w-full space-y-3">
+        <div className="flex items-center justify-center space-x-2">
+          <User />
+        </div>
+        <div className="w-full">
+          <Logout />
+        </div>
+      </div>
+    ) : (
+      <div className="w-full space-y-2">
+        <Link
+          to="/login"
+          className="block w-full text-center text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
+        >
+          Login
+        </Link>
+        <Link
+          to="/register"
+          className="block w-full text-center text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
+        >
+          Register
+        </Link>
+      </div>
+    )}
+  </div>
+)}
+
+
+
+
       </nav>
       <main>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"></div>
