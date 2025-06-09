@@ -106,7 +106,7 @@ export function LoginForm() {
     </p>
     <button
       type="submit"
-      className="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-3 text-base font-medium text-white shadow-md  hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
+      className="inline-flex items-center rounded-lg bg-indigo-600 px- py-3 text-base font-medium text-white shadow-md  hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2"
       disabled={loginUserMutation.isPending}
     >
       {loginUserMutation.isPending ? "Logging in..." : "Login"}
