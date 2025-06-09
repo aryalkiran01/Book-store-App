@@ -137,16 +137,15 @@ const globalErrorHandler: ErrorRequestHandler = (
       data: null,
       isSuccess: false,
     });
-  } else {
-    res.status(500).json({
-      message: "Internal server error",
-      data: null,
-      isSuccess: false,
-    });
+    return;
   }
-};
 
-app.use(globalErrorHandler);
+  res.status(500).json({
+    message: "Internal server error",
+    data: null,
+    isSuccess: false,
+  });
+};
 
 app.listen(env.PORT, () =>
   console.log(`Server started on: http://localhost:${env.PORT}`)
