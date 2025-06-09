@@ -33,7 +33,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://book-store-app-two-mu.vercel.app/",
+      "https://book-store-app-two-mu.vercel.app",
     ],
     credentials: true,
   })
