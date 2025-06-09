@@ -23,6 +23,7 @@ export async function checkAuth(
   res: Response,
   next: NextFunction
 ): Promise<any> {
+  console.log("Cookies received on server:", req.cookies);
   // Ensure the return type is `Promise<any>`
   try {
     const cookies = req.cookies;
