@@ -1,4 +1,4 @@
-import { APIError } from "../../utils/error"
+import { APIError } from "../../utils/error";
 import { BookModel } from "./model";
 import { TAddBookControllerInput } from "./validation";
 
@@ -71,25 +71,25 @@ export async function getBookByIdService(id: string) {
   return book;
 }
 // google books
-export async function searchGoogleBooksService(query: string) {
-  const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20`;
+// export async function searchGoogleBooksService(query: string) {
+//   const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20`;
 
-  const res = await fetch(apiUrl);
-  if (!res.ok) {
-    throw new Error("Failed to fetch from Google Books API");
-  }
+//   const res = await fetch(apiUrl);
+//   if (!res.ok) {
+//     throw new Error("Failed to fetch from Google Books API");
+//   }
 
-  const json = await res.json();
+//   const json = await res.json();
 
-  return json.items?.map((item: any) => {
-    const info = item.volumeInfo;
-    return {
-      title: info.title,
-      author: info.authors?.[0] || "Unknown",
-      genre: info.categories?.[0] || "General",
-      description: info.description || "No description",
-      image: info.imageLinks?.thumbnail || "",
-      previewLink: info.previewLink || "",
-    };
-  });
-}
+//   return json.items?.map((item: any) => {
+//     const info = item.volumeInfo;
+//     return {
+//       title: info.title,
+//       author: info.authors?.[0] || "Unknown",
+//       genre: info.categories?.[0] || "General",
+//       description: info.description || "No description",
+//       image: info.imageLinks?.thumbnail || "",
+//       previewLink: info.previewLink || "",
+//     };
+//   });
+// }
