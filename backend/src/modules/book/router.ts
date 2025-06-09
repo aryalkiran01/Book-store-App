@@ -5,7 +5,7 @@ import {
   getBookByIdController,
   getBooksController,
   updateBookController,
-  searchBooksController,
+  // searchBooksController,
 } from "./controller";
 import { checkAdmin, checkAuth } from "../auth/middleware";
 
@@ -17,7 +17,7 @@ function createBookRouter() {
 
   router.get("/", checkAuth, getBooksController);
   router.get("/:bookId", getBookByIdController);
-  router.get("/search", checkAuth, searchBooksController);
+  // router.get("/search", checkAuth, searchBooksController);
   return router;
 }
 
