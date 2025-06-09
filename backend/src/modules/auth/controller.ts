@@ -88,7 +88,10 @@ export async function loginController(
     res.status(200).json({
       message: "User logged in successfully",
       isSuccess: true,
-      data: user,
+      data: {
+        user,
+        accessToken: loginOutput.token, // 👈 add this line
+      },
     });
   } catch (error) {
     if (error instanceof APIError) {
