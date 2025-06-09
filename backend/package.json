@@ -3,27 +3,23 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-"scripts": {
-  "dev": "tsx --watch src/main.ts",
-  "build": "tsc",
-  "start": "node --max-old-space-size=4096 dist/main.js"
-}
-
-
-
-,
+  "scripts": {
+    "dev": "tsx --watch src/main.ts",
+    "build": "tsc",
+    "start": "node --max-old-space-size=4096 dist/main.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/axios": "^0.9.36",
     "@types/bcryptjs": "^2.4.6",
-    "@types/cookie-parser": "^1.4.7",
-    "@types/cors": "^2.8.17",
+    "@types/cookie-parser": "^1.4.9",
+    "@types/cors": "^2.8.19",
     "@types/dotenv": "^8.2.3",
-    "@types/express": "^5.0.0",
-    "@types/jsonwebtoken": "^9.0.7",
-    "@types/multer": "^1.4.12",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/multer": "^1.4.13",
     "@types/node": "^22.9.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.2",

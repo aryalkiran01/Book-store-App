@@ -4,15 +4,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useLoginUserMutation } from "../../api/auth/query";
 import { successToast, errorToast } from "../toaster";
-
+import { useQueryClient } from "@tanstack/react-query";
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6).max(25),
 });
 
+
+
 export function LoginForm() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const loginUserMutation = useLoginUserMutation();
 
   const {
@@ -39,7 +42,8 @@ export function LoginForm() {
         {
           onSuccess(data) {
             successToast(data.message);
-            reset();
+queryClient.invalidateQueries({ queryKey: ["me"] });
+                   reset();
             navigate("/");
           },
           onError(error) {
