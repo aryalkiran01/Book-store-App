@@ -3,4 +3,13 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "https://book-store-app-u8b4.onrender.com",
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
 });
