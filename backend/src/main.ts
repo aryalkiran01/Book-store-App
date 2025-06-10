@@ -8,10 +8,9 @@ import express, {
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-import { Client } from "@elastic/elasticsearch";
 
-import { env } from "./utils/config";
-import { createDBConnection } from "./utils/db";
+import { env } from "./utils/config.js";
+import { createDBConnection } from "./utils/db.js";
 import { APIError } from "./utils/error";
 
 import { authRouter } from "./modules/auth/router";
@@ -42,18 +41,6 @@ app.use(
   })
 );
 
-// ElasticSearch Client
-const client = new Client({
-  node: "http://localhost:9200",
-  auth: {
-    username: process.env.ELASTIC_USERNAME || "elastic",
-    password: process.env.ELASTIC_PASSWORD || "HC0wbyx+ZDXiMVaUgpe*",
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
-
 // Routes
 app.get("/", (req: Request, res: Response) => {
   res.json({
@@ -62,57 +49,6 @@ app.get("/", (req: Request, res: Response) => {
     isSuccess: true,
   });
 });
-
-// app.get("/search", async (req: Request, res: Response) => {
-//   const { query } = req.query;
-
-//   const searchQuery =
-//     typeof query === "string" && query.trim()
-//       ? {
-//           multi_match: {
-//             query: query.trim(),
-//             fields: ["title", "content", "author"],
-//           },
-//         }
-//       : { match_all: {} };
-
-//   try {
-//     const result = await client.search({
-//       index: ["my_index", "document"],
-//       body: { query: searchQuery },
-//     });
-
-//     res.json(result.hits.hits);
-//   } catch (error: any) {
-//     console.error("Search Error:", error);
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-// app.get("/my_index", async (req: Request, res: Response) => {
-//   try {
-//     const result = await client.search({
-//       index: "my_index",
-//       body: { query: { match_all: {} } },
-//     });
-//     res.json(result.hits.hits);
-//   } catch (error: any) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-// app.get("/document", async (req: Request, res: Response) => {
-//   try {
-//     const result = await client.search({
-//       index: "document",
-//       body: { query: { match_all: {} } },
-//     });
-//     res.json(result.hits.hits);
-//   } catch (error: any) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
 // API Routes
 app.use("/api/auth", authRouter);
 app.use("/api/books", bookRouter);
