@@ -1,9 +1,10 @@
 import express, {
-  NextFunction,
   Request,
   Response,
+  NextFunction,
   ErrorRequestHandler,
 } from "express";
+
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
@@ -62,55 +63,55 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
-app.get("/search", async (req: Request, res: Response) => {
-  const { query } = req.query;
+// app.get("/search", async (req: Request, res: Response) => {
+//   const { query } = req.query;
 
-  const searchQuery =
-    typeof query === "string" && query.trim()
-      ? {
-          multi_match: {
-            query: query.trim(),
-            fields: ["title", "content", "author"],
-          },
-        }
-      : { match_all: {} };
+//   const searchQuery =
+//     typeof query === "string" && query.trim()
+//       ? {
+//           multi_match: {
+//             query: query.trim(),
+//             fields: ["title", "content", "author"],
+//           },
+//         }
+//       : { match_all: {} };
 
-  try {
-    const result = await client.search({
-      index: ["my_index", "document"],
-      body: { query: searchQuery },
-    });
+//   try {
+//     const result = await client.search({
+//       index: ["my_index", "document"],
+//       body: { query: searchQuery },
+//     });
 
-    res.json(result.hits.hits);
-  } catch (error: any) {
-    console.error("Search Error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+//     res.json(result.hits.hits);
+//   } catch (error: any) {
+//     console.error("Search Error:", error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
-app.get("/my_index", async (req: Request, res: Response) => {
-  try {
-    const result = await client.search({
-      index: "my_index",
-      body: { query: { match_all: {} } },
-    });
-    res.json(result.hits.hits);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// app.get("/my_index", async (req: Request, res: Response) => {
+//   try {
+//     const result = await client.search({
+//       index: "my_index",
+//       body: { query: { match_all: {} } },
+//     });
+//     res.json(result.hits.hits);
+//   } catch (error: any) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
-app.get("/document", async (req: Request, res: Response) => {
-  try {
-    const result = await client.search({
-      index: "document",
-      body: { query: { match_all: {} } },
-    });
-    res.json(result.hits.hits);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// app.get("/document", async (req: Request, res: Response) => {
+//   try {
+//     const result = await client.search({
+//       index: "document",
+//       body: { query: { match_all: {} } },
+//     });
+//     res.json(result.hits.hits);
+//   } catch (error: any) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // API Routes
 app.use("/api/auth", authRouter);
