@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { BookOpen, User as UserIcon, Image as ImageIcon } from "lucide-react";
 
+import { env } from "../../config";
+
 export type ImageFallbackType = "book" | "avatar" | "generic";
 
 export interface AppImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -44,7 +46,7 @@ export function normalizeImageUrl(input: any): string | null {
 
   // If it is a relative upload path like "/uploads/..." or "uploads/...", prefix with backend URL if applicable
   if (rawUrl.startsWith("/uploads/") || rawUrl.startsWith("uploads/")) {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+    const backendUrl = env.BACKEND_URL || "http://localhost:4000";
     const cleanPath = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
     return `${backendUrl.replace(/\/$/, "")}${cleanPath}`;
   }

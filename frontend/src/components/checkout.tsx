@@ -6,7 +6,6 @@ import {
   Store,
   ShieldCheck,
   AlertCircle,
-  CheckCircle2,
   ArrowLeft,
   CreditCard,
   Lock,
@@ -45,10 +44,6 @@ export const CheckoutPage = () => {
   );
   const [shippingAddress, setShippingAddress] = useState("");
   const [orderNote, setOrderNote] = useState("");
-  const [discountCode, setDiscountCode] = useState("");
-  const [appliedDiscountMsg, setAppliedDiscountMsg] = useState<string | null>(
-    null
-  );
   const [showOrderList, setShowOrderList] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -92,14 +87,7 @@ export const CheckoutPage = () => {
 
   useEffect(() => {
     runCartValidation();
-  }, [discountCode]);
-
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!discountCode.trim()) return;
-    runCartValidation();
-    setAppliedDiscountMsg(`Coupon check applied for: ${discountCode.trim()}`);
-  };
+  }, []);
 
   const validateForm = (): boolean => {
     const errors: {
@@ -528,28 +516,6 @@ export const CheckoutPage = () => {
                       </div>
                     ))}
                   </div>
-                )}
-
-                {/* Coupon Input */}
-                <form onSubmit={handleApplyCoupon} className="mt-4 flex gap-2">
-                  <input
-                    type="text"
-                    value={discountCode}
-                    onChange={(e) => setDiscountCode(e.target.value)}
-                    placeholder="Discount code / Promo"
-                    className="flex-1 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wider focus:outline-none focus:border-indigo-500 transition"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold rounded-xl transition"
-                  >
-                    Apply
-                  </button>
-                </form>
-                {appliedDiscountMsg && (
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
-                    <CheckCircle2 size={12} /> {appliedDiscountMsg}
-                  </p>
                 )}
 
                 {/* Calculation Breakdown */}

@@ -100,6 +100,7 @@ export function AppShell() {
                 to="/wishlist"
                 className="relative p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition"
                 title="Wishlist"
+                aria-label="View Wishlist"
               >
                 <Heart size={19} />
                 {wishlistCount > 0 && (
@@ -114,6 +115,7 @@ export function AppShell() {
                 to="/cart"
                 className="relative p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition"
                 title="Shopping Cart"
+                aria-label="View Shopping Cart"
               >
                 <FaOpencart className="text-xl" />
                 {cartCount > 0 && (
@@ -125,7 +127,10 @@ export function AppShell() {
 
               {/* User Dropdown */}
               <Menu as="div" className="relative">
-                <MenuButton className="flex items-center rounded-full bg-slate-100 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500">
+                <MenuButton 
+                  className="flex items-center rounded-full bg-slate-100 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  aria-label="User Account Menu"
+                >
                   <User />
                 </MenuButton>
                 <MenuItems className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50 divide-y divide-slate-100 dark:divide-slate-800">
@@ -167,6 +172,7 @@ export function AppShell() {
               <Link
                 to="/cart"
                 className="relative p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                aria-label="View Shopping Cart"
               >
                 <FaOpencart className="text-xl" />
                 {cartCount > 0 && (
@@ -179,6 +185,7 @@ export function AppShell() {
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="text-slate-600 dark:text-slate-300 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="Toggle Navigation Menu"
               >
                 {mobileMenuOpen ? (
                   <XMarkIcon className="h-6 w-6" />
