@@ -1,72 +1,119 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   addReview,
-  getReviewById,
+  getReviews,
   TUpdateReviewBookInput,
   TAddReviewOutput,
   TAddReviewInput,
-  TGetAllReviewOutput,
   TUpdateReviewBookOutput,
-  TGetReviewByIdOutput,
+  TGetReviewsOutput,
   updateReviewBook,
   deleteReviewBook,
   TDeleteReviewOutput,
   TDeleteReviewInput,
   getAllReviews,
+  TGetReviewsParams,
+  toggleHelpfulReview,
+  reportReview,
 } from "./fetch";
 
 /**
- * for add Review api
+ * Add Review Mutation
  */
 export function useAddReviewMutation() {
   const queryClient = useQueryClient();
   return useMutation<TAddReviewOutput, Error, TAddReviewInput>({
     mutationFn: addReview,
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["Reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["books", variables.bookId] });
+      queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
 }
 
-// Update Review Mutation
+/**
+ * Update Review Mutation
+ */
 export function useUpdateReviewBookMutation() {
   const queryClient = useQueryClient();
   return useMutation<TUpdateReviewBookOutput, Error, TUpdateReviewBookInput>({
     mutationFn: updateReviewBook,
     onSuccess: () => {
-      // Invalidate relevant queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["Reviews"] });
-    },
-    onError: (error) => {
-      console.error("Error updating review", error);
+      queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
 }
 
-// Delete Review Mutation
+/**
+ * Delete Review Mutation
+ */
 export function useDeleteReviewMutation() {
   const queryClient = useQueryClient();
   return useMutation<TDeleteReviewOutput, Error, TDeleteReviewInput>({
     mutationFn: deleteReviewBook,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["Reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["books"] });
     },
   });
 }
 
-export function useGetReviewByIdQuery(bookId: string) {
-  return useQuery<TGetReviewByIdOutput, Error>({
-    queryKey: ["Reviews", bookId], // Key is now linked to the specific bookId and reviewId
-    queryFn: () => getReviewById({ bookId }), // Pass the bookId and reviewId to the fetch function
+/**
+ * Toggle Helpful Vote Mutation
+ */
+export function useToggleHelpfulMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reviewId: string) => toggleHelpfulReview(reviewId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["Reviews"] });
+    },
   });
 }
 
 /**
- * for get all books api
+ * Report Review Mutation
  */
-export function useGetReviewQuery() {
-  return useQuery<TGetAllReviewOutput, Error>({
-    queryKey: ["books"],
-    queryFn: getAllReviews,
+export function useReportReviewMutation() {
+  return useMutation({
+    mutationFn: ({ reviewId, reason }: { reviewId: string; reason: string }) =>
+      reportReview(reviewId, reason),
+  });
+}
+
+/**
+ * Get Reviews by Book ID Query
+ */
+export function useGetReviewByIdQuery(
+  bookId: string,
+  params?: TGetReviewsParams
+) {
+  return useQuery<TGetReviewsOutput, Error>({
+    queryKey: [
+      "Reviews",
+      bookId,
+      params?.page || 1,
+      params?.sortBy || "newest",
+      params?.ratingFilter,
+      params?.verifiedOnly,
+    ],
+    queryFn: () => getReviews(bookId, params),
+    enabled: Boolean(bookId),
+  });
+}
+
+/**
+ * Get All Reviews Query (Admin / Moderation)
+ */
+export function useGetReviewQuery(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}) {
+  return useQuery({
+    queryKey: ["all-reviews", params?.page, params?.status],
+    queryFn: () => getAllReviews(params),
   });
 }

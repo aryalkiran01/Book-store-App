@@ -1,20 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// src/hooks/useDeleteReview.ts
 import { useDeleteReviewMutation } from "../../api/review/query";
 import { errorToast, successToast } from "../toaster";
 
 export const useDeleteReview = () => {
   const deleteReviewMutation = useDeleteReviewMutation();
 
-  const handleDelete = async (ReviewId: string, refetch: () => void) => {
+  const handleDelete = async (reviewId: string, refetch?: () => void) => {
     try {
       await deleteReviewMutation.mutateAsync(
-        { ReviewId },
+        { reviewId },
         {
           onSuccess() {
             successToast("Review deleted successfully");
-            refetch(); // Refresh the reviews list
+            if (refetch) refetch();
           },
           onError(error: any) {
             errorToast(error?.message || "Error deleting review");

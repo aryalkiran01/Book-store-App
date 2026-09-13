@@ -1,8 +1,8 @@
-// src/components/GetReviews.tsx
 import { Trash2 } from "lucide-react";
 import { Updatereview } from "./update-review";
 import { useGetReviewByIdQuery } from "../../api/review/query";
 import { useDeleteReview } from "./delete-review";
+import { TReview } from "../../api/review/fetch";
 
 export const GetReviews = ({
   bookId,
@@ -19,8 +19,11 @@ export const GetReviews = ({
       {isLoading ? (
         <p className="text-gray-500">Loading reviews...</p>
       ) : reviewsData?.data && reviewsData.data.length > 0 ? (
-        reviewsData.data.map((review) => (
-          <div key={review._id} className="mb-3 bg-gray-50 p-3 rounded-lg hover:shadow-md">
+        reviewsData.data.map((review: TReview) => (
+          <div
+            key={review._id}
+            className="mb-3 bg-gray-50 p-3 rounded-lg hover:shadow-md"
+          >
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-semibold">
@@ -33,7 +36,7 @@ export const GetReviews = ({
               <span className="flex gap-2">
                 <Updatereview review={review} onUpdateSuccess={refetch} />
                 <button
-                  onClick={() => handleDelete(review._id, refetch)} // Delete review
+                  onClick={() => handleDelete(review._id, refetch)}
                   className="text-red-600 hover:text-red-800"
                 >
                   <Trash2 size={16} />
