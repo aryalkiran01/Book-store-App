@@ -46,10 +46,15 @@ export async function createOrderController(
   next: NextFunction
 ) {
   try {
+    const effectiveUserId =
+      req.user?.role === "admin" && req.body.userId
+        ? req.body.userId
+        : req.user?.id || req.body.userId;
+
     const body = {
       ...req.body,
       books: req.body.books || req.body.items,
-      userId: req.user?.id || req.body.userId,
+      userId: effectiveUserId,
     };
 
     const { success, error, data } = CreateOrderSchema.safeParse(body);

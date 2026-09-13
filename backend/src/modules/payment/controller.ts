@@ -14,13 +14,23 @@ export async function initiatePaymentController(
     if (!result.success) {
       return res.status(400).json({
         message: "Invalid request",
+        isSuccess: false,
         errors: result.error.flatten().fieldErrors,
       });
     }
 
-    const paymentResponse = await initiatePaymentService(result.data);
+    const requestingUserId = req.user?.id;
+    const requestingUserRole = req.user?.role;
+
+    const paymentResponse = await initiatePaymentService(
+      result.data,
+      requestingUserId,
+      requestingUserRole
+    );
+
     res.status(201).json({
       message: "Payment initiated successfully",
+      isSuccess: true,
       data: paymentResponse,
     });
   } catch (error) {
@@ -39,16 +49,24 @@ export async function verifyPaymentController(
     if (!result.success) {
       return res.status(400).json({
         message: "Invalid request",
+        isSuccess: false,
         errors: result.error.flatten().fieldErrors,
       });
     }
 
+    const requestingUserId = req.user?.id;
+    const requestingUserRole = req.user?.role;
+
     const verificationResponse = await verifyPaymentService(
       result.data.pidx,
-      result.data.orderId
+      result.data.orderId,
+      requestingUserId,
+      requestingUserRole
     );
+
     res.status(200).json({
       message: "Payment verified successfully",
+      isSuccess: true,
       data: verificationResponse,
     });
   } catch (error) {

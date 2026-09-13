@@ -197,9 +197,10 @@ export async function createOrderService(input: TCreateOrderInput) {
       ? { street: input.shippingAddress }
       : input.shippingAddress || {};
 
-  const isInstantPaid = Boolean(input.paymentId && input.paymentId.trim());
-  const initialStatus = isInstantPaid ? "confirmed" : "pending";
-  const initialPaymentStatus = isInstantPaid ? "completed" : "pending";
+  // Security: NEVER trust client-supplied paymentId to complete payment upon creation.
+  // All orders must start as pending payment and undergo server-side payment verification.
+  const initialStatus = "pending";
+  const initialPaymentStatus = "pending";
 
   const newOrder = new OrderModel({
     userId: input.userId,
@@ -218,9 +219,7 @@ export async function createOrderService(input: TCreateOrderInput) {
       {
         status: initialStatus,
         changedAt: new Date(),
-        note: isInstantPaid
-          ? "Order placed and payment confirmed"
-          : "Order placed by customer",
+        note: "Order placed by customer (Awaiting payment verification)",
         changedBy: "customer",
       },
     ],
