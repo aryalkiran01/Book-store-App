@@ -13,6 +13,9 @@ import {
   FileText,
   Loader2,
   Check,
+  User,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
@@ -186,6 +189,23 @@ export function OrderDetailsPage() {
       : order.shippingAddress?.street ||
         order.shippingAddress?.city ||
         "Standard Delivery Address";
+
+  const contactName =
+    order.customerInfo?.fullName ||
+    order.shippingAddress?.fullName ||
+    (typeof order.userId === "object" ? order.userId?.username : "") ||
+    "";
+
+  const contactEmail =
+    order.customerInfo?.email ||
+    order.shippingAddress?.email ||
+    (typeof order.userId === "object" ? order.userId?.email : "") ||
+    "";
+
+  const contactPhone =
+    order.customerInfo?.phone ||
+    order.shippingAddress?.phone ||
+    "";
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-300">
@@ -467,15 +487,54 @@ export function OrderDetailsPage() {
               </div>
             </div>
 
-            {/* Shipping / Delivery Card */}
-            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm backdrop-blur-xl text-xs space-y-3">
-              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
-                <MapPin size={16} /> Delivery Information
+            {/* Shipping / Delivery & Contact Card */}
+            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm backdrop-blur-xl text-xs space-y-3.5">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm pb-2 border-b border-slate-100 dark:border-slate-800/80">
+                <MapPin size={16} /> Delivery & Contact Information
               </div>
-              <p className="text-slate-700 dark:text-slate-300 font-medium">{address}</p>
+
+              {/* Customer Contact Details */}
+              <div className="space-y-2 text-slate-700 dark:text-slate-300">
+                {contactName && (
+                  <div className="flex items-center gap-2">
+                    <User size={14} className="text-slate-400 shrink-0" />
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      {contactName}
+                    </span>
+                  </div>
+                )}
+                {contactEmail && (
+                  <div className="flex items-center gap-2">
+                    <Mail size={14} className="text-slate-400 shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                      {contactEmail}
+                    </span>
+                  </div>
+                )}
+                {contactPhone && (
+                  <div className="flex items-center gap-2">
+                    <Phone size={14} className="text-slate-400 shrink-0" />
+                    <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                      {contactPhone}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                <span className="text-slate-400 dark:text-slate-500 block text-[11px] mb-1 font-semibold">
+                  Delivery Address:
+                </span>
+                <p className="text-slate-700 dark:text-slate-300 font-medium">
+                  {address}
+                </p>
+              </div>
+
               {order.orderNote && (
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span className="text-slate-400 dark:text-slate-500 block">Order Note:</span>
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-400 dark:text-slate-500 block font-semibold mb-0.5">
+                    Order Note:
+                  </span>
                   {order.orderNote}
                 </div>
               )}

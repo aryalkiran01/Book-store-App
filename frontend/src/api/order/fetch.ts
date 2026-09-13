@@ -75,13 +75,20 @@ export interface TOrderItem {
   subtotal: number;
 }
 
+export interface TCustomerInfo {
+  fullName: string;
+  email: string;
+  phone: string;
+}
+
 export interface TOrderAddress {
   fullName?: string;
+  email?: string;
+  phone?: string;
   street?: string;
   city?: string;
   state?: string;
   postalCode?: string;
-  phone?: string;
 }
 
 export interface TStatusHistoryItem {
@@ -100,6 +107,7 @@ export interface TOrder {
         email: string;
       }
     | string;
+  customerInfo?: TCustomerInfo;
   books: TOrderItem[];
   subtotal: number;
   shippingCost: number;

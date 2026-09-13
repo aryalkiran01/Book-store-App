@@ -34,6 +34,12 @@ export const CheckoutPage = () => {
   );
   const [email, setEmail] = useState(userDetails?.email || "");
   const [phone, setPhone] = useState("");
+  const [formErrors, setFormErrors] = useState<{
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    shippingAddress?: string;
+  }>({});
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">(
     "delivery"
   );
@@ -45,6 +51,16 @@ export const CheckoutPage = () => {
   );
   const [showOrderList, setShowOrderList] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Sync user details if loaded asynchronously
+  useEffect(() => {
+    if (userDetails?.username && !fullName) {
+      setFullName(userDetails.username);
+    }
+    if (userDetails?.email && !email) {
+      setEmail(userDetails.email);
+    }
+  }, [userDetails]);
 
   const { mutate: createOrderMutation } = useCreateOrder();
 
@@ -85,6 +101,39 @@ export const CheckoutPage = () => {
     setAppliedDiscountMsg(`Coupon check applied for: ${discountCode.trim()}`);
   };
 
+  const validateForm = (): boolean => {
+    const errors: {
+      fullName?: string;
+      email?: string;
+      phone?: string;
+      shippingAddress?: string;
+    } = {};
+
+    const trimmedName = fullName.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      errors.fullName = "Please enter your full name (minimum 2 characters).";
+    }
+
+    const trimmedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      errors.email = "Please enter a valid email address.";
+    }
+
+    const trimmedPhone = phone.trim();
+    const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,20}$/;
+    if (!trimmedPhone || !phoneRegex.test(trimmedPhone)) {
+      errors.phone = "Please enter a valid contact phone number (at least 7 digits).";
+    }
+
+    if (deliveryType === "delivery" && !shippingAddress.trim()) {
+      errors.shippingAddress = "Please provide your delivery address.";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleProceedToPayment = () => {
     if (!isAuthenticated) {
       alert("Please log in or register to complete your order checkout.");
@@ -94,14 +143,21 @@ export const CheckoutPage = () => {
 
     if (!cartItems.length) return;
 
-    if (deliveryType === "delivery" && !shippingAddress.trim()) {
-      alert("Please provide your delivery address.");
+    if (!validateForm()) {
       return;
     }
 
     setSubmitting(true);
     const orderData = {
       userId: userDetails?.id || undefined,
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      customerInfo: {
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+      },
       books: cartItems.map((item) => ({
         bookId: item._id,
         quantity: item.quantity,
@@ -111,7 +167,19 @@ export const CheckoutPage = () => {
       shippingCost: validatedSummary?.shipping || 0,
       discount: validatedSummary?.discountSavings || 0,
       shippingAddress:
-        deliveryType === "delivery" ? shippingAddress : "Store Pickup",
+        deliveryType === "delivery"
+          ? {
+              fullName: fullName.trim(),
+              email: email.trim().toLowerCase(),
+              phone: phone.trim(),
+              street: shippingAddress.trim(),
+            }
+          : {
+              fullName: fullName.trim(),
+              email: email.trim().toLowerCase(),
+              phone: phone.trim(),
+              street: "Store Pickup",
+            },
       orderNote: orderNote.trim() || undefined,
     };
 
@@ -125,7 +193,9 @@ export const CheckoutPage = () => {
       onError: (err: any) => {
         setSubmitting(false);
         alert(
-          err?.message || "Failed to create order. Please review stock and retry."
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to create order. Please review contact details & stock and retry."
         );
       },
     });
@@ -203,39 +273,81 @@ export const CheckoutPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
-                      Full Name
+                      Full Name *
                     </label>
                     <input
                       type="text"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        if (formErrors.fullName) {
+                          setFormErrors({ ...formErrors, fullName: undefined });
+                        }
+                      }}
                       placeholder="e.g. John Doe"
-                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition"
+                      className={`w-full bg-slate-50 dark:bg-slate-950/80 border ${
+                        formErrors.fullName
+                          ? "border-rose-500 dark:border-rose-500 focus:border-rose-500"
+                          : "border-slate-200 dark:border-slate-800 focus:border-indigo-500"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none transition`}
                     />
+                    {formErrors.fullName && (
+                      <p className="text-xs text-rose-500 mt-1 font-medium">
+                        {formErrors.fullName}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
-                      Email Address
+                      Email Address *
                     </label>
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (formErrors.email) {
+                          setFormErrors({ ...formErrors, email: undefined });
+                        }
+                      }}
                       placeholder="e.g. john@example.com"
-                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition"
+                      className={`w-full bg-slate-50 dark:bg-slate-950/80 border ${
+                        formErrors.email
+                          ? "border-rose-500 dark:border-rose-500 focus:border-rose-500"
+                          : "border-slate-200 dark:border-slate-800 focus:border-indigo-500"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none transition`}
                     />
+                    {formErrors.email && (
+                      <p className="text-xs text-rose-500 mt-1 font-medium">
+                        {formErrors.email}
+                      </p>
+                    )}
                   </div>
                   <div className="sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
-                      Phone Number
+                      Phone Number *
                     </label>
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        setPhone(e.target.value);
+                        if (formErrors.phone) {
+                          setFormErrors({ ...formErrors, phone: undefined });
+                        }
+                      }}
                       placeholder="e.g. +977 9800000000"
-                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition"
+                      className={`w-full bg-slate-50 dark:bg-slate-950/80 border ${
+                        formErrors.phone
+                          ? "border-rose-500 dark:border-rose-500 focus:border-rose-500"
+                          : "border-slate-200 dark:border-slate-800 focus:border-indigo-500"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none transition`}
                     />
+                    {formErrors.phone && (
+                      <p className="text-xs text-rose-500 mt-1 font-medium">
+                        {formErrors.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -251,7 +363,15 @@ export const CheckoutPage = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   <div
-                    onClick={() => setDeliveryType("delivery")}
+                    onClick={() => {
+                      setDeliveryType("delivery");
+                      if (formErrors.shippingAddress) {
+                        setFormErrors({
+                          ...formErrors,
+                          shippingAddress: undefined,
+                        });
+                      }
+                    }}
                     className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
                       deliveryType === "delivery"
                         ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500"
@@ -277,7 +397,15 @@ export const CheckoutPage = () => {
                   </div>
 
                   <div
-                    onClick={() => setDeliveryType("pickup")}
+                    onClick={() => {
+                      setDeliveryType("pickup");
+                      if (formErrors.shippingAddress) {
+                        setFormErrors({
+                          ...formErrors,
+                          shippingAddress: undefined,
+                        });
+                      }
+                    }}
                     className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
                       deliveryType === "pickup"
                         ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500"
@@ -311,10 +439,27 @@ export const CheckoutPage = () => {
                     <textarea
                       rows={2}
                       value={shippingAddress}
-                      onChange={(e) => setShippingAddress(e.target.value)}
+                      onChange={(e) => {
+                        setShippingAddress(e.target.value);
+                        if (formErrors.shippingAddress) {
+                          setFormErrors({
+                            ...formErrors,
+                            shippingAddress: undefined,
+                          });
+                        }
+                      }}
                       placeholder="Street address, City, Ward / Landmark"
-                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition resize-none"
+                      className={`w-full bg-slate-50 dark:bg-slate-950/80 border ${
+                        formErrors.shippingAddress
+                          ? "border-rose-500 dark:border-rose-500 focus:border-rose-500"
+                          : "border-slate-200 dark:border-slate-800 focus:border-indigo-500"
+                      } rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none transition resize-none`}
                     />
+                    {formErrors.shippingAddress && (
+                      <p className="text-xs text-rose-500 mt-1 font-medium">
+                        {formErrors.shippingAddress}
+                      </p>
+                    )}
                   </div>
                 )}
 

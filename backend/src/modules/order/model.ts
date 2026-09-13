@@ -16,14 +16,24 @@ const orderItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const customerInfoSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, default: "", trim: true },
+    email: { type: String, default: "", trim: true, lowercase: true },
+    phone: { type: String, default: "", trim: true },
+  },
+  { _id: false }
+);
+
 const shippingAddressSchema = new mongoose.Schema(
   {
-    fullName: { type: String, default: "" },
+    fullName: { type: String, default: "", trim: true },
+    email: { type: String, default: "", trim: true, lowercase: true },
+    phone: { type: String, default: "", trim: true },
     street: { type: String, default: "" },
     city: { type: String, default: "" },
     state: { type: String, default: "" },
     postalCode: { type: String, default: "" },
-    phone: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -57,6 +67,10 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true,
       index: true,
+    },
+    customerInfo: {
+      type: customerInfoSchema,
+      default: () => ({}),
     },
     books: [orderItemSchema],
     subtotal: { type: Number, required: true, min: 0, default: 0 },
@@ -97,7 +111,28 @@ const orderSchema = new mongoose.Schema(
   },
   {
     timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
-    toJSON: { virtuals: true },
+    toJSON: {
+      virtuals: true,
+      transform: (_doc, ret: any) => {
+        if (
+          !ret.customerInfo ||
+          (!ret.customerInfo.fullName && !ret.customerInfo.email)
+        ) {
+          ret.customerInfo = {
+            fullName:
+              ret.shippingAddress?.fullName ||
+              ret.userId?.username ||
+              "",
+            email:
+              ret.shippingAddress?.email ||
+              ret.userId?.email ||
+              "",
+            phone: ret.shippingAddress?.phone || "",
+          };
+        }
+        return ret;
+      },
+    },
     toObject: { virtuals: true },
   }
 );

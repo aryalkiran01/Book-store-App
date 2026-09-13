@@ -1,5 +1,6 @@
 import { OrderModel } from "./model";
 import { BookModel } from "../book/model";
+import { UserModel } from "../auth/model";
 import { APIError } from "../../utils/error";
 import { TCreateOrderInput, TUpdateOrderStatusInput } from "./validation";
 import { validateObjectId } from "../../utils/security";
@@ -224,10 +225,65 @@ export async function createOrderService(input: TCreateOrderInput) {
     const shippingCost = subtotal >= 1000 ? 0 : 100;
     const finalTotalAmount = Number((subtotal + shippingCost).toFixed(2));
 
+    // 1. Resolve contact information from request or user profile fallback
+    let inputFullName =
+      input.customerInfo?.fullName ||
+      input.fullName ||
+      (typeof input.shippingAddress === "object"
+        ? input.shippingAddress?.fullName
+        : "") ||
+      "";
+    let inputEmail =
+      input.customerInfo?.email ||
+      input.email ||
+      (typeof input.shippingAddress === "object"
+        ? input.shippingAddress?.email
+        : "") ||
+      "";
+    let inputPhone =
+      input.customerInfo?.phone ||
+      input.phone ||
+      (typeof input.shippingAddress === "object"
+        ? (input.shippingAddress as any)?.phone ||
+          (input.shippingAddress as any)?.phoneNumber
+        : "") ||
+      "";
+
+    // If missing from payload, fallback to user account info
+    if (!inputFullName || !inputEmail) {
+      const userDoc = await UserModel.findById(input.userId).lean();
+      if (userDoc) {
+        if (!inputFullName) inputFullName = userDoc.username || "Customer";
+        if (!inputEmail) inputEmail = userDoc.email || "";
+      }
+    }
+
+    const customerInfo = {
+      fullName: inputFullName.trim(),
+      email: inputEmail.trim().toLowerCase(),
+      phone: inputPhone.trim(),
+    };
+
     const normalizedAddress =
       typeof input.shippingAddress === "string"
-        ? { street: input.shippingAddress }
-        : input.shippingAddress || {};
+        ? {
+            street: input.shippingAddress,
+            fullName: customerInfo.fullName,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          }
+        : {
+            fullName: customerInfo.fullName,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+            street:
+              input.shippingAddress?.street ||
+              (input.shippingAddress as any)?.address ||
+              "",
+            city: input.shippingAddress?.city || "",
+            state: input.shippingAddress?.state || "",
+            postalCode: input.shippingAddress?.postalCode || "",
+          };
 
     // Security: NEVER trust client-supplied paymentId to complete payment upon creation.
     // All orders must start as pending payment and undergo server-side payment verification.
@@ -236,6 +292,7 @@ export async function createOrderService(input: TCreateOrderInput) {
 
     const newOrder = new OrderModel({
       userId: input.userId,
+      customerInfo,
       books: processedItems,
       subtotal,
       shippingCost,

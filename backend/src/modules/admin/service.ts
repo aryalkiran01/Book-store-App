@@ -364,7 +364,7 @@ export async function getAdminAuthorsService() {
         bookCount: { $sum: 1 },
         totalStock: { $sum: "$stock" },
         genres: { $addToSet: "$genre" },
-        avgRating: { $avg: "$rating" },
+        avgRating: { $avg: "$averageRating" },
       },
     },
     {
@@ -399,8 +399,9 @@ export async function getAdminReviewsService(query: TAdminQueryInput) {
   if (query.search) {
     const s = query.search.trim();
     filter.$or = [
-      { comment: { $regex: s, $options: "i" } },
+      { reviewText: { $regex: s, $options: "i" } },
       { title: { $regex: s, $options: "i" } },
+      { username: { $regex: s, $options: "i" } },
       { reportReason: { $regex: s, $options: "i" } },
     ];
   }

@@ -1258,11 +1258,20 @@ export function AdminDashboardPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-slate-900 dark:text-slate-100">
-                          {order.userId?.username || "Customer"}
+                          {order.customerInfo?.fullName ||
+                            order.shippingAddress?.fullName ||
+                            order.userId?.username ||
+                            "Customer"}
                         </div>
                         <div className="text-xs text-slate-500">
-                          {order.userId?.email}
+                          {order.customerInfo?.email || order.userId?.email}
                         </div>
+                        {(order.customerInfo?.phone ||
+                          order.shippingAddress?.phone) && (
+                          <div className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 mt-0.5">
+                            📞 {order.customerInfo?.phone || order.shippingAddress?.phone}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                         {order.books?.length || 0} item(s)
@@ -1526,7 +1535,7 @@ export function AdminDashboardPage() {
                     </div>
 
                     <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                      "{rev.comment}"
+                      "{rev.reviewText || rev.comment}"
                     </p>
 
                     <div className="text-xs text-slate-400 dark:text-slate-500">
@@ -1883,6 +1892,51 @@ export function AdminDashboardPage() {
             </div>
 
             <div className="space-y-4">
+              {/* Customer Fulfillment Information */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs space-y-1.5">
+                <div className="font-bold text-slate-800 dark:text-slate-200">
+                  Customer:{" "}
+                  <span className="font-normal text-slate-900 dark:text-white">
+                    {selectedOrder.customerInfo?.fullName ||
+                      selectedOrder.shippingAddress?.fullName ||
+                      selectedOrder.userId?.username ||
+                      "Customer"}
+                  </span>
+                </div>
+                <div className="text-slate-600 dark:text-slate-400">
+                  Email:{" "}
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    {selectedOrder.customerInfo?.email ||
+                      selectedOrder.shippingAddress?.email ||
+                      selectedOrder.userId?.email ||
+                      "N/A"}
+                  </span>
+                </div>
+                <div className="text-slate-600 dark:text-slate-400">
+                  Phone:{" "}
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    {selectedOrder.customerInfo?.phone ||
+                      selectedOrder.shippingAddress?.phone ||
+                      "N/A"}
+                  </span>
+                </div>
+                <div className="text-slate-600 dark:text-slate-400">
+                  Address:{" "}
+                  <span className="text-slate-800 dark:text-slate-200">
+                    {typeof selectedOrder.shippingAddress === "string"
+                      ? selectedOrder.shippingAddress
+                      : selectedOrder.shippingAddress?.street ||
+                        selectedOrder.shippingAddress?.city ||
+                        "Standard Delivery"}
+                  </span>
+                </div>
+                {selectedOrder.orderNote && (
+                  <div className="text-slate-500 pt-1 border-t border-slate-200 dark:border-slate-800 text-[11px]">
+                    Note: {selectedOrder.orderNote}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-600 dark:text-slate-400 mb-1.5">
                   Select New Lifecycle Status
