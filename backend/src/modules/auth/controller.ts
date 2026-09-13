@@ -13,6 +13,7 @@ import {
   updateroleservice,
 } from "./service";
 import { APIError } from "../../utils/error";
+import { env } from "../../utils/config";
 
 export async function registerController(
   req: Request,
@@ -72,8 +73,8 @@ export async function loginController(
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
     });
@@ -83,7 +84,6 @@ export async function loginController(
       isSuccess: true,
       data: {
         user,
-        accessToken: token,
       },
     });
   } catch (error) {
@@ -99,8 +99,8 @@ export async function logoutController(
   try {
     res.clearCookie("token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
       path: "/",
     });
 

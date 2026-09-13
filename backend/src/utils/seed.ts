@@ -3,44 +3,105 @@ import { UserModel } from "../modules/auth/model";
 import { ReviewModel } from "../modules/review/model";
 import { hashPassword } from "./auth";
 import { updateBookRatingAggregation } from "../modules/review/service";
+import { env } from "./config";
 
+/**
+ * Securely initializes a production administrator if configured via environment variables.
+ * Never creates hardcoded or default credentials.
+ */
+export async function initializeProductionAdmin() {
+  try {
+    const adminExists = await UserModel.exists({ role: "admin" });
+    if (adminExists) {
+      return;
+    }
+
+    const adminEmail = env.INITIAL_ADMIN_EMAIL?.trim();
+    const adminPassword = env.INITIAL_ADMIN_PASSWORD?.trim();
+    const adminUsername = env.INITIAL_ADMIN_USERNAME?.trim() || "Administrator";
+
+    if (adminEmail && adminPassword) {
+      if (adminPassword.length < 8) {
+        console.error(
+          "⚠️ [SECURITY ERROR] INITIAL_ADMIN_PASSWORD must be at least 8 characters. Administrator account not created."
+        );
+        return;
+      }
+
+      const existingUser = await UserModel.findOne({ email: adminEmail.toLowerCase() });
+      if (existingUser) {
+        existingUser.role = "admin";
+        await existingUser.save();
+        console.log(`🛡️ [SECURITY] Promoted existing account '${adminEmail}' to Administrator role.`);
+      } else {
+        const hashedPassword = await hashPassword(adminPassword);
+        await UserModel.create({
+          username: adminUsername,
+          email: adminEmail.toLowerCase(),
+          password: hashedPassword,
+          role: "admin",
+        });
+        console.log(`🛡️ [SECURITY] Initial administrator account provisioned for '${adminEmail}'.`);
+      }
+    } else {
+      console.log(
+        "ℹ️ [SECURITY NOTICE] No administrator exists. Set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD in environment or run 'npm run create:admin' to configure an administrator."
+      );
+    }
+  } catch (error) {
+    console.error("Error during production admin initialization:", error);
+  }
+}
+
+/**
+ * Seeds initial development/test data.
+ * Guarded against unintended production execution.
+ */
 export async function seedDatabase() {
   try {
-    // Check if admin user exists
-    const adminUser = await UserModel.findOne({ role: "admin" });
-    let adminId: any = adminUser?._id;
+    // In production, do NOT seed sample books, reviews, or mock users unless explicitly enabled via SEED_DB=true
+    if (env.NODE_ENV === "production" && !env.SEED_DB) {
+      await initializeProductionAdmin();
+      return;
+    }
 
+    // 1. Admin Provisioning
+    const adminUser = await UserModel.findOne({ role: "admin" });
     if (!adminUser) {
-      const hashedPassword = await hashPassword("admin123");
-      const newAdmin = await UserModel.create({
-        username: "Admin",
-        email: "admin@bookstore.com",
+      const devAdminEmail = env.INITIAL_ADMIN_EMAIL?.trim() || "admin@bookstore.com";
+      const devAdminPassword = env.INITIAL_ADMIN_PASSWORD?.trim() || "Admin@Dev12345!";
+      const devAdminUsername = env.INITIAL_ADMIN_USERNAME?.trim() || "Admin";
+
+      const hashedPassword = await hashPassword(devAdminPassword);
+      await UserModel.create({
+        username: devAdminUsername,
+        email: devAdminEmail.toLowerCase(),
         password: hashedPassword,
         role: "admin",
       });
-      adminId = newAdmin._id;
-      console.log("Default admin account created: admin@bookstore.com / admin123");
+      console.log(`🛡️ [DEV SEED] Development administrator account provisioned for '${devAdminEmail}'.`);
     }
 
-    // Check if sample regular user exists
+    // 2. Regular Test User
     let sampleUser = await UserModel.findOne({ email: "reader@bookstore.com" });
     if (!sampleUser) {
-      const hashedUserPassword = await hashPassword("reader123");
+      const hashedUserPassword = await hashPassword("Reader@Dev12345!");
       sampleUser = await UserModel.create({
         username: "Avid Reader",
         email: "reader@bookstore.com",
         password: hashedUserPassword,
         role: "user",
       });
+      console.log("👤 [DEV SEED] Sample reader account provisioned.");
     }
 
-    // Update existing books without stock if any
+    // 3. Stock Migration
     await BookModel.updateMany({ stock: { $exists: false } }, { $set: { stock: 25 } });
 
-    // Check if books exist
+    // 4. Sample Catalog & Reviews
     const bookCount = await BookModel.countDocuments();
     if (bookCount === 0) {
-      console.log("Seeding initial books collection...");
+      console.log("📚 [DEV SEED] Seeding initial book collection...");
       const sampleBooks = [
         {
           title: "The Psychology of Money",
@@ -147,7 +208,7 @@ export async function seedDatabase() {
         await updateBookRatingAggregation(createdBooks[0]._id.toString());
         await updateBookRatingAggregation(createdBooks[1]._id.toString());
       }
-      console.log("Database seeded successfully with initial catalog and reviews.");
+      console.log("✅ [DEV SEED] Database seeded successfully with initial catalog and reviews.");
     }
   } catch (error) {
     console.error("Error during database seed:", error);

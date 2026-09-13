@@ -2,12 +2,10 @@ import axios from "axios";
 import { env } from "../../config";
 
 function getAxiosConfig() {
-  const token = localStorage.getItem("token");
   return {
     withCredentials: true,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   };
 }

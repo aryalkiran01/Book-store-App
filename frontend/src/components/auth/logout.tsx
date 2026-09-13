@@ -26,7 +26,6 @@ export function Logout() {
           onError: (error) => {
             console.error(error);
             clearUserDetails();
-            localStorage.removeItem("token");
             errorToast(error.message || "Logout error");
             navigate("/");
           },
@@ -35,7 +34,6 @@ export function Logout() {
     } catch (error: any) {
       console.error(error);
       clearUserDetails();
-      localStorage.removeItem("token");
       navigate("/");
     }
   };

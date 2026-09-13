@@ -16,6 +16,13 @@ const KHALTI_API_KEY =
   "test_secret_key_684f8841a134440092305a2e6462700a";
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "uploads/";
 
+const SEED_DB =
+  process.env.SEED_DB === "true" ||
+  (NODE_ENV !== "production" && process.env.SEED_DB !== "false");
+const INITIAL_ADMIN_EMAIL = process.env.INITIAL_ADMIN_EMAIL || "";
+const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || "";
+const INITIAL_ADMIN_USERNAME = process.env.INITIAL_ADMIN_USERNAME || "Admin";
+
 if (NODE_ENV === "production" && JWT_SECRET === "supersecretjwtkey_bookreviewapp_2025_secure") {
   console.warn(
     "⚠️ [SECURITY WARNING] Default JWT_SECRET is being used in production. Please set a strong random JWT_SECRET in your production .env file."
@@ -31,6 +38,10 @@ export const env = {
   ALLOWED_ORIGINS,
   KHALTI_API_KEY,
   UPLOADS_DIR,
+  SEED_DB,
+  INITIAL_ADMIN_EMAIL,
+  INITIAL_ADMIN_PASSWORD,
+  INITIAL_ADMIN_USERNAME,
 } as const;
 
 

@@ -23,13 +23,17 @@ import { multerErrorHandler } from "./modules/auth/middleware";
 
 dotenv.config();
 
-import { seedDatabase } from "./utils/seed";
+import { seedDatabase, initializeProductionAdmin } from "./utils/seed";
 
 // Connect to MongoDB
 createDBConnection()
   .then(async () => {
     console.log("Database connected successfully");
-    await seedDatabase();
+    if (env.SEED_DB || env.NODE_ENV !== "production") {
+      await seedDatabase();
+    } else {
+      await initializeProductionAdmin();
+    }
   })
   .catch((error) => console.error("Database connection error:", error));
 

@@ -1,14 +1,9 @@
 import { env } from "../../config";
 
 export function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("token");
-  const headers: Record<string, string> = {
+  return {
     "Content-Type": "application/json",
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
 }
 
 /**
@@ -58,11 +53,12 @@ export type TLoginUserOutput = {
   message: string;
   isSuccess: boolean;
   data: {
-    username: string;
-    email: string;
-    id: string;
-    role: TUserRole;
-    accessToken?: string;
+    user: {
+      username: string;
+      email: string;
+      id: string;
+      role: TUserRole;
+    };
   };
 };
 
@@ -89,10 +85,6 @@ export async function loginUser(
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message || "Login failed");
-  }
-
-  if (data?.data?.accessToken) {
-    localStorage.setItem("token", data.data.accessToken);
   }
 
   return data;
@@ -136,8 +128,6 @@ export async function logout(): Promise<TLogoutOutput> {
     credentials: "include",
     headers: getAuthHeaders(),
   });
-
-  localStorage.removeItem("token");
 
   const data = await res.json();
   if (!res.ok) {

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx --watch src/main.ts",
     "build": "tsc",
-    "start": "node --max-old-space-size=4096 dist/main.js"
+    "start": "node --max-old-space-size=4096 dist/main.js",
+    "create:admin": "node scripts/create-admin.mjs"
   },
   "keywords": [],
   "author": "",

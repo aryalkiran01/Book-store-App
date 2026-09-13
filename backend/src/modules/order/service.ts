@@ -139,98 +139,145 @@ export async function createOrderService(input: TCreateOrderInput) {
     throw APIError.badRequest("Order must contain at least one book item");
   }
 
-  // Authoritative server-side calculation & inventory verification
-  let authoritativeSubtotal = 0;
-  let rawSubtotal = 0;
-  const processedItems = [];
-
+  // Validate quantities and sanitize list
+  const sanitizedItems: { bookId: string; quantity: number }[] = [];
   for (const item of rawBooks) {
     validateObjectId(item.bookId, "Book ID");
-
-    const book = await BookModel.findById(item.bookId);
-    if (!book) {
-      throw APIError.notFound(`Book with ID ${item.bookId} not found`);
-    }
-
-    if (book.stock < item.quantity) {
+    const qty = Number(item.quantity);
+    if (!Number.isInteger(qty) || qty <= 0) {
       throw APIError.badRequest(
-        `Insufficient stock for "${book.title}". Available: ${book.stock}, Requested: ${item.quantity}`
+        `Invalid quantity for book ID ${item.bookId}. Quantity must be a positive integer greater than 0.`
       );
     }
-
-    // Calculate discounted unit price authoritatively
-    const unitPrice =
-      book.discountPercentage && book.discountPercentage > 0
-        ? Number((book.price * (1 - book.discountPercentage / 100)).toFixed(2))
-        : book.price;
-
-    const itemTotal = Number((unitPrice * item.quantity).toFixed(2));
-    const itemRawTotal = Number((book.price * item.quantity).toFixed(2));
-
-    rawSubtotal += itemRawTotal;
-    authoritativeSubtotal += itemTotal;
-
-    processedItems.push({
-      bookId: book._id,
-      title: book.title,
-      image: book.image || "",
-      price: unitPrice,
-      quantity: item.quantity,
-      subtotal: itemTotal,
+    sanitizedItems.push({
+      bookId: item.bookId.toString(),
+      quantity: qty,
     });
   }
 
-  // Atomically decrement stock for all items
-  for (const item of processedItems) {
-    await BookModel.findByIdAndUpdate(item.bookId, {
-      $inc: { stock: -item.quantity },
+  // Track successfully decremented items for compensating rollback if any subsequent update fails
+  const decrementedItems: { bookId: string; quantity: number }[] = [];
+  const processedItems = [];
+  let authoritativeSubtotal = 0;
+  let rawSubtotal = 0;
+
+  try {
+    for (const item of sanitizedItems) {
+      // Atomic guarded update: ONLY decrement if stock >= requested quantity
+      const updatedBook = await BookModel.findOneAndUpdate(
+        {
+          _id: item.bookId,
+          stock: { $gte: item.quantity },
+        },
+        {
+          $inc: { stock: -item.quantity },
+        },
+        {
+          new: true,
+        }
+      );
+
+      if (!updatedBook) {
+        // Find out why: Book not found or insufficient stock
+        const existingBook = await BookModel.findById(item.bookId).lean();
+        if (!existingBook) {
+          throw APIError.notFound(`Book with ID ${item.bookId} not found`);
+        } else {
+          throw APIError.badRequest(
+            `Insufficient stock for "${existingBook.title}". Available: ${existingBook.stock}, Requested: ${item.quantity}`
+          );
+        }
+      }
+
+      // Record successful atomic decrement
+      decrementedItems.push({
+        bookId: item.bookId,
+        quantity: item.quantity,
+      });
+
+      // Calculate authoritative prices directly from the fresh database record
+      const originalPrice = updatedBook.price;
+      const discountPercentage = updatedBook.discountPercentage || 0;
+      const unitPrice =
+        discountPercentage > 0
+          ? Number((originalPrice * (1 - discountPercentage / 100)).toFixed(2))
+          : originalPrice;
+
+      const itemTotal = Number((unitPrice * item.quantity).toFixed(2));
+      const itemRawTotal = Number((originalPrice * item.quantity).toFixed(2));
+
+      rawSubtotal += itemRawTotal;
+      authoritativeSubtotal += itemTotal;
+
+      processedItems.push({
+        bookId: updatedBook._id,
+        title: updatedBook.title,
+        image: updatedBook.image || "",
+        price: unitPrice,
+        quantity: item.quantity,
+        subtotal: itemTotal,
+      });
+    }
+
+    const subtotal = Number(authoritativeSubtotal.toFixed(2));
+    const discount = Number((rawSubtotal - subtotal).toFixed(2));
+    const shippingCost = subtotal >= 1000 ? 0 : 100;
+    const finalTotalAmount = Number((subtotal + shippingCost).toFixed(2));
+
+    const normalizedAddress =
+      typeof input.shippingAddress === "string"
+        ? { street: input.shippingAddress }
+        : input.shippingAddress || {};
+
+    // Security: NEVER trust client-supplied paymentId to complete payment upon creation.
+    // All orders must start as pending payment and undergo server-side payment verification.
+    const initialStatus = "pending";
+    const initialPaymentStatus = "pending";
+
+    const newOrder = new OrderModel({
+      userId: input.userId,
+      books: processedItems,
+      subtotal,
+      shippingCost,
+      discount,
+      totalAmount: finalTotalAmount,
+      shippingAddress: normalizedAddress,
+      orderNote: input.orderNote || "",
+      paymentMethod: input.paymentMethod || "khalti",
+      paymentStatus: initialPaymentStatus,
+      paymentId: input.paymentId || "",
+      status: initialStatus,
+      statusHistory: [
+        {
+          status: initialStatus,
+          changedAt: new Date(),
+          note: "Order placed by customer (Awaiting payment verification)",
+          changedBy: "customer",
+        },
+      ],
     });
+
+    await newOrder.save();
+
+    return {
+      orderId: newOrder._id,
+      ...newOrder.toObject(),
+    };
+  } catch (error) {
+    // Compensating rollback: Revert all decrements performed before the failure
+    if (decrementedItems.length > 0) {
+      for (const dec of decrementedItems) {
+        try {
+          await BookModel.findByIdAndUpdate(dec.bookId, {
+            $inc: { stock: dec.quantity },
+          });
+        } catch (rollbackErr) {
+          console.error("Critical error rolling back inventory decrement:", rollbackErr);
+        }
+      }
+    }
+    throw error;
   }
-
-  const subtotal = Number(authoritativeSubtotal.toFixed(2));
-  const discount = Number((rawSubtotal - subtotal).toFixed(2));
-  const shippingCost = subtotal >= 1000 ? 0 : 100;
-  const finalTotalAmount = Number((subtotal + shippingCost).toFixed(2));
-
-  const normalizedAddress =
-    typeof input.shippingAddress === "string"
-      ? { street: input.shippingAddress }
-      : input.shippingAddress || {};
-
-  // Security: NEVER trust client-supplied paymentId to complete payment upon creation.
-  // All orders must start as pending payment and undergo server-side payment verification.
-  const initialStatus = "pending";
-  const initialPaymentStatus = "pending";
-
-  const newOrder = new OrderModel({
-    userId: input.userId,
-    books: processedItems,
-    subtotal,
-    shippingCost,
-    discount,
-    totalAmount: finalTotalAmount,
-    shippingAddress: normalizedAddress,
-    orderNote: input.orderNote || "",
-    paymentMethod: input.paymentMethod || "khalti",
-    paymentStatus: initialPaymentStatus,
-    paymentId: input.paymentId || "",
-    status: initialStatus,
-    statusHistory: [
-      {
-        status: initialStatus,
-        changedAt: new Date(),
-        note: "Order placed by customer (Awaiting payment verification)",
-        changedBy: "customer",
-      },
-    ],
-  });
-
-  await newOrder.save();
-
-  return {
-    orderId: newOrder._id,
-    ...newOrder.toObject(),
-  };
 }
 
 export async function getAllOrdersService(params?: {
@@ -412,10 +459,38 @@ export async function updateOrderStatusService(
 
   // Deduct inventory again if previously cancelled order is reinstated
   if (previousStatus === "cancelled" && newStatus !== "cancelled") {
-    for (const item of order.books) {
-      await BookModel.findByIdAndUpdate(item.bookId, {
-        $inc: { stock: -item.quantity },
-      });
+    const decrementedItems: { bookId: any; quantity: number }[] = [];
+    try {
+      for (const item of order.books) {
+        const updatedBook = await BookModel.findOneAndUpdate(
+          {
+            _id: item.bookId,
+            stock: { $gte: item.quantity },
+          },
+          {
+            $inc: { stock: -item.quantity },
+          },
+          { new: true }
+        );
+
+        if (!updatedBook) {
+          throw APIError.badRequest(
+            `Cannot reinstate order: Insufficient stock for book ID ${item.bookId}`
+          );
+        }
+
+        decrementedItems.push({
+          bookId: item.bookId,
+          quantity: item.quantity,
+        });
+      }
+    } catch (err) {
+      for (const dec of decrementedItems) {
+        await BookModel.findByIdAndUpdate(dec.bookId, {
+          $inc: { stock: dec.quantity },
+        });
+      }
+      throw err;
     }
   }
 
