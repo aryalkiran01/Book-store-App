@@ -9,6 +9,38 @@ import { APIError } from "../../utils/error";
 import { sanitizeString, validateObjectId } from "../../utils/security";
 import { BookModel } from "../book/model";
 
+/**
+ * Aggregates all reviews for a book and updates the book's averageRating and totalReviews.
+ */
+export async function updateBookRatingAggregation(bookId: string) {
+  try {
+    const stats = await ReviewModel.aggregate([
+      { $match: { bookId: new mongoose.Types.ObjectId(bookId) } },
+      {
+        $group: {
+          _id: "$bookId",
+          totalReviews: { $sum: 1 },
+          avgRating: { $avg: "$rating" },
+        },
+      },
+    ]);
+
+    if (stats.length > 0) {
+      await BookModel.findByIdAndUpdate(bookId, {
+        totalReviews: stats[0].totalReviews,
+        averageRating: Number(stats[0].avgRating.toFixed(1)),
+      });
+    } else {
+      await BookModel.findByIdAndUpdate(bookId, {
+        totalReviews: 0,
+        averageRating: 0,
+      });
+    }
+  } catch (err) {
+    console.error(`Failed to aggregate ratings for book ${bookId}:`, err);
+  }
+}
+
 export async function createReviewService(
   ctx: TReviewCtx,
   input: TAddReviewControllerInput & { username: string }
@@ -28,17 +60,34 @@ export async function createReviewService(
     throw APIError.badRequest("Review text cannot be empty");
   }
 
-  const newReview = new ReviewModel({
+  const cleanUsername = sanitizeString(username) || "Anonymous";
+
+  // Check if user already reviewed this book (upsert pattern)
+  let review = await ReviewModel.findOne({
     bookId: ctx.bookId,
     userId: ctx.userId,
-    username: sanitizeString(username) || "Anonymous",
-    rating,
-    reviewText: cleanReviewText,
   });
 
-  await newReview.save();
+  if (review) {
+    review.rating = rating;
+    review.reviewText = cleanReviewText;
+    review.username = cleanUsername;
+    await review.save();
+  } else {
+    review = new ReviewModel({
+      bookId: ctx.bookId,
+      userId: ctx.userId,
+      username: cleanUsername,
+      rating,
+      reviewText: cleanReviewText,
+    });
+    await review.save();
+  }
 
-  return newReview;
+  // Recalculate book average rating & total reviews
+  await updateBookRatingAggregation(ctx.bookId);
+
+  return review;
 }
 
 export async function updateReviewService(
@@ -87,23 +136,26 @@ export async function updateReviewService(
     throw APIError.notFound("Review not found during update");
   }
 
+  // Recalculate book average rating & total reviews
+  await updateBookRatingAggregation(review.bookId.toString());
+
   return updatedReview;
 }
 
 export async function getAllReviewsService() {
   const reviews = await ReviewModel.find()
-    .populate("bookId", "title author image")
-    .sort({ created_at: -1 });
+    .populate("bookId", "title author image price averageRating")
+    .sort({ createdAt: -1 })
+    .lean();
   return reviews;
 }
 
 export async function getReviewsByBookIdService(bookId: string) {
   validateObjectId(bookId, "Book ID");
-  const reviews = await ReviewModel.find({
-    bookId,
-  })
-    .populate("userId", "username email")
-    .sort({ created_at: -1 });
+  const reviews = await ReviewModel.find({ bookId })
+    .populate("userId", "username email avatar")
+    .sort({ createdAt: -1 })
+    .lean();
 
   return reviews;
 }
@@ -123,7 +175,11 @@ export async function deleteReviewService(reviewId: string, ctx: TReviewCtx) {
     throw APIError.forbidden("You are not authorized to delete this review");
   }
 
+  const targetBookId = deleteReview.bookId.toString();
   await ReviewModel.findByIdAndDelete(reviewId);
+
+  // Recalculate book average rating & total reviews
+  await updateBookRatingAggregation(targetBookId);
 
   return deleteReview;
 }

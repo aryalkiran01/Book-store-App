@@ -49,11 +49,15 @@ export async function getAllOrdersController(
   next: NextFunction
 ) {
   try {
-    const orders = await getAllOrdersService();
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+
+    const result = await getAllOrdersService({ page, limit });
     res.status(200).json({
       message: "All orders retrieved successfully",
       isSuccess: true,
-      data: orders,
+      data: result.orders,
+      pagination: result.pagination,
     });
   } catch (error) {
     next(error);
@@ -80,11 +84,15 @@ export async function getOrdersByUserController(
       return;
     }
 
-    const orders = await getOrdersByUserIdService(requestedUserId);
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+
+    const result = await getOrdersByUserIdService(requestedUserId, { page, limit });
     res.status(200).json({
       message: "Orders retrieved successfully",
       isSuccess: true,
-      data: orders,
+      data: result.orders,
+      pagination: result.pagination,
     });
   } catch (error) {
     next(error);

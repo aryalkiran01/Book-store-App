@@ -65,19 +65,50 @@ export async function deleteBookService(id: string) {
   return book;
 }
 
-export async function getBooksService(query?: {
+export interface BookQueryParams {
+  page?: number;
+  limit?: number;
   search?: string;
   genre?: string;
   author?: string;
-}) {
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: "newest" | "price-asc" | "price-desc" | "rating" | "popular";
+  featured?: boolean;
+  isNewArrival?: boolean;
+}
+
+export async function getBooksService(query?: BookQueryParams) {
+  const page = Math.max(1, Number(query?.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
+  const skip = (page - 1) * limit;
+
   const filter: Record<string, any> = {};
 
   if (query?.genre && query.genre !== "All") {
-    filter.genre = { $regex: new RegExp(query.genre, "i") };
+    filter.genre = { $regex: new RegExp(`^${query.genre}$`, "i") };
   }
 
   if (query?.author) {
     filter.author = { $regex: new RegExp(query.author, "i") };
+  }
+
+  if (query?.featured !== undefined) {
+    filter.featured = query.featured;
+  }
+
+  if (query?.isNewArrival !== undefined) {
+    filter.isNewArrival = query.isNewArrival;
+  }
+
+  if (query?.minPrice !== undefined || query?.maxPrice !== undefined) {
+    filter.price = {};
+    if (query?.minPrice !== undefined && !isNaN(Number(query.minPrice))) {
+      filter.price.$gte = Number(query.minPrice);
+    }
+    if (query?.maxPrice !== undefined && !isNaN(Number(query.maxPrice))) {
+      filter.price.$lte = Number(query.maxPrice);
+    }
   }
 
   if (query?.search) {
@@ -90,8 +121,42 @@ export async function getBooksService(query?: {
     ];
   }
 
-  const books = await BookModel.find(filter).sort({ created_at: -1 });
-  return books;
+  // Determine sort order
+  let sortOption: Record<string, any> = { createdAt: -1 };
+  if (query?.sortBy === "price-asc") {
+    sortOption = { price: 1 };
+  } else if (query?.sortBy === "price-desc") {
+    sortOption = { price: -1 };
+  } else if (query?.sortBy === "rating") {
+    sortOption = { averageRating: -1, totalReviews: -1 };
+  } else if (query?.sortBy === "popular") {
+    sortOption = { totalReviews: -1, averageRating: -1 };
+  } else {
+    sortOption = { createdAt: -1 };
+  }
+
+  const [total, books] = await Promise.all([
+    BookModel.countDocuments(filter),
+    BookModel.find(filter)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return {
+    books,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
 }
 
 export async function getBookByIdService(id: string) {

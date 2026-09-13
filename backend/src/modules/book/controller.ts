@@ -111,16 +111,43 @@ export async function getBooksController(
   next: NextFunction
 ) {
   try {
-    const { search, genre, author } = req.query;
-    const books = await getBooksService({
+    const {
+      search,
+      genre,
+      author,
+      page,
+      limit,
+      minPrice,
+      maxPrice,
+      sortBy,
+      featured,
+      isNewArrival,
+    } = req.query;
+
+    const result = await getBooksService({
       search: typeof search === "string" ? search : undefined,
       genre: typeof genre === "string" ? genre : undefined,
       author: typeof author === "string" ? author : undefined,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      minPrice: minPrice !== undefined ? Number(minPrice) : undefined,
+      maxPrice: maxPrice !== undefined ? Number(maxPrice) : undefined,
+      sortBy: typeof sortBy === "string" ? (sortBy as any) : undefined,
+      featured:
+        featured === "true" ? true : featured === "false" ? false : undefined,
+      isNewArrival:
+        isNewArrival === "true"
+          ? true
+          : isNewArrival === "false"
+          ? false
+          : undefined,
     });
+
     res.status(200).json({
       message: "Books retrieved successfully",
       isSuccess: true,
-      data: books,
+      data: result.books,
+      pagination: result.pagination,
     });
   } catch (error) {
     next(error);
