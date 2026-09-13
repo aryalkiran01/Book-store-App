@@ -2,13 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import { APIError } from "../../utils/error";
 import { AddBookControllerSchema } from "./validation";
 import { TUpdateBookControllerSchema } from "./validation";
+import { BookModel } from "./model";
 import {
   createBookService,
   deleteBookService,
   getBookByIdService,
   getBooksService,
   updateBookService,
-  // searchGoogleBooksService,
 } from "./service";
 import { getReviewsByBookIdService } from "../review/service";
 
@@ -35,17 +35,9 @@ export async function addBookController(
     const book = await createBookService(data);
 
     res.status(201).json({
-      message: "Book created sucessfully",
+      message: "Book created successfully",
       isSuccess: true,
-      data: {
-        image: book.image,
-        id: book._id,
-        Title: book.title,
-        author: book.author,
-        description: book.description,
-        genres: book.genre,
-        price: book.price,
-      },
+      data: book,
     });
   } catch (error) {
     next(error);
@@ -62,7 +54,7 @@ export async function updateBookController(
 
     const bookId = req.params.bookId;
 
-    const { success, error, data } = AddBookControllerSchema.safeParse(body);
+    const { success, error, data } = TUpdateBookControllerSchema.safeParse(body);
     if (!success) {
       const errors = error.flatten().fieldErrors;
       res.status(400).json({
@@ -76,8 +68,8 @@ export async function updateBookController(
 
     const book = await updateBookService(bookId, data);
 
-    res.status(201).json({
-      message: "Book updated sucessfully",
+    res.status(200).json({
+      message: "Book updated successfully",
       isSuccess: true,
       data: book,
     });
@@ -95,8 +87,8 @@ export async function deleteBookController(
     const bookId = req.params.bookId;
     const book = await deleteBookService(bookId);
 
-    res.status(201).json({
-      message: "Book deleted sucessfully",
+    res.status(200).json({
+      message: "Book deleted successfully",
       isSuccess: true,
       data: book,
     });
@@ -122,6 +114,7 @@ export async function getBooksController(
       sortBy,
       featured,
       isNewArrival,
+      inStock,
     } = req.query;
 
     const result = await getBooksService({
@@ -141,6 +134,7 @@ export async function getBooksController(
           : isNewArrival === "false"
           ? false
           : undefined,
+      inStock: inStock === "true" ? true : inStock === "false" ? false : undefined,
     });
 
     res.status(200).json({
@@ -148,6 +142,70 @@ export async function getBooksController(
       isSuccess: true,
       data: result.books,
       pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getGenresController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const genres: string[] = await BookModel.distinct("genre");
+    const formatted = genres
+      .flatMap((g: string) => g.split(",").map((s: string) => s.trim()))
+      .filter((v: string, i: number, a: string[]) => v && a.indexOf(v) === i)
+      .sort();
+
+    res.status(200).json({
+      message: "Genres retrieved successfully",
+      isSuccess: true,
+      data: formatted,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getFeaturedBooksController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const books = await BookModel.find({ featured: true })
+      .sort({ averageRating: -1 })
+      .limit(8)
+      .lean();
+
+    res.status(200).json({
+      message: "Featured books retrieved successfully",
+      isSuccess: true,
+      data: books,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getNewArrivalsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const books = await BookModel.find({ isNewArrival: true })
+      .sort({ createdAt: -1 })
+      .limit(8)
+      .lean();
+
+    res.status(200).json({
+      message: "New arrivals retrieved successfully",
+      isSuccess: true,
+      data: books,
     });
   } catch (error) {
     next(error);

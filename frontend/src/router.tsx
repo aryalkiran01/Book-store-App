@@ -6,34 +6,37 @@ import { HomePage } from "./pages/home";
 import { RegisterPage } from "./pages/register";
 import { LoginPage } from "./pages/login";
 import { DashboardPage } from "./pages/dashboard";
-import { MainPage } from "./pages/main";
+import { CatalogPage } from "./pages/CatalogPage";
+import { BookDetailsPage } from "./pages/BookDetailsPage";
 import { MemesPage } from "./components/memespage";
 import { ShoppingCarts } from "./pages/shooping";
-import {CheckoutPage} from "./components/checkout";
+import { CheckoutPage } from "./components/checkout";
+
 const router = createBrowserRouter([
   {
     path: "/",
     element: <HomePage />,
   },
-
   {
     path: "/books",
-    element: <MainPage />,
+    element: <CatalogPage />,
+  },
+  {
+    path: "/catalog",
+    element: <CatalogPage />,
+  },
+  {
+    path: "/books/:id",
+    element: <BookDetailsPage />,
+  },
+  {
+    path: "/book/:id",
+    element: <BookDetailsPage />,
   },
   {
     path: "/register",
     element: <RegisterPage />,
   },
-  {
-    path: "books/register",
-    element: <RegisterPage />,
-  },
-  {
-    path: "/books/login",
-    element: <LoginPage />,
-  },
-
-
   {
     path: "/login",
     element: <LoginPage />,
@@ -47,22 +50,17 @@ const router = createBrowserRouter([
     element: <MemesPage />,
   },
   {
-    path: "/books/memes",
-    element: <MemesPage />,
+    path: "/cart",
+    element: <ShoppingCarts />,
   },
- {
-  path:"/cart",
-  element:<ShoppingCarts/>
- },
- {
-  path:"/Checkout",
-  element:<CheckoutPage />
- },
-//  {
-//   path:"/payment",
-//   element:<Payment />
-//  }
-
+  {
+    path: "/checkout",
+    element: <CheckoutPage />,
+  },
+  {
+    path: "/Checkout",
+    element: <CheckoutPage />,
+  },
 ]);
 
 export function RouterProvider() {

@@ -4,7 +4,23 @@ import { TAddBookControllerInput } from "./validation";
 import { validateObjectId } from "../../utils/security";
 
 export async function createBookService(input: TAddBookControllerInput) {
-  const { title, genre, author, description, image, price } = input;
+  const {
+    title,
+    genre,
+    author,
+    description,
+    image,
+    price,
+    discountPercentage,
+    stock,
+    isbn,
+    publisher,
+    publicationDate,
+    pages,
+    language,
+    featured,
+    isNewArrival,
+  } = input;
 
   const existingBook = await BookModel.findOne({ title });
   if (existingBook) {
@@ -16,8 +32,19 @@ export async function createBookService(input: TAddBookControllerInput) {
     genre,
     author,
     description: description || "",
-    image: image || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80",
+    image:
+      image ||
+      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80",
     price,
+    discountPercentage: discountPercentage ?? 0,
+    stock: stock ?? 20,
+    isbn: isbn || "",
+    publisher: publisher || "",
+    publicationDate: publicationDate || "",
+    pages: pages || 0,
+    language: language || "English",
+    featured: featured ?? false,
+    isNewArrival: isNewArrival ?? false,
   });
 
   await newBook.save();
@@ -27,10 +54,9 @@ export async function createBookService(input: TAddBookControllerInput) {
 
 export async function updateBookService(
   bookId: string,
-  input: TAddBookControllerInput
+  input: Partial<TAddBookControllerInput>
 ) {
   validateObjectId(bookId, "Book ID");
-  const { title, genre, author, description, image, price } = input;
 
   const book = await BookModel.findById(bookId);
   if (!book) {
@@ -38,19 +64,34 @@ export async function updateBookService(
   }
 
   // If title was changed, check that new title isn't already taken by another book
-  if (title !== book.title) {
-    const existingTitle = await BookModel.findOne({ title, _id: { $ne: bookId } });
+  if (input.title && input.title !== book.title) {
+    const existingTitle = await BookModel.findOne({
+      title: input.title,
+      _id: { $ne: bookId },
+    });
     if (existingTitle) {
       throw APIError.conflict("A book with this title already exists");
     }
   }
 
-  book.title = title;
-  book.genre = genre;
-  book.author = author;
-  book.description = description || "";
-  book.price = price;
-  if (image) book.image = image;
+  if (input.title !== undefined) book.title = input.title;
+  if (input.genre !== undefined) book.genre = input.genre;
+  if (input.author !== undefined) book.author = input.author;
+  if (input.description !== undefined) book.description = input.description;
+  if (input.price !== undefined) book.price = input.price;
+  if (input.discountPercentage !== undefined)
+    book.discountPercentage = input.discountPercentage;
+  if (input.stock !== undefined) book.stock = input.stock;
+  if (input.isbn !== undefined) book.isbn = input.isbn;
+  if (input.publisher !== undefined) book.publisher = input.publisher;
+  if (input.publicationDate !== undefined)
+    book.publicationDate = input.publicationDate;
+  if (input.pages !== undefined) book.pages = input.pages;
+  if (input.language !== undefined) book.language = input.language;
+  if (input.featured !== undefined) book.featured = input.featured;
+  if (input.isNewArrival !== undefined) book.isNewArrival = input.isNewArrival;
+  if (input.image) book.image = input.image;
+
   await book.save();
 
   return book;
@@ -76,6 +117,7 @@ export interface BookQueryParams {
   sortBy?: "newest" | "price-asc" | "price-desc" | "rating" | "popular";
   featured?: boolean;
   isNewArrival?: boolean;
+  inStock?: boolean;
 }
 
 export async function getBooksService(query?: BookQueryParams) {
@@ -86,7 +128,7 @@ export async function getBooksService(query?: BookQueryParams) {
   const filter: Record<string, any> = {};
 
   if (query?.genre && query.genre !== "All") {
-    filter.genre = { $regex: new RegExp(`^${query.genre}$`, "i") };
+    filter.genre = { $regex: new RegExp(query.genre, "i") };
   }
 
   if (query?.author) {
@@ -99,6 +141,10 @@ export async function getBooksService(query?: BookQueryParams) {
 
   if (query?.isNewArrival !== undefined) {
     filter.isNewArrival = query.isNewArrival;
+  }
+
+  if (query?.inStock) {
+    filter.stock = { $gt: 0 };
   }
 
   if (query?.minPrice !== undefined || query?.maxPrice !== undefined) {
@@ -118,6 +164,8 @@ export async function getBooksService(query?: BookQueryParams) {
       { author: searchRegex },
       { genre: searchRegex },
       { description: searchRegex },
+      { isbn: searchRegex },
+      { publisher: searchRegex },
     ];
   }
 

@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import finance from "../assets/finance_book-removebg-preview.png";
 
 import { AppShell } from "./AppShell";
+import { ShoppingCart } from "lucide-react";
 interface Book {
   _id: string;
   title: string;
@@ -43,9 +44,6 @@ export function HomePage() {
   const { data, isLoading, isError, error } = useGetBooksQuery();
 
   const [visibleBooks, setVisibleBooks] = useState(3);
-  const [expandedDescriptions, setExpandedDescriptions] = useState<{
-    [key: string]: boolean;
-  }>({});
   const [genreScrollIndex, setGenreScrollIndex] = useState(0);
   const [bookScrollIndex, setBookScrollIndex] = useState(0);
   const handleGenreNext = () => setGenreScrollIndex((prev) => prev + 1);
@@ -59,12 +57,6 @@ export function HomePage() {
   const handleLoadMore = () => setVisibleBooks((prev) => prev + 3);
   const handleShowLess = () => setVisibleBooks((prev) => Math.max(prev - 3, 3));
 
-  const toggleDescription = (bookId: string) => {
-    setExpandedDescriptions((prev) => ({
-      ...prev,
-      [bookId]: !prev[bookId],
-    }));
-  };
   const navigate = useNavigate();
   const handleLoginClick = () => {
     navigate("./login");
@@ -153,10 +145,11 @@ export function HomePage() {
               {genres.map((genre, index) => (
                 <div
                   key={index}
-                  className="flex flex-col items-center space-y-2 text-center p-4  hover:shadow-2xl  "
+                  onClick={() => navigate(`/books?genre=${encodeURIComponent(genre.name)}`)}
+                  className="flex flex-col items-center space-y-2 text-center p-4 hover:shadow-2xl cursor-pointer hover:scale-105 transition transform rounded-2xl bg-white/40 backdrop-blur-sm"
                 >
                   <div className="text-4xl">{genre.icon}</div>
-                  <p className="text-sm font-medium">{genre.name}</p>
+                  <p className="text-sm font-medium whitespace-nowrap">{genre.name}</p>
                 </div>
               ))}
             </div>
@@ -182,26 +175,25 @@ export function HomePage() {
             style={{ transform: `translateX(-${bookScrollIndex * 100}%)` }}
           >
             {bookData.slice(0, visibleBooks).map((book) => {
-              const isDescriptionExpanded = expandedDescriptions[book._id];
-
               return (
                 <div
                   key={book._id}
-                  className="group  from- via-slate-100 to-blue-950 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-500 transform hover:scale-105"
+                  onClick={() => navigate(`/books/${book._id}`)}
+                  className="group bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-500 transform hover:scale-[1.02] cursor-pointer flex flex-col justify-between"
                 >
                   {/* Image Section */}
-                  <div className="relative h-96">
+                  <div className="relative h-80 bg-slate-950">
                     <img
                       src={
                         book.image ||
-                        "https://static-01.daraz.com.np/p/813072290c5c5d1e80d9c1c7794e2b8f.jpg"
+                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80"
                       }
                       alt={book.title}
-                      className="w-full h-full object-contain transition-transform duration-700 "
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent opacity-75"></div>
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <h2 className="text-xl font-bold text-white">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-80"></div>
+                    <div className="absolute bottom-0 left-0 right-0 p-5">
+                      <h2 className="text-xl font-bold text-white line-clamp-1">
                         {book.title}
                       </h2>
                       <p className="text-sm text-amber-200">by {book.author}</p>
@@ -209,36 +201,40 @@ export function HomePage() {
                   </div>
 
                   {/* Content Section */}
-                  <div className="p-6">
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {book.genre.split(",").map((genre, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 text-xs font-medium text-purple-900 bg-purple-100 rounded-full"
-                        >
-                          {genre.trim()}
-                        </span>
-                      ))}
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="mb-3 flex flex-wrap gap-1.5">
+                        {book.genre?.split(",").map((genre, index) => (
+                          <span
+                            key={index}
+                            className="px-2.5 py-0.5 text-xs font-semibold text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 rounded-full"
+                          >
+                            {genre.trim()}
+                          </span>
+                        ))}
+                      </div>
+                      {/* Description */}
+                      <div className="text-xs text-slate-300 mb-4">
+                        <p className="line-clamp-2">
+                          {book.description}
+                        </p>
+                      </div>
                     </div>
-                    {/* Description */}
-                    <div className="text-sm mb-4">
-                      <p
-                        className={isDescriptionExpanded ? "" : "line-clamp-2"}
-                      >
-                        {book.description}
-                      </p>
-                      <button
-                        className="text-black text-xs mt-2"
-                        onClick={() => toggleDescription(book._id)}
-                      >
-                        {isDescriptionExpanded ? "Show Less" : "Show More"}
-                      </button>
-                    </div>
-                    <p className="text-lg text-black mb-2">Rs {book.price}</p>
-                    <div className="flex flex-col justify-center items-center mt-4">
+
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-lg font-bold text-white">NPR {book.price}</p>
+                        <span className="text-xs text-indigo-400 font-semibold group-hover:underline">View Details &rarr;</span>
+                      </div>
                       {/* Add to Cart Button */}
-                      <button  onClick={() => addToCart(book)} className="px-9 py-2 border border-blue-500 text-blue-950 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg">
-                        Add to Cart
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(book);
+                        }}
+                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition text-sm flex items-center justify-center gap-2"
+                      >
+                        <ShoppingCart size={16} /> Add to Cart
                       </button>
                     </div>
                   </div>
@@ -287,7 +283,10 @@ export function HomePage() {
     <p className="text-lg mt-4">
       Explore a Wide Range of Popular Used Books in Excellent Condition.
     </p>
-    <button className="mt-4 px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg">
+    <button
+      onClick={() => navigate("/books")}
+      className="mt-4 px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
+    >
       Explore Books
     </button>
   </div>
@@ -341,8 +340,11 @@ export function HomePage() {
     />
   </div>
 
-  <button className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mt-16 mb-24">
-    Explore Books
+  <button
+    onClick={() => navigate("/books?genre=Nepali")}
+    className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mt-16 mb-24"
+  >
+    Explore Nepali Books
   </button>
 </div>
 
@@ -429,13 +431,19 @@ export function HomePage() {
           src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTGpIIv9u8iQ3fNwq5pgh46fuZSl38WUwqWA&s",
         },
       ].map((author, index) => (
-        <div className="flex flex-col items-center min-w-[150px]" key={index}>
+        <div
+          className="flex flex-col items-center min-w-[150px] cursor-pointer hover:scale-105 transition"
+          key={index}
+          onClick={() => navigate(`/books?author=${encodeURIComponent(author.name)}`)}
+        >
           <img
             src={author.src}
             alt={author.name}
-            className="w-[120px] h-[120px] sm:w-[150px] sm:h-[150px] rounded-full object-cover"
+            className="w-[120px] h-[120px] sm:w-[150px] sm:h-[150px] rounded-full object-cover shadow-md"
           />
-          <p className="text-center mt-2 text-[14px] sm:text-[16px] font-mono">{author.name}</p>
+          <p className="text-center mt-2 text-[14px] sm:text-[16px] font-mono font-bold text-slate-800 hover:text-indigo-600 transition">
+            {author.name}
+          </p>
         </div>
       ))}
     </div>
