@@ -134,7 +134,8 @@ export function isValidStatusTransition(
 export async function createOrderService(input: TCreateOrderInput) {
   validateObjectId(input.userId, "User ID");
 
-  if (!input.books || input.books.length === 0) {
+  const rawBooks = input.books || (input as any).items || [];
+  if (!rawBooks || rawBooks.length === 0) {
     throw APIError.badRequest("Order must contain at least one book item");
   }
 
@@ -143,7 +144,7 @@ export async function createOrderService(input: TCreateOrderInput) {
   let rawSubtotal = 0;
   const processedItems = [];
 
-  for (const item of input.books) {
+  for (const item of rawBooks) {
     validateObjectId(item.bookId, "Book ID");
 
     const book = await BookModel.findById(item.bookId);

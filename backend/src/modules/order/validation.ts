@@ -9,7 +9,15 @@ export const CreateOrderSchema = z.object({
         quantity: z.number().int().min(1, "Quantity must be at least 1"),
       })
     )
-    .min(1, "At least one book item is required to place an order"),
+    .optional(),
+  items: z
+    .array(
+      z.object({
+        bookId: z.string().min(1, "Book ID is required"),
+        quantity: z.number().int().min(1, "Quantity must be at least 1"),
+      })
+    )
+    .optional(),
   subtotal: z.number().min(0).optional(),
   shippingCost: z.number().min(0).optional(),
   discount: z.number().min(0).optional(),
@@ -20,16 +28,22 @@ export const CreateOrderSchema = z.object({
       z.object({
         fullName: z.string().optional(),
         street: z.string().optional(),
+        address: z.string().optional(),
         city: z.string().optional(),
         state: z.string().optional(),
         postalCode: z.string().optional(),
+        country: z.string().optional(),
         phone: z.string().optional(),
+        phoneNumber: z.string().optional(),
       }),
     ])
     .optional(),
   orderNote: z.string().max(500).optional(),
-  paymentMethod: z.enum(["khalti", "cod", "card", "demo"]).default("khalti"),
+  paymentMethod: z.enum(["khalti", "cod", "card", "demo", "cash_on_delivery"]).default("cod"),
   paymentId: z.string().optional(),
+}).refine((data) => (data.books && data.books.length > 0) || (data.items && data.items.length > 0), {
+  message: "At least one book item is required to place an order",
+  path: ["books"],
 });
 
 export const ValidateCartSchema = z.object({

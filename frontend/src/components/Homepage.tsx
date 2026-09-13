@@ -21,6 +21,7 @@ import { AppShell } from "./AppShell";
 import { Footer } from "../pages/Footer";
 import { getAllBooks, TBook } from "../api/book/fetch";
 import { addToCart, toggleWishlist } from "../utils/cartStorage";
+import { useSEO } from "../utils/useSEO";
 
 const POPULAR_GENRES = [
   { name: "Fiction", icon: BookMarked, count: "1,200+ Books", color: "from-blue-600 to-indigo-600" },
@@ -32,6 +33,11 @@ const POPULAR_GENRES = [
 ];
 
 export function HomePage() {
+  useSEO({
+    title: "Explore, Review & Buy Books",
+    description: "Discover bestsellers, authentic reader reviews, top fiction, and non-fiction titles with express doorstep delivery.",
+  });
+
   const [featuredBooks, setFeaturedBooks] = useState<TBook[]>([]);
   const [newArrivals, setNewArrivals] = useState<TBook[]>([]);
   const [loading, setLoading] = useState(true);

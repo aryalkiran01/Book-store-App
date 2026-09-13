@@ -111,6 +111,7 @@ app.use("/api/books", bookRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/orders", orderRouter); // Alias for plural
 app.use("/api/reviews", reviewRouter);
+app.use("/api/review", reviewRouter); // Alias for singular
 app.use("/api/payments", paymentRoutes);
 
 // Multer-specific error handler

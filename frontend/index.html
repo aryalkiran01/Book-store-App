@@ -3,14 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <meta name="description" content="KitabGhar - Modern Book Review & Bookstore Platform. Discover, review, and buy books online with verified reviews and express delivery." />
-    <link rel="icon" type="image/png" href="https://png.pngtree.com/png-vector/20240515/ourmid/pngtree-open-book-logo-png-image_12467719.png" />
-    <title>KitabGhar | Premium Book Store & Community Reviews</title>
+    <meta name="theme-color" content="#020617" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="KitabGhar" />
+    
+    <!-- Primary Meta Tags -->
+    <title>KitabGhar | Premium Bookstore & Community Reviews</title>
+    <meta name="title" content="KitabGhar | Premium Bookstore & Community Reviews" />
+    <meta name="description" content="Discover, review, and buy bestsellers and indie books online. Read authentic, verified reader reviews, explore top genres, and enjoy express home delivery." />
+    <meta name="keywords" content="bookstore, buy books online, book reviews, bestselling novels, fiction, self-help books, literature, readers community" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="KitabGhar" />
+    <meta property="og:url" content="https://kitabghar.app/" />
+    <meta property="og:title" content="KitabGhar | Premium Bookstore & Community Reviews" />
+    <meta property="og:description" content="Discover, review, and buy bestsellers and indie books online. Read authentic, verified reader reviews, explore top genres, and enjoy express home delivery." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&h=630&q=80" />
 
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://kitabghar.app/" />
+    <meta property="twitter:title" content="KitabGhar | Premium Bookstore & Community Reviews" />
+    <meta property="twitter:description" content="Discover, review, and buy bestsellers and indie books online. Read authentic, verified reader reviews, explore top genres, and enjoy express home delivery." />
+    <meta property="twitter:image" content="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&h=630&q=80" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="https://png.pngtree.com/png-vector/20240515/ourmid/pngtree-open-book-logo-png-image_12467719.png" />
+    
     <!-- Google Fonts Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+
+    <!-- Structured Data: Organization & WebSite Search -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://kitabghar.app/#organization",
+          "name": "KitabGhar",
+          "url": "https://kitabghar.app/",
+          "logo": "https://png.pngtree.com/png-vector/20240515/ourmid/pngtree-open-book-logo-png-image_12467719.png",
+          "sameAs": []
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://kitabghar.app/#website",
+          "url": "https://kitabghar.app/",
+          "name": "KitabGhar",
+          "publisher": {
+            "@id": "https://kitabghar.app/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://kitabghar.app/catalog?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="bg-slate-950 text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white min-h-screen flex flex-col overflow-x-hidden">
     <div id="root" class="flex-1 flex flex-col min-h-screen"></div>

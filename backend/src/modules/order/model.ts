@@ -67,8 +67,8 @@ const orderSchema = new mongoose.Schema(
     orderNote: { type: String, default: "" },
     paymentMethod: {
       type: String,
-      enum: ["khalti", "cod", "card", "demo"],
-      default: "khalti",
+      enum: ["khalti", "cod", "card", "demo", "cash_on_delivery", "esewa"],
+      default: "cod",
     },
     paymentStatus: {
       type: String,

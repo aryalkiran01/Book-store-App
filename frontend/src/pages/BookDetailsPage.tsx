@@ -44,6 +44,7 @@ import {
 import { addToCart, isInWishlist, toggleWishlist } from "../utils/cartStorage";
 import { addRecentlyViewedBook } from "../utils/recentBooks";
 import { RecentlyViewed } from "../components/RecentlyViewed";
+import { useSEO } from "../utils/useSEO";
 
 export function BookDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +52,45 @@ export function BookDetailsPage() {
   const { userDetails, isAuthenticated, isAdmin } = useUserDetailsStore();
 
   const [book, setBook] = useState<TBook | null>(null);
+
+  useSEO({
+    title: book ? `${book.title} by ${book.author}` : "Book Details",
+    description: book?.description ? book.description.slice(0, 160) : "Read authentic reader reviews, check ratings, and buy online at KitabGhar.",
+    ogImage: book?.image,
+    structuredData: book
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Book",
+          "name": book.title,
+          "author": {
+            "@type": "Person",
+            "name": book.author,
+          },
+          "isbn": book.isbn,
+          "image": book.image,
+          "description": book.description,
+          "offers": {
+            "@type": "Offer",
+            "price": book.price,
+            "priceCurrency": "USD",
+            "availability":
+              (book.stock || 0) > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+          },
+          ...(book.averageRating && book.totalReviews
+            ? {
+                "aggregateRating": {
+                  "@type": "AggregateRating",
+                  "ratingValue": book.averageRating,
+                  "reviewCount": book.totalReviews,
+                },
+              }
+            : {}),
+        }
+      : undefined,
+  });
+
   const [reviews, setReviews] = useState<TReview[]>([]);
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [pagination, setPagination] = useState<ReviewPagination | null>(null);

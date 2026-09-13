@@ -24,6 +24,7 @@ import {
   isInWishlist,
 } from "../utils/cartStorage";
 import { RecentlyViewed } from "../components/RecentlyViewed";
+import { useSEO } from "../utils/useSEO";
 
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,6 +35,11 @@ export function CatalogPage() {
   const initialGenre = searchParams.get("genre") || "All";
   const initialSort = searchParams.get("sortBy") || "newest";
   const initialPage = Number(searchParams.get("page")) || 1;
+
+  useSEO({
+    title: initialSearch ? `Search "${initialSearch}"` : initialGenre !== "All" ? `${initialGenre} Books` : "Book Catalog",
+    description: `Browse our extensive collection of books${initialGenre !== 'All' ? ` in ${initialGenre}` : ''}. Filter by genre, rating, and price.`,
+  });
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedGenre, setSelectedGenre] = useState(initialGenre);

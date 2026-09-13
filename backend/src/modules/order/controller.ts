@@ -48,6 +48,7 @@ export async function createOrderController(
   try {
     const body = {
       ...req.body,
+      books: req.body.books || req.body.items,
       userId: req.user?.id || req.body.userId,
     };
 
