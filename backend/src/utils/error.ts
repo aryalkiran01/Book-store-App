@@ -2,9 +2,12 @@ export class APIError extends Error {
   status: number;
   constructor(status: number, message: string) {
     super(message);
+    this.name = "APIError";
     this.status = status;
-    // for stack trace
-    Error.captureStackTrace(this, this.constructor);
+    Object.setPrototypeOf(this, APIError.prototype);
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 
   static badRequest(message: string) {

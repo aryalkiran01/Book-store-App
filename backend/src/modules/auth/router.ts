@@ -1,27 +1,28 @@
-/**
- * This file contains all routes related to authentication
- */
-
 import { Router } from "express";
 import {
+  changePasswordController,
   loginController,
   logoutController,
   meController,
   registerController,
   updateRoleController,
 } from "./controller";
-import { checkAuth } from "./middleware";
+import { checkAdmin, checkAuth } from "./middleware";
+import { authRateLimiter } from "../../utils/security";
 
 function createAuthRouter() {
   const router = Router();
-  router.post("/register", registerController);
-  router.post("/login", loginController);
+  router.post("/register", authRateLimiter, registerController);
+  router.post("/login", authRateLimiter, loginController);
   router.post("/logout", logoutController);
 
   router.get("/me", checkAuth, meController);
-  router.post("/updateRole",updateRoleController)
+  router.post("/change-password", checkAuth, changePasswordController);
+  router.post("/updateRole", checkAuth, checkAdmin, updateRoleController);
 
   return router;
 }
 
 export const authRouter = createAuthRouter();
+
+

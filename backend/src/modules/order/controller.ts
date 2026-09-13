@@ -4,6 +4,7 @@ import { CreateOrderSchema, UpdateOrderStatusSchema } from "./validation";
 import {
   createOrderService,
   deleteOrderService,
+  getAllOrdersService,
   getOrderByIdService,
   getOrdersByUserIdService,
   updateOrderStatusService,
@@ -15,22 +16,47 @@ export async function createOrderController(
   next: NextFunction
 ) {
   try {
-    console.log("Received request body:", req.body); // Log incoming data
-    const { success, error, data } = CreateOrderSchema.safeParse(req.body);
+    const body = {
+      ...req.body,
+      userId: req.user?.id || req.body.userId,
+    };
+
+    const { success, error, data } = CreateOrderSchema.safeParse(body);
 
     if (!success) {
-      console.log("Validation error:", error.flatten().fieldErrors);
       res.status(400).json({
-        message: "Invalid request",
+        message: "Invalid order data",
+        isSuccess: false,
         errors: error.flatten().fieldErrors,
       });
       return;
     }
 
     const order = await createOrderService(data);
-    res.status(201).json({ message: "Order placed successfully", data: order });
+    res.status(201).json({
+      message: "Order placed successfully",
+      isSuccess: true,
+      data: order,
+    });
   } catch (error) {
-    next(new APIError(500, (error as Error).message));
+    next(error);
+  }
+}
+
+export async function getAllOrdersController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const orders = await getAllOrdersService();
+    res.status(200).json({
+      message: "All orders retrieved successfully",
+      isSuccess: true,
+      data: orders,
+    });
+  } catch (error) {
+    next(error);
   }
 }
 
@@ -40,17 +66,28 @@ export async function getOrdersByUserController(
   next: NextFunction
 ) {
   try {
-    const userId = req.params.userId;
-    const orders = await getOrdersByUserIdService(userId);
-    res
-      .status(200)
-      .json({ message: "Orders retrieved successfully", data: orders });
+    const requestedUserId = req.params.userId;
+
+    if (
+      req.user.role !== "admin" &&
+      req.user.id !== requestedUserId
+    ) {
+      res.status(403).json({
+        message: "Forbidden: Cannot view orders for another user",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const orders = await getOrdersByUserIdService(requestedUserId);
+    res.status(200).json({
+      message: "Orders retrieved successfully",
+      isSuccess: true,
+      data: orders,
+    });
   } catch (error) {
-    next(
-      error instanceof APIError
-        ? error
-        : new APIError(500, (error as Error).message)
-    );
+    next(error);
   }
 }
 
@@ -62,15 +99,29 @@ export async function getOrderByIdController(
   try {
     const orderId = req.params.orderId;
     const order = await getOrderByIdService(orderId);
-    res
-      .status(200)
-      .json({ message: "Order retrieved successfully", data: order });
+
+    const orderOwnerId =
+      (order.userId as any)?._id?.toString() || order.userId?.toString();
+
+    if (
+      req.user.role !== "admin" &&
+      req.user.id !== orderOwnerId
+    ) {
+      res.status(403).json({
+        message: "Forbidden: Cannot view this order",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Order retrieved successfully",
+      isSuccess: true,
+      data: order,
+    });
   } catch (error) {
-    next(
-      error instanceof APIError
-        ? error
-        : new APIError(500, (error as Error).message)
-    );
+    next(error);
   }
 }
 
@@ -87,6 +138,7 @@ export async function updateOrderStatusController(
     if (!success) {
       res.status(400).json({
         message: "Invalid request",
+        isSuccess: false,
         errors: error.flatten().fieldErrors,
       });
       return;
@@ -95,14 +147,11 @@ export async function updateOrderStatusController(
     const updatedOrder = await updateOrderStatusService(orderId, data);
     res.status(200).json({
       message: "Order status updated successfully",
+      isSuccess: true,
       data: updatedOrder,
     });
   } catch (error) {
-    next(
-      error instanceof APIError
-        ? error
-        : new APIError(500, (error as Error).message)
-    );
+    next(error);
   }
 }
 
@@ -114,12 +163,13 @@ export async function deleteOrderController(
   try {
     const orderId = req.params.orderId;
     await deleteOrderService(orderId);
-    res.status(200).json({ message: "Order deleted successfully" });
+    res.status(200).json({
+      message: "Order deleted successfully",
+      isSuccess: true,
+      data: null,
+    });
   } catch (error) {
-    next(
-      error instanceof APIError
-        ? error
-        : new APIError(500, (error as Error).message)
-    );
+    next(error);
   }
 }
+

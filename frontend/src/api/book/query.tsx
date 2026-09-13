@@ -9,12 +9,12 @@ import {
   TDeleteBookInput,
   TDeleteBookOutput,
   TGetAllBooksOutput,
-  TGetBookByIdInput,
   TGetBookByIdOutput,
   TUpdateBookInput,
   TUpdateBookOutput,
   updateBook,
 } from "./fetch";
+
 
 /**
  * for add book api
@@ -55,13 +55,14 @@ export function useDeleteBookMutation() {
   });
 }
 
-/**
- * for get all books api
- */
-export function useGetBooksQuery() {
+export function useGetBooksQuery(params?: {
+  search?: string;
+  genre?: string;
+  author?: string;
+}) {
   return useQuery<TGetAllBooksOutput, Error>({
-    queryKey: ["books"],
-    queryFn: getAllBooks,
+    queryKey: ["books", params?.search || "", params?.genre || "", params?.author || ""],
+    queryFn: () => getAllBooks(params),
   });
 }
 
@@ -69,18 +70,17 @@ export function useGetBooksQuery() {
 export function useGetBooksHome() {
   return useQuery<TGetAllBooksOutput, Error>({
     queryKey: ["bookshome"],
-    queryFn: getAllBooks,
+    queryFn: () => getAllBooks(),
   });
 }
-
-
 
 /**
  * for get book by id api
  */
 export function useGetBookByIdQuery(id: string) {
-  return useQuery<TGetBookByIdOutput, Error, TGetBookByIdInput>({
+  return useQuery<TGetBookByIdOutput, Error>({
     queryKey: ["books", id],
     queryFn: () => getBookById({ bookId: id }),
+    enabled: Boolean(id),
   });
-}
+}

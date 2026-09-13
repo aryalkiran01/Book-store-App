@@ -2,22 +2,29 @@ import { Router } from "express";
 import {
   createOrderController,
   deleteOrderController,
+  getAllOrdersController,
   getOrderByIdController,
   getOrdersByUserController,
   updateOrderStatusController,
 } from "./controller";
-import { checkAuth } from "../auth/middleware";
+import { checkAdmin, checkAuth } from "../auth/middleware";
 
 function createOrderRouter() {
   const router = Router();
 
-  router.post("/", checkAuth, createOrderController); // Place an order
+  // Admin routes
+  router.get("/admin/all", checkAuth, checkAdmin, getAllOrdersController);
+
+  // User & Order routes
+  router.post("/", checkAuth, createOrderController);
   router.get("/user/:userId", checkAuth, getOrdersByUserController);
   router.get("/:orderId", checkAuth, getOrderByIdController);
-  router.patch("/:orderId", checkAuth, updateOrderStatusController); // Update order status
-  router.delete("/:orderId", checkAuth, deleteOrderController); // Delete order
+  router.patch("/:orderId", checkAuth, checkAdmin, updateOrderStatusController);
+  router.put("/:orderId", checkAuth, checkAdmin, updateOrderStatusController);
+  router.delete("/:orderId", checkAuth, checkAdmin, deleteOrderController);
 
   return router;
 }
 
 export const orderRouter = createOrderRouter();
+

@@ -23,41 +23,46 @@ export async function checkAuth(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  console.log("Cookies received on server:", req.cookies);
-  // Ensure the return type is `Promise<any>`
   try {
-    const cookies = req.cookies;
-    const token = (cookies?.token as string) || "";
+    let token = req.cookies?.token as string;
+
+    if (!token && req.headers.authorization) {
+      const parts = req.headers.authorization.split(" ");
+      if (parts.length === 2 && parts[0] === "Bearer") {
+        token = parts[1];
+      }
+    }
 
     if (!token) {
-      return void res.status(401).json({
+      res.status(401).json({
         message: "You are not logged in!",
         isSuccess: false,
         data: null,
       });
+      return;
     }
 
     const verifyTokenOutput = verifyToken(token);
 
     if (!verifyTokenOutput.isValid) {
-      return void res.status(401).json({
-        message: verifyTokenOutput.message,
+      res.status(401).json({
+        message: verifyTokenOutput.message || "Invalid or expired token",
         isSuccess: false,
         data: null,
       });
+      return;
     }
 
     if (!verifyTokenOutput.payload) {
-      return void res.status(401).json({
-        message: "Invalid token",
+      res.status(401).json({
+        message: "Invalid token payload",
         isSuccess: false,
         data: null,
       });
+      return;
     }
 
     const payload = verifyTokenOutput.payload as TTokenPayload;
-
-    // Set default role if not present
     const userRole = payload.role || "user";
 
     // Attach user information to request
@@ -68,10 +73,10 @@ export async function checkAuth(
       role: userRole,
     };
 
-    next(); // Pass control to the next middleware
+    next();
   } catch (error) {
     console.error("Authentication error:", error);
-    return void res.status(500).json({
+    res.status(500).json({
       message: "Internal server error during authentication",
       isSuccess: false,
       data: null,
@@ -85,34 +90,36 @@ export async function checkAdmin(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  // Ensure the return type is `Promise<any>`
   try {
     if (!req.user) {
-      return void res.status(401).json({
+      res.status(401).json({
         message: "Authentication required",
         isSuccess: false,
         data: null,
       });
+      return;
     }
 
     if (req.user.role !== "admin") {
-      return void res.status(401).json({
-        message: "Unauthorized: Admin privileges required",
+      res.status(403).json({
+        message: "Forbidden: Admin privileges required",
         isSuccess: false,
         data: null,
       });
+      return;
     }
-    //SA
-    next(); // Pass control to the next middleware
+
+    next();
   } catch (error) {
     console.error("Authorization error:", error);
-    return void res.status(500).json({
+    res.status(500).json({
       message: "Internal server error during authorization",
       isSuccess: false,
       data: null,
     });
   }
 }
+
 
 // ------------------------- CUSTOM MIDDLEWARE TYPES -------------------------
 interface MulterError extends Error {
@@ -121,18 +128,23 @@ interface MulterError extends Error {
 }
 
 // ------------------------- FILE UPLOAD MIDDLEWARE -------------------------
+import fs from "fs";
+
+const uploadsDir = process.env.UPLOADS_DIR || "uploads/";
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = process.env.UPLOADS_DIR || "uploads/";
-    cb(null, uploadPath);
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    // Add timestamp and random string for uniqueness
+    // Sanitize extension and base filename to prevent path traversal
+    const safeExt = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, "");
+    const cleanFieldName = file.fieldname.replace(/[^a-zA-Z0-9_-]/g, "");
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(
-      null,
-      `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`
-    );
+    cb(null, `${cleanFieldName}-${uniqueSuffix}${safeExt}`);
   },
 });
 
@@ -140,9 +152,10 @@ export const upload = multer({
   storage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5 MB file size limit
+    files: 1, // Max 1 file per upload request
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png/;
+    const allowedTypes = /jpeg|jpg|png|webp/;
     const extname = allowedTypes.test(
       path.extname(file.originalname).toLowerCase()
     );
@@ -151,7 +164,7 @@ export const upload = multer({
     if (mimetype && extname) {
       cb(null, true);
     } else {
-      cb(new Error("Only .jpeg, .jpg, and .png files are allowed!"));
+      cb(new Error("Only .jpeg, .jpg, .png, and .webp image files are allowed!"));
     }
   },
 });
@@ -163,9 +176,7 @@ export const multerErrorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  // Ensure the return type is `any`
   if (err instanceof multer.MulterError) {
-    // Handle specific Multer errors
     switch (err.code) {
       case "LIMIT_FILE_SIZE":
         return void res.status(400).json({
@@ -180,23 +191,23 @@ export const multerErrorHandler = (
           data: null,
         });
       default:
-        //SA
         return void res.status(400).json({
           message: err.message,
           isSuccess: false,
           data: null,
         });
     }
-  } else if (err) {
-    // Handle custom and general errors
-    return void res.status(500).json({
-      message: err.message || "An error occurred during file upload",
+  } else if (err && err.message && err.message.includes("image files are allowed")) {
+    return void res.status(400).json({
+      message: err.message,
       isSuccess: false,
       data: null,
     });
+  } else if (err) {
+    return next(err); // Pass non-multer errors to globalErrorHandler
   }
 
-  next(); // Ensure next() is called if no error
+  next();
 };
 
 // ------------------------- TYPE GUARD FUNCTIONS -------------------------

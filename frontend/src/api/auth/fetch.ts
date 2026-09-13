@@ -1,5 +1,16 @@
 import { env } from "../../config";
 
+export function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("token");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 /**
  * For register api
  */
@@ -32,7 +43,7 @@ export async function registerUser(
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message);
+    throw new Error(data.message || "Registration failed");
   }
 
   return data;
@@ -46,7 +57,13 @@ export type TUserRole = "admin" | "user";
 export type TLoginUserOutput = {
   message: string;
   isSuccess: boolean;
-  data: { username: string; email: string; id: string; role: TUserRole };
+  data: {
+    username: string;
+    email: string;
+    id: string;
+    role: TUserRole;
+    accessToken?: string;
+  };
 };
 
 export type TLoginUserInput = {
@@ -71,7 +88,11 @@ export async function loginUser(
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message);
+    throw new Error(data.message || "Login failed");
+  }
+
+  if (data?.data?.accessToken) {
+    localStorage.setItem("token", data.data.accessToken);
   }
 
   return data;
@@ -90,14 +111,12 @@ export async function me(): Promise<TMeOutput> {
   const res = await fetch(`${env.BACKEND_URL}/api/auth/me`, {
     method: "GET",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
   });
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message);
+    throw new Error(data.message || "Not authenticated");
   }
 
   return data;
@@ -115,15 +134,16 @@ export async function logout(): Promise<TLogoutOutput> {
   const res = await fetch(`${env.BACKEND_URL}/api/auth/logout`, {
     method: "POST",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAuthHeaders(),
   });
+
+  localStorage.removeItem("token");
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message);
+    throw new Error(data.message || "Logout failed");
   }
 
   return data;
 }
+

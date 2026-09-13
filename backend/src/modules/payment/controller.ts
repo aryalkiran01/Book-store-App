@@ -9,12 +9,9 @@ export async function initiatePaymentController(
   next: NextFunction
 ) {
   try {
-    console.log("Received request body:", req.body);
-
     const result = InitiatePaymentSchema.safeParse(req.body);
 
     if (!result.success) {
-      console.log("Validation error:", result.error.flatten().fieldErrors);
       return res.status(400).json({
         message: "Invalid request",
         errors: result.error.flatten().fieldErrors,
@@ -27,7 +24,7 @@ export async function initiatePaymentController(
       data: paymentResponse,
     });
   } catch (error) {
-    next(new APIError(500, (error as Error).message));
+    next(error);
   }
 }
 
@@ -37,11 +34,9 @@ export async function verifyPaymentController(
   next: NextFunction
 ) {
   try {
-    console.log("Received request body:", req.body);
     const result = VerifyPaymentSchema.safeParse(req.body);
 
     if (!result.success) {
-      console.log("Validation error:", result.error.flatten().fieldErrors);
       return res.status(400).json({
         message: "Invalid request",
         errors: result.error.flatten().fieldErrors,
@@ -54,6 +49,6 @@ export async function verifyPaymentController(
       data: verificationResponse,
     });
   } catch (error) {
-    next(new APIError(500, (error as Error).message));
+    next(error);
   }
 }

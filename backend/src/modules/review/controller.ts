@@ -11,7 +11,26 @@ import {
   updateReviewService,
   getReviewsByBookIdService,
   deleteReviewService,
+  getAllReviewsService,
 } from "./service";
+
+export const getAllReviewsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const reviews = await getAllReviewsService();
+    res.json({
+      message: "All reviews fetched successfully",
+      isSuccess: true,
+      data: reviews,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 // Define interface for request parameters
 interface ReviewParams {

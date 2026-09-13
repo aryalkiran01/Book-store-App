@@ -1,11 +1,12 @@
 import { env } from "../../config";
+import { getAuthHeaders } from "../auth/fetch";
 
 export type TReview = {
-  length: number;
+  _id: string;
+  bookId: string | any;
+  userId: string | any;
   rating: number;
   reviewText: string;
-  _id: string;
-
   username: string;
   created_at: string;
 };
@@ -31,18 +32,12 @@ export async function getReviews(bookId: string) {
       throw new Error(data.message || "Failed to fetch reviews");
     }
 
-    return data; // Assuming data is an object with reviews
+    return data;
   } catch (error) {
     console.error("Error fetching reviews:", error);
     throw error;
   }
 }
-
-export type TReviewUserInput = {
-  bookId: string;
-  rating: number;
-  reviewText: string;
-};
 
 export type TGetReviewByIdInput = {
   bookId: string;
@@ -58,7 +53,7 @@ export async function getReviewById(
   input: TGetReviewByIdInput
 ): Promise<TGetReviewByIdOutput> {
   const res = await fetch(
-    `${env.BACKEND_URL}/api/Reviews/getReview/${input.bookId}`,
+    `${env.BACKEND_URL}/api/reviews/getReview/${input.bookId}`,
     {
       method: "GET",
       credentials: "include",
@@ -68,12 +63,14 @@ export async function getReviewById(
     }
   );
 
+  const data = await res.json();
   if (!res.ok) {
-    throw new Error("Failed to fetch reviews");
+    throw new Error(data.message || "Failed to fetch reviews");
   }
 
-  return res.json(); // Assuming the backend returns the reviews for the specific book
+  return data;
 }
+
 export type TUpdateReviewBookInput = {
   reviewId: string;
   rating: number;
@@ -94,16 +91,17 @@ export async function updateReviewBook(
     {
       method: "PUT",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(input),
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        rating: input.rating,
+        reviewText: input.reviewText,
+      }),
     }
   );
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message);
+    throw new Error(data.message || "Failed to update review");
   }
 
   return data;
@@ -117,60 +115,63 @@ export type TAddReviewInput = {
   rating: number | string;
   reviewText: string;
 };
+
 export type TAddReviewOutput = {
   message: string;
   isSuccess: boolean;
   data: TReview;
 };
+
 export async function addReview(
   input: TAddReviewInput
 ): Promise<TAddReviewOutput> {
   const res = await fetch(
-    `${env.BACKEND_URL}/api/Reviews/addReview/${input.bookId}`,
+    `${env.BACKEND_URL}/api/reviews/addReview/${input.bookId}`,
     {
       method: "POST",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
-        rating: input.rating,
+        rating: Number(input.rating),
         reviewText: input.reviewText,
       }),
     }
   );
 
-  const data = await res
-    .json()
-    .catch((err) => console.error("Error parsing JSON:", err));
-
+  const data = await res.json();
   if (!res.ok) {
-    console.error("Failed to fetch:", data);
     throw new Error(data?.message || "Something went wrong");
   }
 
   return data;
 }
 
-// New function to delete review
+export type TDeleteReviewInput = {
+  reviewId?: string;
+  ReviewId?: string;
+};
+
+export type TDeleteReviewOutput = {
+  message: string;
+  isSuccess: boolean;
+};
 
 export async function deleteReviewBook(
   input: TDeleteReviewInput
 ): Promise<TDeleteReviewOutput> {
+  const targetId = input.reviewId || input.ReviewId;
   const res = await fetch(
-    `${env.BACKEND_URL}/api/Reviews/deleteReview/${input.ReviewId}`,
+    `${env.BACKEND_URL}/api/reviews/deleteReview/${targetId}`,
     {
       method: "DELETE",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     }
   );
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message);
+    throw new Error(data.message || "Failed to delete review");
   }
 
   return data;
@@ -181,8 +182,9 @@ export type TGetAllReviewOutput = {
   isSuccess: boolean;
   data: TReview[];
 };
+
 export async function getAllReviews(): Promise<TGetAllReviewOutput> {
-  const res = await fetch(`${env.BACKEND_URL}/api/Reviews`, {
+  const res = await fetch(`${env.BACKEND_URL}/api/reviews`, {
     method: "GET",
     credentials: "include",
     headers: {
@@ -192,16 +194,9 @@ export async function getAllReviews(): Promise<TGetAllReviewOutput> {
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message);
+    throw new Error(data.message || "Failed to fetch all reviews");
   }
 
   return data;
 }
-export type TDeleteReviewInput = {
-  ReviewId: string;
-};
 
-export type TDeleteReviewOutput = {
-  message: string;
-  isSuccess: boolean;
-};

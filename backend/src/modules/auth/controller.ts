@@ -1,17 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import {
+  ChangePasswordSchema,
   LoginControllerSchema,
   RegisterControllerSchema,
   updateRoleControllerSchema,
 } from "./validation";
 import {
+  changePasswordService,
   createUserService,
   getUserById,
   loginService,
   updateroleservice,
 } from "./service";
-import { updateBookService } from "../book/service";
-
 import { APIError } from "../../utils/error";
 
 export async function registerController(
@@ -20,16 +20,14 @@ export async function registerController(
   next: NextFunction
 ) {
   try {
-    const body = req.body;
-
-    const { success, error, data } = RegisterControllerSchema.safeParse(body);
+    const { success, error, data } = RegisterControllerSchema.safeParse(req.body);
     if (!success) {
       const errors = error.flatten().fieldErrors;
       res.status(400).json({
-        message: "Invalid request",
+        message: "Validation failed",
         data: null,
         isSuccess: false,
-        errors: errors,
+        errors,
       });
       return;
     }
@@ -40,18 +38,14 @@ export async function registerController(
       message: "User registered successfully",
       isSuccess: true,
       data: {
-        username: user.username,
         id: user._id,
+        username: user.username,
         email: user.email,
         role: user.role,
       },
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
 
@@ -61,27 +55,26 @@ export async function loginController(
   next: NextFunction
 ) {
   try {
-    const body = req.body;
-
-    const { success, error, data } = LoginControllerSchema.safeParse(body);
+    const { success, error, data } = LoginControllerSchema.safeParse(req.body);
     if (!success) {
       const errors = error.flatten().fieldErrors;
       res.status(400).json({
-        message: "Invalid request",
+        message: "Invalid login credentials",
         data: null,
         isSuccess: false,
-        errors: errors,
+        errors,
       });
       return;
     }
 
     const loginOutput = await loginService(data);
     const { token, user } = loginOutput;
-    res.cookie("token", loginOutput.token, {
+
+    res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" ? true : false,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // ✅ allow for dev
-      maxAge: 1000 * 60 * 60, // 1 hour
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
     });
 
@@ -90,15 +83,11 @@ export async function loginController(
       isSuccess: true,
       data: {
         user,
-        accessToken: loginOutput.token, // 👈 add this line
+        accessToken: token,
       },
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
 
@@ -108,7 +97,12 @@ export async function logoutController(
   next: NextFunction
 ) {
   try {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    });
 
     res.status(200).json({
       message: "User logged out successfully",
@@ -116,11 +110,7 @@ export async function logoutController(
       data: null,
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
 
@@ -132,7 +122,7 @@ export async function meController(
   try {
     if (!req.user) {
       res.status(401).json({
-        message: "User not found",
+        message: "Not authenticated",
         isSuccess: false,
         data: null,
       });
@@ -142,21 +132,56 @@ export async function meController(
     const user = await getUserById(req.user.id);
 
     res.status(200).json({
-      message: "User retrieved successfully",
+      message: "User profile retrieved successfully",
       isSuccess: true,
       data: {
         id: user._id,
         username: user.username,
         email: user.email,
         role: user.role,
+        created_at: (user as any).created_at,
       },
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
+    next(error);
+  }
+}
+
+export async function changePasswordController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Authentication required",
+        isSuccess: false,
+        data: null,
+      });
+      return;
     }
+
+    const { success, error, data } = ChangePasswordSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid password input",
+        isSuccess: false,
+        data: null,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    await changePasswordService(req.user.id, data);
+
+    res.status(200).json({
+      message: "Password changed successfully",
+      isSuccess: true,
+      data: null,
+    });
+  } catch (error) {
+    next(error);
   }
 }
 
@@ -166,29 +191,33 @@ export async function updateRoleController(
   next: NextFunction
 ) {
   try {
-    const body = req.body;
-    const { success, error, data } = updateRoleControllerSchema.safeParse(body);
+    const { success, error, data } = updateRoleControllerSchema.safeParse(
+      req.body
+    );
     if (!success) {
       const errors = error.flatten().fieldErrors;
       res.status(400).json({
-        message: "Invalid rfequest",
+        message: "Invalid role update request",
         data: null,
         isSuccess: false,
-        errors: errors,
+        errors,
       });
       return;
     }
-    const role = await updateroleservice(data);
-    res.status(201).json({
-      message: "role updated sucessfull",
-      data: null,
+
+    const updatedUser = await updateroleservice(data);
+    res.status(200).json({
+      message: "Role updated successfully",
+      data: {
+        id: updatedUser._id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        role: updatedUser.role,
+      },
       isSuccess: true,
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
+

@@ -6,19 +6,34 @@ import {
 } from "./validation";
 import { ReviewModel } from "./model";
 import { APIError } from "../../utils/error";
+import { sanitizeString, validateObjectId } from "../../utils/security";
+import { BookModel } from "../book/model";
 
 export async function createReviewService(
   ctx: TReviewCtx,
   input: TAddReviewControllerInput & { username: string }
 ) {
+  validateObjectId(ctx.bookId, "Book ID");
+  validateObjectId(ctx.userId, "User ID");
+
+  const book = await BookModel.findById(ctx.bookId);
+  if (!book) {
+    throw APIError.notFound("Book not found");
+  }
+
   const { rating, reviewText, username } = input;
+  const cleanReviewText = sanitizeString(reviewText);
+
+  if (!cleanReviewText) {
+    throw APIError.badRequest("Review text cannot be empty");
+  }
 
   const newReview = new ReviewModel({
     bookId: ctx.bookId,
     userId: ctx.userId,
-    username, // Save the username
+    username: sanitizeString(username) || "Anonymous",
     rating,
-    reviewText,
+    reviewText: cleanReviewText,
   });
 
   await newReview.save();
@@ -31,14 +46,16 @@ export async function updateReviewService(
   ctx: TReviewCtx,
   input: TUpdateReviewControllerInput
 ) {
-  // Find the review by ID
+  validateObjectId(reviewId, "Review ID");
+  validateObjectId(ctx.userId, "User ID");
+
   const review = await ReviewModel.findById(reviewId);
 
   if (!review) {
     throw APIError.notFound("Review not found");
   }
 
-  // Check if the user is the owner - make role check optional
+  // Check if the user is the owner or admin
   const isOwner = review.userId?.toString() === ctx.userId;
   const isAdmin = ctx.role === "admin";
 
@@ -46,11 +63,10 @@ export async function updateReviewService(
     throw APIError.forbidden("You are not authorized to update this review");
   }
 
-  // Destructure the input values
   const { reviewText, rating } = input;
+  const cleanReviewText = sanitizeString(reviewText);
 
-  // Update validation
-  if (!reviewText?.trim()) {
+  if (!cleanReviewText) {
     throw APIError.badRequest("Review text is required");
   }
 
@@ -58,11 +74,10 @@ export async function updateReviewService(
     throw APIError.badRequest("Rating must be a number between 1 and 5");
   }
 
-  // Update the review
   const updatedReview = await ReviewModel.findByIdAndUpdate(
     reviewId,
     {
-      reviewText,
+      reviewText: cleanReviewText,
       rating,
     },
     { new: true }
@@ -74,17 +89,29 @@ export async function updateReviewService(
 
   return updatedReview;
 }
+
+export async function getAllReviewsService() {
+  const reviews = await ReviewModel.find()
+    .populate("bookId", "title author image")
+    .sort({ created_at: -1 });
+  return reviews;
+}
+
 export async function getReviewsByBookIdService(bookId: string) {
+  validateObjectId(bookId, "Book ID");
   const reviews = await ReviewModel.find({
     bookId,
   })
-    .select("username rating reviewText created_at") // Include username in the query
-    .sort({ created_at: -1 }); // Sort by `created_at` in descending order
+    .populate("userId", "username email")
+    .sort({ created_at: -1 });
 
   return reviews;
 }
 
 export async function deleteReviewService(reviewId: string, ctx: TReviewCtx) {
+  validateObjectId(reviewId, "Review ID");
+  validateObjectId(ctx.userId, "User ID");
+
   const deleteReview = await ReviewModel.findById(reviewId);
 
   if (!deleteReview) {
@@ -96,7 +123,9 @@ export async function deleteReviewService(reviewId: string, ctx: TReviewCtx) {
     throw APIError.forbidden("You are not authorized to delete this review");
   }
 
-  await ReviewModel.deleteOne({ _id: reviewId });
+  await ReviewModel.findByIdAndDelete(reviewId);
 
   return deleteReview;
 }
+
+

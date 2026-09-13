@@ -1,55 +1,67 @@
 import { useEffect } from "react";
 import { useMeQuery } from "../../api/auth/query";
 import { useUserDetailsStore } from "../../store/useUsersDetails";
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const userData = {
-  name: "Tom Cook",
-  email: "tom@example.com",
-  imageUrl:
-    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-};
+import { Link } from "react-router-dom";
+import { User as UserIcon } from "lucide-react";
 
 export function User() {
-  const { data, isLoading, isError, error } = useMeQuery();
-  const {setUserDetails} = useUserDetailsStore();
+  const { data, isLoading, isError } = useMeQuery();
+  const { setUserDetails, clearUserDetails } = useUserDetailsStore();
 
   useEffect(() => {
-    if (data) {
+    if (data?.data) {
       setUserDetails({
         id: data.data.id,
         email: data.data.email,
         role: data.data.role,
-        username: data.data.username
-      })
+        username: data.data.username,
+      });
+    } else if (isError) {
+      clearUserDetails();
     }
-  }, [data, setUserDetails])
+  }, [data, isError, setUserDetails, clearUserDetails]);
 
   if (isLoading) {
-    return <div className="text-white">Loading...</div>;
+    return (
+      <div className="flex items-center space-x-2 px-3 py-1.5 text-xs text-indigo-100">
+        <span className="animate-pulse">Loading...</span>
+      </div>
+    );
   }
 
-  if (isError) {
-    return <div className="text-white">{error.message}</div>;
+  if (isError || !data?.data) {
+    return (
+      <div className="flex items-center space-x-2">
+        <Link
+          to="/login"
+          className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3 py-1.5 rounded-lg transition"
+        >
+          Sign In
+        </Link>
+        <Link
+          to="/register"
+          className="text-xs bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1.5 rounded-lg transition hidden sm:inline-block"
+        >
+          Sign Up
+        </Link>
+      </div>
+    );
   }
-
-  if (!data) {
-    return <div>No data</div>;
-  }
-
-  
 
   return (
-    <div className="flex items-center space-x-3">
-      <img
-        alt={data.data.username}
-        src={userData.imageUrl}
-        className="h-8 w-8 rounded-full"
-      />
-      <div className="text-white">
-        <div className="font-medium">{data.data.username}</div>
-       
+    <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition cursor-pointer">
+      <div className="w-7 h-7 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs font-bold uppercase shadow">
+        {data.data.username ? data.data.username.charAt(0) : <UserIcon size={14} />}
+      </div>
+      <div className="text-left text-white leading-tight pr-1">
+        <div className="font-semibold text-xs">{data.data.username}</div>
+        {data.data.role === "admin" && (
+          <span className="text-[10px] text-amber-300 uppercase tracking-wider font-bold">
+            Admin
+          </span>
+        )}
       </div>
     </div>
   );
 }
+

@@ -1,7 +1,18 @@
 import axios from "axios";
+import { env } from "../../config";
 
-const API_BASE_URL =
-  "const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/api/payments`";
+function getAxiosConfig() {
+  const token = localStorage.getItem("token");
+  return {
+    withCredentials: true,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  };
+}
+
+const getApiBaseUrl = () => `${env.BACKEND_URL}/api/payments`;
 
 // Initiate a payment for Khalti
 export async function initiatePayment(
@@ -11,19 +22,20 @@ export async function initiatePayment(
 ) {
   try {
     const paymentData = {
-      return_url: "{ //`${import.meta.env.VITE_FRONTEND_URL}/books` }",
-      website_url: "{ //`${import.meta.env.VITE_FRONTEND_URL}` }",
-      amount,
-      purchase_order_id: orderId,
-      purchase_order_name: "Your Item Name",
+      return_url: `${env.FRONTEND_URL}/checkout`,
+      website_url: env.FRONTEND_URL,
+      amount: Math.round(amount * 100), // convert to paisa
+      purchase_order_id: String(orderId),
+      purchase_order_name: `Order #${orderId}`,
       customer_info: customerInfo,
     };
 
-    const response = await axios.post(`${API_BASE_URL}/initiate`, paymentData, {
-      withCredentials: true,
-    });
+    const response = await axios.post(
+      `${getApiBaseUrl()}/initiate`,
+      paymentData,
+      getAxiosConfig()
+    );
     return response.data;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error(
       "Error initiating payment:",
@@ -37,12 +49,11 @@ export async function initiatePayment(
 export async function verifyPayment(pidx: string) {
   try {
     const response = await axios.post(
-      `${API_BASE_URL}/verify`,
+      `${getApiBaseUrl()}/verify`,
       { pidx },
-      { withCredentials: true }
+      getAxiosConfig()
     );
     return response.data;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error(
       "Error verifying payment:",
@@ -51,3 +62,4 @@ export async function verifyPayment(pidx: string) {
     throw error;
   }
 }
+

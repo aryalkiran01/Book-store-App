@@ -48,11 +48,7 @@ export async function addBookController(
       },
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
 
@@ -86,11 +82,7 @@ export async function updateBookController(
       data: book,
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
 
@@ -109,11 +101,7 @@ export async function deleteBookController(
       data: book,
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
 
@@ -123,18 +111,19 @@ export async function getBooksController(
   next: NextFunction
 ) {
   try {
-    const books = await getBooksService();
+    const { search, genre, author } = req.query;
+    const books = await getBooksService({
+      search: typeof search === "string" ? search : undefined,
+      genre: typeof genre === "string" ? genre : undefined,
+      author: typeof author === "string" ? author : undefined,
+    });
     res.status(200).json({
       message: "Books retrieved successfully",
       isSuccess: true,
       data: books,
     });
   } catch (error) {
-    if (error instanceof APIError) {
-      next(error);
-    } else {
-      next(new APIError(500, (error as Error).message));
-    }
+    next(error);
   }
 }
 
@@ -144,33 +133,30 @@ export async function getBookByIdController(
   next: NextFunction
 ) {
   try {
-    const id = req.params.id;
+    const id = req.params.bookId || req.params.id;
 
     if (!id) {
       res.status(400).json({
-        message: "id not found",
+        message: "Book ID is required",
         data: null,
         isSuccess: false,
       });
       return;
     }
 
-    const result = await getBookByIdService(id); // Fetch the book by ID
-    const review = await getReviewsByBookIdService(id); // Fetch and sort reviews by created_at
+    const result = await getBookByIdService(id);
+    const review = await getReviewsByBookIdService(id);
 
     res.status(200).json({
       message: "Book found successfully",
-      data: { result, review },
+      data: { result, review, ...result.toObject(), reviews: review },
       isSuccess: true,
     });
   } catch (e) {
-    if (e instanceof APIError) {
-      next(e);
-    } else {
-      next(new APIError(500, (e as Error).message));
-    }
+    next(e);
   }
 }
+
 
 // export async function searchBooksController(
 //   req: Request,
