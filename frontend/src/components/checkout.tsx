@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { AppShell } from "./AppShell";
+import { AppImage } from "./common/AppImage";
 import { useCreateOrder } from "../api/order/query";
 import { validateCartApi, ValidatedCartSummary } from "../api/order/fetch";
 import { getCart, clearCart } from "../utils/cartStorage";
@@ -131,35 +132,35 @@ export const CheckoutPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <AppShell />
 
       <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Header Breadcrumbs */}
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div>
             <Link
               to="/cart"
-              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition mb-2"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition mb-2"
             >
               <ArrowLeft size={14} /> Back to Shopping Cart
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <Lock className="text-indigo-400" size={26} /> Secure Checkout
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+              <Lock className="text-indigo-600 dark:text-indigo-400" size={26} /> Secure Checkout
             </h1>
           </div>
-          <div className="flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1.5 rounded-full">
+          <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-full">
             <ShieldCheck size={16} /> 256-Bit SSL Encrypted
           </div>
         </div>
 
         {cartItems.length === 0 ? (
-          <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-12 text-center max-w-lg mx-auto">
-            <AlertCircle className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center max-w-lg mx-auto shadow-sm">
+            <AlertCircle className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
               Your cart is empty
             </h2>
-            <p className="text-slate-400 text-sm mb-6">
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
               Add books from our catalog before checking out.
             </p>
             <button
@@ -176,7 +177,7 @@ export const CheckoutPage = () => {
               {/* Warnings Banner */}
               {validatedSummary?.warnings &&
                 validatedSummary.warnings.length > 0 && (
-                  <div className="bg-amber-950/70 border border-amber-800/80 rounded-2xl p-4 text-amber-300 text-xs flex items-start gap-3">
+                  <div className="bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/80 rounded-2xl p-4 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-3 shadow-sm">
                     <AlertCircle size={18} className="shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold block mb-1">
@@ -192,8 +193,8 @@ export const CheckoutPage = () => {
                 )}
 
               {/* Personal Info Box */}
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-xl">
-                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm backdrop-blur-xl">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">
                     1
                   </span>
@@ -201,7 +202,7 @@ export const CheckoutPage = () => {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-400 block mb-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
                       Full Name
                     </label>
                     <input
@@ -209,11 +210,11 @@ export const CheckoutPage = () => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="e.g. John Doe"
-                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition"
+                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-400 block mb-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
                       Email Address
                     </label>
                     <input
@@ -221,11 +222,11 @@ export const CheckoutPage = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="e.g. john@example.com"
-                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition"
+                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition"
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-semibold text-slate-400 block mb-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
                       Phone Number
                     </label>
                     <input
@@ -233,15 +234,15 @@ export const CheckoutPage = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="e.g. +977 9800000000"
-                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition"
+                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Delivery Option Box */}
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-xl">
-                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm backdrop-blur-xl">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-bold">
                     2
                   </span>
@@ -253,23 +254,23 @@ export const CheckoutPage = () => {
                     onClick={() => setDeliveryType("delivery")}
                     className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
                       deliveryType === "delivery"
-                        ? "bg-indigo-950/40 border-indigo-500"
-                        : "bg-slate-950/50 border-slate-800 hover:border-slate-700"
+                        ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500"
+                        : "bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
                   >
                     <Truck
                       size={20}
                       className={
                         deliveryType === "delivery"
-                          ? "text-indigo-400"
+                          ? "text-indigo-600 dark:text-indigo-400"
                           : "text-slate-400"
                       }
                     />
                     <div>
-                      <p className="font-bold text-sm text-white">
+                      <p className="font-bold text-sm text-slate-900 dark:text-white">
                         Standard Home Delivery
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Delivered in 2-4 business days across Nepal
                       </p>
                     </div>
@@ -279,23 +280,23 @@ export const CheckoutPage = () => {
                     onClick={() => setDeliveryType("pickup")}
                     className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
                       deliveryType === "pickup"
-                        ? "bg-indigo-950/40 border-indigo-500"
-                        : "bg-slate-950/50 border-slate-800 hover:border-slate-700"
+                        ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500"
+                        : "bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
                     }`}
                   >
                     <Store
                       size={20}
                       className={
                         deliveryType === "pickup"
-                          ? "text-indigo-400"
+                          ? "text-indigo-600 dark:text-indigo-400"
                           : "text-slate-400"
                       }
                     />
                     <div>
-                      <p className="font-bold text-sm text-white">
+                      <p className="font-bold text-sm text-slate-900 dark:text-white">
                         Store Pickup
                       </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Pick up at our bookstore with zero shipping fee
                       </p>
                     </div>
@@ -304,7 +305,7 @@ export const CheckoutPage = () => {
 
                 {deliveryType === "delivery" && (
                   <div>
-                    <label className="text-xs font-semibold text-slate-400 block mb-1.5">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
                       Shipping / Delivery Address *
                     </label>
                     <textarea
@@ -312,13 +313,13 @@ export const CheckoutPage = () => {
                       value={shippingAddress}
                       onChange={(e) => setShippingAddress(e.target.value)}
                       placeholder="Street address, City, Ward / Landmark"
-                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition resize-none"
+                      className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition resize-none"
                     />
                   </div>
                 )}
 
                 <div className="mt-4">
-                  <label className="text-xs font-semibold text-slate-400 block mb-1.5">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
                     Order Notes (Optional)
                   </label>
                   <textarea
@@ -326,7 +327,7 @@ export const CheckoutPage = () => {
                     value={orderNote}
                     onChange={(e) => setOrderNote(e.target.value)}
                     placeholder="Special instructions for delivery or packaging..."
-                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 transition resize-none"
+                    className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 transition resize-none"
                   />
                 </div>
               </div>
@@ -334,15 +335,15 @@ export const CheckoutPage = () => {
 
             {/* Right Column: Order Summary & Review */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-xl sticky top-24">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                  <h2 className="text-lg font-bold text-white">
+              <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm backdrop-blur-xl sticky top-24">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                     Order Summary ({cartItems.length}{" "}
                     {cartItems.length === 1 ? "item" : "items"})
                   </h2>
                   <button
                     onClick={() => setShowOrderList(!showOrderList)}
-                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition flex items-center gap-1"
+                    className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition flex items-center gap-1"
                   >
                     {showOrderList ? "Hide List" : "Show List"}
                     {showOrderList ? (
@@ -355,24 +356,28 @@ export const CheckoutPage = () => {
 
                 {/* Collapsible item preview */}
                 {showOrderList && (
-                  <div className="py-4 space-y-3 max-h-60 overflow-y-auto border-b border-slate-800">
+                  <div className="py-4 space-y-3 max-h-60 overflow-y-auto border-b border-slate-200 dark:border-slate-800">
                     {cartItems.map((item) => (
                       <div
                         key={item._id}
                         className="flex items-center gap-3 text-xs"
                       >
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-10 h-14 object-cover rounded-lg bg-slate-950 border border-slate-800"
-                        />
+                        <div className="w-10 h-14 rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden flex-shrink-0">
+                          <AppImage
+                            src={item.image}
+                            alt={item.title}
+                            fallbackType="book"
+                            fallbackText={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-slate-200 truncate">
+                          <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {item.title}
                           </p>
-                          <p className="text-slate-400">Qty: {item.quantity}</p>
+                          <p className="text-slate-500 dark:text-slate-400">Qty: {item.quantity}</p>
                         </div>
-                        <span className="font-bold text-white">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           NPR {(item.price * item.quantity).toLocaleString()}
                         </span>
                       </div>
@@ -387,26 +392,26 @@ export const CheckoutPage = () => {
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     placeholder="Discount code / Promo"
-                    className="flex-1 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 uppercase tracking-wider focus:outline-none focus:border-indigo-500 transition"
+                    className="flex-1 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wider focus:outline-none focus:border-indigo-500 transition"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition"
+                    className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold rounded-xl transition"
                   >
                     Apply
                   </button>
                 </form>
                 {appliedDiscountMsg && (
-                  <p className="text-[11px] text-emerald-400 mt-1.5 flex items-center gap-1">
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
                     <CheckCircle2 size={12} /> {appliedDiscountMsg}
                   </p>
                 )}
 
                 {/* Calculation Breakdown */}
                 <div className="mt-6 space-y-3 text-sm">
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
                     <span>Subtotal</span>
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-slate-900 dark:text-white">
                       NPR{" "}
                       {(
                         validatedSummary?.subtotal ??
@@ -419,7 +424,7 @@ export const CheckoutPage = () => {
                   </div>
 
                   {validatedSummary?.discountSavings ? (
-                    <div className="flex justify-between text-emerald-400">
+                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                       <span>Discount</span>
                       <span className="font-semibold">
                         - NPR {validatedSummary.discountSavings.toLocaleString()}
@@ -427,12 +432,12 @@ export const CheckoutPage = () => {
                     </div>
                   ) : null}
 
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
                     <span>Shipping</span>
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-slate-900 dark:text-white">
                       {deliveryType === "pickup" ||
                       validatedSummary?.shipping === 0 ? (
-                        <span className="text-emerald-400 font-bold">FREE</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">FREE</span>
                       ) : (
                         `NPR ${(
                           validatedSummary?.shipping ?? 100
@@ -441,11 +446,11 @@ export const CheckoutPage = () => {
                     </span>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-800 flex justify-between items-baseline">
-                    <span className="font-bold text-white text-base">
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-baseline">
+                    <span className="font-bold text-slate-900 dark:text-white text-base">
                       Total Due
                     </span>
-                    <span className="font-black text-2xl text-white">
+                    <span className="font-black text-2xl text-indigo-600 dark:text-white">
                       NPR{" "}
                       {(
                         (deliveryType === "pickup"
@@ -467,7 +472,7 @@ export const CheckoutPage = () => {
                   {submitting ? "Processing Order..." : "Proceed to Payment"}
                 </button>
 
-                <p className="text-[11px] text-slate-400 text-center mt-3">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center mt-3">
                   Authoritative calculations verified by backend before payment.
                 </p>
               </div>
@@ -480,4 +485,3 @@ export const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
-

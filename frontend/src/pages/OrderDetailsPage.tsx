@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
+import { AppImage } from "../components/common/AppImage";
 import { fetchOrderById, cancelOrder, TOrder } from "../api/order/fetch";
 import { addToCart } from "../utils/cartStorage";
 import { useUserDetailsStore } from "../store/useUsersDetails";
@@ -135,11 +136,11 @@ export function OrderDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300">
         <AppShell />
         <div className="flex-1 flex flex-col items-center justify-center p-6">
-          <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
-          <p className="text-slate-400 text-sm">Loading order information...</p>
+          <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Loading order information...</p>
         </div>
         <Footer />
       </div>
@@ -148,12 +149,12 @@ export function OrderDetailsPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300">
         <AppShell />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
           <AlertCircle className="w-16 h-16 text-rose-500 mb-4" />
           <h2 className="text-2xl font-bold mb-2">Order Not Found</h2>
-          <p className="text-slate-400 text-sm mb-6">{error || "Could not load this order."}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">{error || "Could not load this order."}</p>
           <Link
             to="/orders"
             className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition"
@@ -187,7 +188,7 @@ export function OrderDetailsPage() {
         "Standard Delivery Address";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <AppShell />
 
       {toastMsg && (
@@ -199,21 +200,21 @@ export function OrderDetailsPage() {
 
       <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Breadcrumb Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div>
             <Link
               to="/orders"
-              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition mb-2"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition mb-2"
             >
               <ArrowLeft size={14} /> Back to My Orders
             </Link>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-black text-white">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
                 Order #{order._id.substring(order._id.length - 8).toUpperCase()}
               </h1>
-              <span className="font-mono text-xs text-slate-500">({order._id})</span>
+              <span className="font-mono text-xs text-slate-400 dark:text-slate-500">({order._id})</span>
             </div>
-            <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
               <Calendar size={13} /> Placed on {formattedDate}
             </p>
           </div>
@@ -222,14 +223,14 @@ export function OrderDetailsPage() {
             {cancellable && (
               <button
                 onClick={() => setCancelModal(true)}
-                className="px-4 py-2 bg-rose-950/60 border border-rose-800/80 hover:bg-rose-900/60 text-rose-300 font-bold rounded-xl text-xs transition"
+                className="px-4 py-2 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold rounded-xl text-xs transition"
               >
                 Cancel Order
               </button>
             )}
             <button
               onClick={handleBuyAgain}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition flex items-center gap-1.5"
+              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm"
             >
               <RotateCcw size={13} /> Buy Again
             </button>
@@ -238,11 +239,11 @@ export function OrderDetailsPage() {
 
         {/* Status Alert Banner if Cancelled or Refunded */}
         {isCancelled && (
-          <div className="mb-8 bg-rose-950/60 border border-rose-800/80 rounded-3xl p-6 text-rose-300 text-xs flex items-start gap-4">
-            <XCircle size={24} className="shrink-0 mt-0.5 text-rose-400" />
+          <div className="mb-8 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 rounded-3xl p-6 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-4 shadow-sm">
+            <XCircle size={24} className="shrink-0 mt-0.5 text-rose-500 dark:text-rose-400" />
             <div>
-              <h3 className="font-bold text-sm text-white mb-1">This order was cancelled</h3>
-              <p className="text-rose-200/80">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1">This order was cancelled</h3>
+              <p className="text-rose-700/80 dark:text-rose-200/80">
                 Reason: {order.cancellationReason || "Cancelled by customer request"}. Reserved inventory has been automatically returned to the bookstore.
               </p>
             </div>
@@ -250,11 +251,11 @@ export function OrderDetailsPage() {
         )}
 
         {isRefunded && (
-          <div className="mb-8 bg-purple-950/60 border border-purple-800/80 rounded-3xl p-6 text-purple-300 text-xs flex items-start gap-4">
-            <RotateCcw size={24} className="shrink-0 mt-0.5 text-purple-400" />
+          <div className="mb-8 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800/80 rounded-3xl p-6 text-purple-700 dark:text-purple-300 text-xs flex items-start gap-4 shadow-sm">
+            <RotateCcw size={24} className="shrink-0 mt-0.5 text-purple-600 dark:text-purple-400" />
             <div>
-              <h3 className="font-bold text-sm text-white mb-1">Order Refunded</h3>
-              <p className="text-purple-200/80">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1">Order Refunded</h3>
+              <p className="text-purple-700/80 dark:text-purple-200/80">
                 The transaction amount of NPR {order.totalAmount.toLocaleString()} has been processed for refund.
               </p>
             </div>
@@ -263,16 +264,16 @@ export function OrderDetailsPage() {
 
         {/* Tracking Stepper Progress Bar (Only if active) */}
         {!isCancelled && !isRefunded && (
-          <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 sm:p-8 backdrop-blur-xl mb-8">
-            <h2 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
-              <Truck size={16} className="text-indigo-400" /> Order Tracking Lifecycle
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-sm backdrop-blur-xl mb-8">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+              <Truck size={16} className="text-indigo-600 dark:text-indigo-400" /> Order Tracking Lifecycle
             </h2>
 
             <div className="grid grid-cols-5 gap-2 relative">
               {/* Progress Line */}
-              <div className="absolute top-4 left-6 right-6 h-0.5 bg-slate-800 -z-0" />
+              <div className="absolute top-4 left-6 right-6 h-0.5 bg-slate-200 dark:bg-slate-800 -z-0" />
               <div
-                className="absolute top-4 left-6 h-0.5 bg-indigo-500 -z-0 transition-all duration-500"
+                className="absolute top-4 left-6 h-0.5 bg-indigo-600 dark:bg-indigo-500 -z-0 transition-all duration-500"
                 style={{
                   width: `${Math.min(100, Math.max(0, (currentStep / 4) * 100))}%`,
                 }}
@@ -290,7 +291,7 @@ export function OrderDetailsPage() {
                           ? "bg-indigo-600 text-white ring-4 ring-indigo-600/30 scale-110"
                           : isPassed
                           ? "bg-emerald-600 text-white"
-                          : "bg-slate-800 text-slate-500"
+                          : "bg-slate-200 dark:bg-slate-800 text-slate-500"
                       }`}
                     >
                       {isPassed && !isCurrent ? <Check size={14} /> : idx + 1}
@@ -298,10 +299,10 @@ export function OrderDetailsPage() {
                     <span
                       className={`text-xs font-bold mt-3 block ${
                         isCurrent
-                          ? "text-indigo-400"
+                          ? "text-indigo-600 dark:text-indigo-400"
                           : isPassed
-                          ? "text-slate-200"
-                          : "text-slate-600"
+                          ? "text-slate-800 dark:text-slate-200"
+                          : "text-slate-400 dark:text-slate-600"
                       }`}
                     >
                       {step.label}
@@ -321,52 +322,53 @@ export function OrderDetailsPage() {
           {/* Left Column: Book Items & History */}
           <div className="lg:col-span-8 space-y-6">
             {/* Items List */}
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl">
-              <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                <Package size={18} className="text-indigo-400" /> Items in this Order ({order.books.length})
+            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm backdrop-blur-xl">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <Package size={18} className="text-indigo-600 dark:text-indigo-400" /> Items in this Order ({order.books.length})
               </h2>
 
-              <div className="divide-y divide-slate-800/80">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
                 {order.books.map((item, idx) => {
                   const bookObj = typeof item.bookId === "object" ? item.bookId : null;
                   const bookId = bookObj?._id || (item.bookId as string);
                   const title = item.title || bookObj?.title || "Book Title";
-                  const image =
-                    item.image ||
-                    bookObj?.image ||
-                    "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=300&q=80";
+                  const image = item.image || bookObj?.image;
 
                   return (
                     <div key={idx} className="py-4 first:pt-0 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-4 min-w-0">
-                        <img
-                          src={image}
-                          alt={title}
-                          className="w-14 h-20 object-cover rounded-xl border border-slate-800 bg-slate-950 shrink-0"
-                        />
+                        <div className="w-14 h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden shrink-0">
+                          <AppImage
+                            src={image}
+                            alt={title}
+                            fallbackType="book"
+                            fallbackText={title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <div className="min-w-0">
                           <Link
                             to={`/books/${bookId}`}
-                            className="font-bold text-sm text-white hover:text-indigo-400 transition truncate block"
+                            className="font-bold text-sm text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition truncate block"
                           >
                             {title}
                           </Link>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             Unit Price: NPR {item.price.toLocaleString()}
                           </p>
-                          <span className="text-xs text-slate-500 font-mono">
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
                             Qty: {item.quantity}
                           </span>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <span className="font-black text-sm text-white block">
+                        <span className="font-black text-sm text-slate-900 dark:text-white block">
                           NPR {(item.price * item.quantity).toLocaleString()}
                         </span>
                         <Link
                           to={`/books/${bookId}`}
-                          className="text-[11px] text-indigo-400 hover:underline mt-1 inline-block"
+                          className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline mt-1 inline-block"
                         >
                           Write Review &rarr;
                         </Link>
@@ -379,9 +381,9 @@ export function OrderDetailsPage() {
 
             {/* Status History Timeline Log */}
             {order.statusHistory && order.statusHistory.length > 0 && (
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl">
-                <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                  <FileText size={18} className="text-indigo-400" /> Order Activity Log
+              <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm backdrop-blur-xl">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                  <FileText size={18} className="text-indigo-600 dark:text-indigo-400" /> Order Activity Log
                 </h2>
 
                 <div className="space-y-3">
@@ -391,12 +393,12 @@ export function OrderDetailsPage() {
                       className="flex items-start gap-3 text-xs border-l-2 border-indigo-500/40 pl-3 py-1"
                     >
                       <div className="flex-1">
-                        <span className="font-bold text-slate-200 capitalize">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 capitalize">
                           {h.status}
                         </span>
-                        {h.note && <p className="text-slate-400 text-[11px] mt-0.5">{h.note}</p>}
+                        {h.note && <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">{h.note}</p>}
                       </div>
-                      <span className="text-[10px] text-slate-500 shrink-0 font-mono">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0 font-mono">
                         {new Date(h.changedAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -412,68 +414,68 @@ export function OrderDetailsPage() {
           {/* Right Column: Invoice & Delivery Address */}
           <div className="lg:col-span-4 space-y-6">
             {/* Financial Summary */}
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl">
-              <h2 className="text-base font-bold text-white pb-3 border-b border-slate-800">
+            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm backdrop-blur-xl">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white pb-3 border-b border-slate-200 dark:border-slate-800">
                 Payment Summary
               </h2>
 
               <div className="py-4 space-y-3 text-xs">
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Subtotal</span>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-slate-900 dark:text-white">
                     NPR {(order.subtotal || order.totalAmount || 0).toLocaleString()}
                   </span>
                 </div>
 
                 {order.discount > 0 && (
-                  <div className="flex justify-between text-emerald-400">
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                     <span>Discount</span>
                     <span className="font-semibold">- NPR {order.discount.toLocaleString()}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Delivery Fee</span>
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-slate-900 dark:text-white">
                     {order.shippingCost === 0 ? "FREE" : `NPR ${order.shippingCost}`}
                   </span>
                 </div>
 
-                <div className="pt-3 border-t border-slate-800 flex justify-between items-baseline text-sm">
-                  <span className="font-bold text-white">Total Amount</span>
-                  <span className="font-black text-xl text-white">
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-baseline text-sm">
+                  <span className="font-bold text-slate-900 dark:text-white">Total Amount</span>
+                  <span className="font-black text-xl text-indigo-600 dark:text-white">
                     NPR {order.totalAmount.toLocaleString()}
                   </span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1.5">
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5">
                 <div className="flex justify-between">
                   <span>Payment Method:</span>
-                  <span className="uppercase text-slate-200 font-mono">{order.paymentMethod}</span>
+                  <span className="uppercase text-slate-800 dark:text-slate-200 font-mono">{order.paymentMethod}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Payment Status:</span>
-                  <span className="capitalize font-bold text-emerald-400">{order.paymentStatus}</span>
+                  <span className="capitalize font-bold text-emerald-600 dark:text-emerald-400">{order.paymentStatus}</span>
                 </div>
                 {order.paymentId && (
                   <div className="flex justify-between">
                     <span>Transaction Ref:</span>
-                    <span className="font-mono text-slate-300 truncate max-w-[120px]">{order.paymentId}</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{order.paymentId}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Shipping / Delivery Card */}
-            <div className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl text-xs space-y-3">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold">
+            <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm backdrop-blur-xl text-xs space-y-3">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold">
                 <MapPin size={16} /> Delivery Information
               </div>
-              <p className="text-slate-300 font-medium">{address}</p>
+              <p className="text-slate-700 dark:text-slate-300 font-medium">{address}</p>
               {order.orderNote && (
-                <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400">
-                  <span className="text-slate-500 block">Order Note:</span>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-400 dark:text-slate-500 block">Order Note:</span>
                   {order.orderNote}
                 </div>
               )}
@@ -484,15 +486,15 @@ export function OrderDetailsPage() {
         {/* Cancellation Modal */}
         {cancelModal && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
                 <AlertCircle className="text-rose-500" size={20} /> Cancel Order
               </h3>
-              <p className="text-xs text-slate-400 mb-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                 Please confirm if you want to cancel this order. Reserved books will be immediately restored to stock.
               </p>
 
-              <label className="text-xs font-semibold text-slate-400 block mb-1.5">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
                 Reason for Cancellation (Optional)
               </label>
               <textarea
@@ -500,13 +502,13 @@ export function OrderDetailsPage() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="Tell us why you are cancelling..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 mb-4 focus:outline-none focus:border-indigo-500 transition resize-none"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 mb-4 focus:outline-none focus:border-indigo-500 transition resize-none"
               />
 
               <div className="flex gap-2">
                 <button
                   onClick={() => setCancelModal(false)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition"
+                  className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition"
                 >
                   Keep Order
                 </button>

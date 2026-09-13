@@ -56,10 +56,10 @@ export const PageFallback = () => (
   <div
     role="status"
     aria-live="polite"
-    className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white"
+    className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-900 dark:text-white transition-colors duration-300"
   >
-    <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
-    <span className="text-sm font-medium text-slate-400">Loading page...</span>
+    <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin mb-4" />
+    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading page...</span>
   </div>
 );
 

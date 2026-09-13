@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, X, BookOpen, Star, Loader2, ArrowRight } from "lucide-react";
 import { useSearchSuggestionsQuery } from "../api/book/query";
 import { useDebounce } from "../utils/useDebounce";
+import { AppImage } from "./common/AppImage";
 
 interface SearchBarProps {
   className?: string;
@@ -97,7 +98,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           Search books, authors, genres
         </label>
         <Search
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none"
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4 pointer-events-none"
           aria-hidden="true"
         />
         <input
@@ -112,7 +113,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             selectedIndex >= 0 ? `suggestion-item-${selectedIndex}` : undefined
           }
           placeholder={placeholder}
-          className="w-full pl-10 pr-10 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-slate-900 placeholder:text-slate-400 shadow-inner shadow-slate-100"
+          className="w-full pl-10 pr-10 py-2 text-sm bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 transition-all text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-inner"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -136,7 +137,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
             aria-label="Clear search input"
           >
             <X className="w-3.5 h-3.5" />
@@ -149,14 +150,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <div
           id="search-suggestions-list"
           role="listbox"
-          className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+          className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
         >
           {suggestions.length > 0 ? (
             <>
-              <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Books & Authors
               </div>
-              <ul className="divide-y divide-slate-50">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                 {suggestions.map((item, index) => {
                   const isSelected = index === selectedIndex;
                   return (
@@ -166,41 +167,41 @@ const SearchBar: React.FC<SearchBarProps> = ({
                       role="option"
                       aria-selected={isSelected}
                       className={`px-3 py-2.5 flex items-center gap-3 cursor-pointer transition-colors ${
-                        isSelected ? "bg-indigo-50/80 text-indigo-950" : "hover:bg-slate-50 text-slate-800"
+                        isSelected
+                          ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-950 dark:text-indigo-200"
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-800 dark:text-slate-200"
                       }`}
                       onClick={() => handleSelectBook(item._id)}
                       onMouseEnter={() => setSelectedIndex(index)}
                     >
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt=""
-                          className="w-9 h-12 object-cover rounded-md shadow-xs flex-shrink-0 bg-slate-100"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-9 h-12 bg-indigo-50 text-indigo-500 rounded-md flex items-center justify-center flex-shrink-0">
-                          <BookOpen className="w-4 h-4" />
-                        </div>
-                      )}
+                      <AppImage
+                        src={item.image}
+                        alt={item.title}
+                        fallbackType="book"
+                        fallbackTitle={item.title}
+                        className="w-9 h-12 object-cover rounded-md shadow-xs flex-shrink-0"
+                        containerClassName="w-9 h-12 rounded-md flex-shrink-0"
+                      />
 
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate text-slate-900 group-hover:text-indigo-600">
+                        <div className="font-medium text-sm truncate text-slate-900 dark:text-slate-100 group-hover:text-indigo-600">
                           {item.title}
                         </div>
-                        <div className="text-xs text-slate-500 truncate flex items-center gap-2 mt-0.5">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-2 mt-0.5">
                           <span>by {item.author}</span>
                           {item.genre && (
                             <>
                               <span>•</span>
-                              <span className="text-indigo-600 font-medium">{item.genre}</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-medium">{item.genre}</span>
                             </>
                           )}
                         </div>
                       </div>
 
                       <div className="text-right flex-shrink-0">
-                        <div className="text-sm font-semibold text-slate-900">${item.price.toFixed(2)}</div>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          NPR {item.price.toFixed(2)}
+                        </div>
                         {item.averageRating ? (
                           <div className="flex items-center justify-end text-amber-500 text-xs font-medium gap-0.5">
                             <Star className="w-3 h-3 fill-amber-400 stroke-none" />
@@ -213,11 +214,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 })}
               </ul>
 
-              <div className="p-2 border-t border-slate-100 bg-slate-50/70 mt-1">
+              <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/50 mt-1">
                 <button
                   type="button"
                   onClick={() => handleSubmit()}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50/50 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 rounded-lg transition-colors"
                 >
                   <span>See all matching results for &ldquo;{debouncedQuery}&rdquo;</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -225,10 +226,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
               </div>
             </>
           ) : !isLoading ? (
-            <div className="px-4 py-6 text-center text-slate-500 text-sm">
-              <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="font-medium text-slate-700">No books found for &ldquo;{debouncedQuery}&rdquo;</p>
-              <p className="text-xs text-slate-400 mt-1">Try checking for spelling or searching by category.</p>
+            <div className="px-4 py-6 text-center text-slate-500 dark:text-slate-400 text-sm">
+              <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+              <p className="font-medium text-slate-700 dark:text-slate-300">No books found for &ldquo;{debouncedQuery}&rdquo;</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Try checking for spelling or searching by category.</p>
             </div>
           ) : null}
         </div>

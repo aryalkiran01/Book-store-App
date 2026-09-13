@@ -25,48 +25,48 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-slate-950 text-slate-300 border-t border-slate-900 mt-auto">
+    <footer className="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-t border-slate-200 dark:border-slate-900 mt-auto transition-colors duration-300">
       {/* Value Proposition Highlights Bar */}
-      <div className="border-b border-slate-900/80 bg-slate-900/30">
+      <div className="border-b border-slate-200 dark:border-slate-900/80 bg-white/70 dark:bg-slate-900/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-indigo-950/70 border border-indigo-800/80 flex items-center justify-center text-indigo-400 flex-shrink-0">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 flex-shrink-0">
                 <Truck className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-100">Express Delivery</h4>
-                <p className="text-xs text-slate-400">Fast nationwide courier</p>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Express Delivery</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Fast nationwide courier</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-950/70 border border-emerald-800/80 flex items-center justify-center text-emerald-400 flex-shrink-0">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-100">Verified Reviews</h4>
-                <p className="text-xs text-slate-400">100% authentic reader ratings</p>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Verified Reviews</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">100% authentic reader ratings</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-purple-950/70 border border-purple-800/80 flex items-center justify-center text-purple-400 flex-shrink-0">
+              <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/70 border border-purple-200 dark:border-purple-800/80 flex items-center justify-center text-purple-600 dark:text-purple-400 flex-shrink-0">
                 <RotateCcw className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-100">Safe Cancellation</h4>
-                <p className="text-xs text-slate-400">Instant inventory restore</p>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Safe Cancellation</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Instant inventory restore</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-amber-950/70 border border-amber-800/80 flex items-center justify-center text-amber-400 flex-shrink-0">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
                 <Headphones className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-100">24/7 Reader Support</h4>
-                <p className="text-xs text-slate-400">Dedicated assistance</p>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">24/7 Reader Support</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Dedicated assistance</p>
               </div>
             </div>
           </div>
@@ -82,29 +82,29 @@ export function Footer() {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
                 <IoBookSharp className="text-xl text-white" />
               </div>
-              <span className="text-xl font-black tracking-tight text-white">
-                Kitab<span className="text-indigo-400">Ghar</span>
+              <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+                Kitab<span className="text-indigo-600 dark:text-indigo-400">Ghar</span>
               </span>
             </Link>
-            <p className="text-sm text-slate-400 leading-relaxed max-w-sm">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
               Nepal's premier book community and bookstore platform. Explore thousands of bestselling books, share genuine reviews, and support avid reading cultures.
             </p>
 
             {/* Newsletter Subscription */}
             <div className="pt-2">
-              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                 Subscribe for Book Deals & Updates
               </h5>
               <form onSubmit={handleSubscribe} className="flex gap-2 max-w-md">
                 <div className="relative flex-1">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <input
                     type="email"
                     required
                     placeholder="Enter your email..."
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <button
@@ -115,7 +115,7 @@ export function Footer() {
                 </button>
               </form>
               {subscribed && (
-                <p className="text-xs text-emerald-400 mt-1.5 flex items-center gap-1">
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1.5 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Thank you for subscribing to KitabGhar!
                 </p>
               )}
@@ -124,32 +124,32 @@ export function Footer() {
 
           {/* Quick Navigation */}
           <div>
-            <h4 className="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider mb-4">
               Explore Store
             </h4>
-            <ul className="space-y-2.5 text-xs text-slate-400">
+            <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
               <li>
-                <Link to="/books" className="hover:text-indigo-400 transition-colors">
+                <Link to="/books" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   All Catalog Books
                 </Link>
               </li>
               <li>
-                <Link to="/books?genre=Fiction" className="hover:text-indigo-400 transition-colors">
+                <Link to="/books?genre=Fiction" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Fiction & Novels
                 </Link>
               </li>
               <li>
-                <Link to="/books?genre=Business%20%26%20Investing" className="hover:text-indigo-400 transition-colors">
+                <Link to="/books?genre=Business%20%26%20Investing" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Business & Finance
                 </Link>
               </li>
               <li>
-                <Link to="/books?genre=Self-Help" className="hover:text-indigo-400 transition-colors">
+                <Link to="/books?genre=Self-Help" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Self-Help & Productivity
                 </Link>
               </li>
               <li>
-                <Link to="/wishlist" className="hover:text-indigo-400 transition-colors">
+                <Link to="/wishlist" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   My Reading Wishlist
                 </Link>
               </li>
@@ -158,32 +158,32 @@ export function Footer() {
 
           {/* Customer Support & Orders */}
           <div>
-            <h4 className="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider mb-4">
               Account & Help
             </h4>
-            <ul className="space-y-2.5 text-xs text-slate-400">
+            <ul className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
               <li>
-                <Link to="/orders" className="hover:text-indigo-400 transition-colors">
+                <Link to="/orders" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Track My Orders
                 </Link>
               </li>
               <li>
-                <Link to="/cart" className="hover:text-indigo-400 transition-colors">
+                <Link to="/cart" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Shopping Cart
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="hover:text-indigo-400 transition-colors">
+                <Link to="/login" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Reader Sign In
                 </Link>
               </li>
               <li>
-                <Link to="/register" className="hover:text-indigo-400 transition-colors">
+                <Link to="/register" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Create Free Account
                 </Link>
               </li>
               <li>
-                <Link to="/admin" className="hover:text-indigo-400 transition-colors">
+                <Link to="/admin" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                   Admin Dashboard
                 </Link>
               </li>
@@ -192,10 +192,10 @@ export function Footer() {
 
           {/* Contact Details */}
           <div>
-            <h4 className="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider mb-4">
               Get in Touch
             </h4>
-            <div className="space-y-2.5 text-xs text-slate-400">
+            <div className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400">
               <p>Kathmandu, Bagmati, Nepal</p>
               <p>Email: aryalkiran21@gmail.com</p>
               <p>Phone: +977 98-275-142-82</p>
@@ -207,25 +207,25 @@ export function Footer() {
                   href="https://github.com/aryalkiran01/Book-store-App"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors shadow-sm"
                 >
                   <FaGithub className="text-sm" />
                 </a>
                 <a
                   href="#"
-                  className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-sky-400 transition-colors"
+                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-sky-500 transition-colors shadow-sm"
                 >
                   <FaTwitter className="text-sm" />
                 </a>
                 <a
                   href="#"
-                  className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-pink-400 transition-colors"
+                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-pink-500 transition-colors shadow-sm"
                 >
                   <FaInstagram className="text-sm" />
                 </a>
                 <a
                   href="#"
-                  className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-blue-500 transition-colors"
+                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors shadow-sm"
                 >
                   <FaFacebookF className="text-sm" />
                 </a>
@@ -235,7 +235,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Copyright & Security */}
-        <div className="mt-12 pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="mt-12 pt-6 border-t border-slate-200 dark:border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} KitabGhar Book Store. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span>Secure 256-Bit SSL Encrypted</span>

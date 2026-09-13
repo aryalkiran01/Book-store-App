@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
+import { AppImage } from "../components/common/AppImage";
 import { fetchMyOrders, cancelOrder, TOrder } from "../api/order/fetch";
 import { addToCart } from "../utils/cartStorage";
 import { useUserDetailsStore } from "../store/useUsersDetails";
@@ -127,37 +128,37 @@ export function OrderHistoryPage() {
     switch (status) {
       case "delivered":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1 rounded-full">
             <CheckCircle2 size={13} /> Delivered
           </span>
         );
       case "shipped":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-950/60 border border-blue-800/80 px-3 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 px-3 py-1 rounded-full">
             <Truck size={13} /> Shipped
           </span>
         );
       case "processing":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-950/60 border border-amber-800/80 px-3 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 px-3 py-1 rounded-full">
             <Clock size={13} /> Processing
           </span>
         );
       case "confirmed":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 bg-indigo-950/60 border border-indigo-800/80 px-3 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 px-3 py-1 rounded-full">
             <CheckCircle2 size={13} /> Confirmed
           </span>
         );
       case "cancelled":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800/80 px-3 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 px-3 py-1 rounded-full">
             <XCircle size={13} /> Cancelled
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full">
             <Clock size={13} /> Pending
           </span>
         );
@@ -165,7 +166,7 @@ export function OrderHistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <AppShell />
 
       {toastMsg && (
@@ -177,12 +178,12 @@ export function OrderHistoryPage() {
 
       <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200 dark:border-slate-800">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <ShoppingBag className="text-indigo-400" size={28} /> My Order History
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+              <ShoppingBag className="text-indigo-600 dark:text-indigo-400" size={28} /> My Order History
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Track delivery progress, review past invoices, or re-order titles.
             </p>
           </div>
@@ -199,8 +200,8 @@ export function OrderHistoryPage() {
               }}
               className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
                 statusFilter === f.value
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                  : "bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
               }`}
             >
               {f.label}
@@ -214,15 +215,15 @@ export function OrderHistoryPage() {
             {[1, 2, 3].map((n) => (
               <div
                 key={n}
-                className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 animate-pulse h-40"
+                className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 animate-pulse h-40 shadow-sm"
               />
             ))}
           </div>
         ) : error ? (
-          <div className="bg-rose-950/40 border border-rose-800/60 rounded-3xl p-8 text-center max-w-md mx-auto">
+          <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-3xl p-8 text-center max-w-md mx-auto shadow-sm">
             <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-white mb-1">Failed to load orders</h3>
-            <p className="text-xs text-slate-400 mb-4">{error}</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Failed to load orders</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{error}</p>
             <button
               onClick={loadOrders}
               className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
@@ -231,10 +232,10 @@ export function OrderHistoryPage() {
             </button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-12 text-center max-w-md mx-auto">
-            <Package className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-            <h2 className="text-lg font-bold text-white mb-1">No orders found</h2>
-            <p className="text-xs text-slate-400 mb-6">
+          <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
+            <Package className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No orders found</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
               {statusFilter === "all"
                 ? "You have not placed any orders yet."
                 : `No orders in '${statusFilter}' status.`}
@@ -264,24 +265,24 @@ export function OrderHistoryPage() {
               return (
                 <div
                   key={order._id}
-                  className="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl hover:border-slate-700/80 transition"
+                  className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl shadow-sm hover:border-slate-300 dark:hover:border-slate-700/80 transition"
                 >
                   {/* Top Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800 text-xs">
                     <div className="flex flex-wrap items-center gap-4">
                       <div>
-                        <span className="text-slate-500 block text-[11px]">ORDER PLACED</span>
-                        <span className="font-semibold text-slate-200">{orderDate}</span>
+                        <span className="text-slate-400 dark:text-slate-500 block text-[11px]">ORDER PLACED</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">{orderDate}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block text-[11px]">TOTAL AMOUNT</span>
-                        <span className="font-bold text-white">
+                        <span className="text-slate-400 dark:text-slate-500 block text-[11px]">TOTAL AMOUNT</span>
+                        <span className="font-bold text-slate-900 dark:text-white">
                           NPR {order.totalAmount.toLocaleString()}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-500 block text-[11px]">ORDER ID</span>
-                        <span className="font-mono text-indigo-400">{order._id}</span>
+                        <span className="text-slate-400 dark:text-slate-500 block text-[11px]">ORDER ID</span>
+                        <span className="font-mono text-indigo-600 dark:text-indigo-400">{order._id}</span>
                       </div>
                     </div>
 
@@ -295,24 +296,25 @@ export function OrderHistoryPage() {
                     {order.books.map((item, idx) => {
                       const bookObj = typeof item.bookId === "object" ? item.bookId : null;
                       const title = item.title || bookObj?.title || "Book Title";
-                      const image =
-                        item.image ||
-                        bookObj?.image ||
-                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=300&q=80";
+                      const image = item.image || bookObj?.image;
 
                       return (
                         <div
                           key={idx}
-                          className="flex items-center gap-3 bg-slate-950/40 border border-slate-800/60 p-3 rounded-2xl"
+                          className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800/60 p-3 rounded-2xl"
                         >
-                          <img
-                            src={image}
-                            alt={title}
-                            className="w-12 h-16 object-cover rounded-lg border border-slate-800 shrink-0 bg-slate-950"
-                          />
+                          <div className="w-12 h-16 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0 bg-slate-100 dark:bg-slate-950 overflow-hidden">
+                            <AppImage
+                              src={image}
+                              alt={title}
+                              fallbackType="book"
+                              fallbackText={title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                           <div className="min-w-0 flex-1">
-                            <p className="font-bold text-xs text-white truncate">{title}</p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
+                            <p className="font-bold text-xs text-slate-900 dark:text-white truncate">{title}</p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                               Qty: {item.quantity} &bull; NPR {item.price.toLocaleString()}
                             </p>
                           </div>
@@ -322,17 +324,17 @@ export function OrderHistoryPage() {
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="text-slate-400 text-[11px]">
-                      Payment: <span className="uppercase text-slate-300 font-mono">{order.paymentMethod}</span> &bull;{" "}
-                      <span className="capitalize text-emerald-400">{order.paymentStatus}</span>
+                  <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                      Payment: <span className="uppercase text-slate-700 dark:text-slate-300 font-mono">{order.paymentMethod}</span> &bull;{" "}
+                      <span className="capitalize text-emerald-600 dark:text-emerald-400">{order.paymentStatus}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {cancellable && (
                         <button
                           onClick={() => setCancelReasonModal(order._id)}
-                          className="px-3 py-1.5 bg-rose-950/60 border border-rose-800/80 hover:bg-rose-900/60 text-rose-300 font-semibold rounded-xl transition"
+                          className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-semibold rounded-xl transition"
                         >
                           Cancel Order
                         </button>
@@ -340,7 +342,7 @@ export function OrderHistoryPage() {
 
                       <button
                         onClick={() => handleBuyAgain(order)}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl transition flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition flex items-center gap-1.5"
                       >
                         <RotateCcw size={13} /> Buy Again
                       </button>
@@ -363,17 +365,17 @@ export function OrderHistoryPage() {
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="p-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 disabled:opacity-40 hover:bg-slate-800 transition"
+                  className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="text-xs font-semibold text-slate-400 px-3">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-3">
                   Page {page} of {totalPages}
                 </span>
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="p-2.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 disabled:opacity-40 hover:bg-slate-800 transition"
+                  className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -385,15 +387,15 @@ export function OrderHistoryPage() {
         {/* Cancel Confirmation Modal */}
         {cancelReasonModal && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
                 <AlertCircle className="text-rose-500" size={20} /> Cancel Order
               </h3>
-              <p className="text-xs text-slate-400 mb-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                 Are you sure you want to cancel this order? All reserved inventory will be automatically returned to the bookstore catalog.
               </p>
 
-              <label className="text-xs font-semibold text-slate-400 block mb-1.5">
+              <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 block mb-1.5">
                 Reason for Cancellation (Optional)
               </label>
               <textarea
@@ -401,7 +403,7 @@ export function OrderHistoryPage() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="e.g. Ordered by mistake, changed shipping address..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 mb-4 focus:outline-none focus:border-indigo-500 transition resize-none"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 mb-4 focus:outline-none focus:border-indigo-500 transition resize-none"
               />
 
               <div className="flex gap-2">
@@ -410,7 +412,7 @@ export function OrderHistoryPage() {
                     setCancelReasonModal(null);
                     setCancelReason("");
                   }}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition"
+                  className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition"
                 >
                   Keep Order
                 </button>

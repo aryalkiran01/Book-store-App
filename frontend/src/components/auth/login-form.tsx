@@ -61,7 +61,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl relative overflow-hidden animate-fade-in my-8">
+    <div className="w-full max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xl dark:shadow-2xl relative overflow-hidden animate-fade-in my-8 transition-colors duration-300">
       {/* Background Accent Glow */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/10 blur-3xl pointer-events-none rounded-full"></div>
 
@@ -70,10 +70,10 @@ export function LoginForm() {
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center mx-auto shadow-lg shadow-indigo-600/30 text-white">
           <IoBookSharp className="text-2xl" />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
           Welcome Back
         </h2>
-        <p className="text-xs sm:text-sm text-slate-400">
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
           Sign in to access your reading list, orders, and reviews
         </p>
       </div>
@@ -81,50 +81,50 @@ export function LoginForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Email Field */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
             <input
               type="email"
               placeholder="you@example.com"
               {...register("email")}
-              className={`w-full pl-10 pr-4 py-3 bg-slate-950 border ${
-                errors.email ? "border-rose-500" : "border-slate-800"
-              } rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
+              className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border ${
+                errors.email ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
+              } rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
             />
           </div>
           {errors.email && (
-            <p className="text-xs text-rose-400 mt-1">{errors.email.message}</p>
+            <p className="text-xs text-rose-500 dark:text-rose-400 mt-1">{errors.email.message}</p>
           )}
         </div>
 
         {/* Password Field */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
             Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
             <input
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               {...register("password")}
-              className={`w-full pl-10 pr-10 py-3 bg-slate-950 border ${
-                errors.password ? "border-rose-500" : "border-slate-800"
-              } rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
+              className={`w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-950 border ${
+                errors.password ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
+              } rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
           {errors.password && (
-            <p className="text-xs text-rose-400 mt-1">{errors.password.message}</p>
+            <p className="text-xs text-rose-500 dark:text-rose-400 mt-1">{errors.password.message}</p>
           )}
         </div>
 
@@ -147,11 +147,11 @@ export function LoginForm() {
       </form>
 
       {/* Switch to Register */}
-      <div className="mt-6 pt-6 border-t border-slate-800/80 text-center text-xs text-slate-400">
+      <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800/80 text-center text-xs text-slate-500 dark:text-slate-400">
         Don't have an account yet?{" "}
         <Link
           to="/register"
-          className="font-bold text-indigo-400 hover:text-indigo-300 underline underline-offset-4"
+          className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline underline-offset-4"
         >
           Create a Free Account
         </Link>

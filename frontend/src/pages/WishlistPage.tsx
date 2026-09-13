@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
+import { AppImage } from "../components/common/AppImage";
 import {
   getWishlist,
   removeFromWishlist,
@@ -79,33 +80,33 @@ export function WishlistPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <AppShell />
 
       {/* Floating Action Toast */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 border border-indigo-500 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce text-sm">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+        <div className="fixed top-20 right-6 z-50 bg-white dark:bg-slate-900 border border-indigo-500 text-slate-900 dark:text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce text-sm">
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
           <span>{toastMsg}</span>
         </div>
       )}
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-slate-200 dark:border-slate-800">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-3">
                 <Heart className="w-8 h-8 text-rose-500 fill-rose-500/20" />
                 My Saved Wishlist
               </h1>
               {wishlistItems.length > 0 && (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-950 text-rose-300 border border-rose-800">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                   {wishlistItems.length} {wishlistItems.length === 1 ? "book" : "books"}
                 </span>
               )}
             </div>
-            <p className="text-slate-400 text-xs sm:text-sm mt-1">
+            <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
               Keep track of books you love and move them to cart whenever you are ready
             </p>
           </div>
@@ -124,14 +125,14 @@ export function WishlistPage() {
 
         {/* Empty Wishlist State */}
         {wishlistItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-slate-900/40 border border-slate-800/80 rounded-3xl backdrop-blur-xl">
-            <div className="w-24 h-24 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-rose-500/50 mb-6">
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 rounded-3xl shadow-sm backdrop-blur-xl">
+            <div className="w-24 h-24 rounded-full bg-rose-50 dark:bg-slate-900 border border-rose-100 dark:border-slate-800 flex items-center justify-center text-rose-500 mb-6">
               <Heart size={42} />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
               Your Wishlist is Empty
             </h2>
-            <p className="text-slate-400 text-sm max-w-md mb-8">
+            <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mb-8">
               Explore our collection and click the heart icon on any book to save it for later.
             </p>
             <Link
@@ -155,16 +156,15 @@ export function WishlistPage() {
               return (
                 <div
                   key={item._id}
-                  className="group bg-slate-900/50 border border-slate-800/80 hover:border-slate-700 rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 relative"
+                  className="group bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 rounded-2xl p-4 flex flex-col justify-between transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 relative"
                 >
                   {/* Image and badges */}
-                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-slate-950">
-                    <img
-                      src={
-                        item.image ||
-                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80"
-                      }
+                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+                    <AppImage
+                      src={item.image}
                       alt={item.title}
+                      fallbackType="book"
+                      fallbackText={item.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                     />
 
@@ -176,7 +176,7 @@ export function WishlistPage() {
 
                     <button
                       onClick={() => handleRemove(item._id, item.title)}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-950/80 hover:bg-rose-600 text-slate-400 hover:text-white transition shadow backdrop-blur-md"
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-slate-950/80 hover:bg-rose-600 text-slate-600 dark:text-slate-400 hover:text-white transition shadow backdrop-blur-md"
                       title="Remove from wishlist"
                     >
                       <Trash2 size={13} />
@@ -186,29 +186,29 @@ export function WishlistPage() {
                   {/* Info */}
                   <div className="flex-1 mb-4">
                     {item.genre && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block mb-1">
                         {item.genre.split(",")[0]}
                       </span>
                     )}
 
                     <Link
                       to={`/books/${item._id}`}
-                      className="font-bold text-sm text-white hover:text-indigo-300 transition line-clamp-1 block"
+                      className="font-bold text-sm text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 transition line-clamp-1 block"
                     >
                       {item.title}
                     </Link>
-                    <p className="text-xs text-slate-400 line-clamp-1 mt-0.5 mb-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 mb-2">
                       by {item.author}
                     </p>
 
                     {/* Stock Status */}
                     <div className="mb-2">
                       {inStock ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 size={11} /> In Stock
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-400">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">
                           <AlertCircle size={11} /> Out of Stock
                         </span>
                       )}
@@ -216,11 +216,11 @@ export function WishlistPage() {
 
                     {/* Price */}
                     <div className="flex items-baseline gap-2">
-                      <span className="font-extrabold text-base text-white font-mono">
+                      <span className="font-extrabold text-base text-slate-900 dark:text-white font-mono">
                         NPR {effectivePrice.toLocaleString()}
                       </span>
                       {item.discountPercentage && item.discountPercentage > 0 ? (
-                        <span className="text-xs text-slate-500 line-through">
+                        <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
                           NPR {item.price.toLocaleString()}
                         </span>
                       ) : null}
@@ -234,7 +234,7 @@ export function WishlistPage() {
                     className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition ${
                       inStock
                         ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
-                        : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                     }`}
                   >
                     <ShoppingCart size={14} /> Move to Cart

@@ -21,7 +21,6 @@ import {
   DollarSign,
   Package,
   ShieldCheck,
-  ShieldAlert,
   Loader2,
   RefreshCw,
   Clock,
@@ -30,10 +29,10 @@ import {
   Save,
   Star,
   BookMarked,
-  UserCheck,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
+import { AppImage } from "../components/common/AppImage";
 import { useUserDetailsStore } from "../store/useUsersDetails";
 import {
   fetchAdminStats,
@@ -306,18 +305,18 @@ export function AdminDashboardPage() {
   const handleDeleteBook = (bookId: string, title: string) => {
     setConfirmModal({
       title: "Delete Book",
-      message: `Are you sure you want to permanently delete "${title}"? This action cannot be undone.`,
+      message: `Are you sure you want to permanently delete "${title}"? This cannot be undone.`,
       onConfirm: async () => {
         try {
           setDeletingBookId(bookId);
           await deleteBook({ bookId });
-          showToast(`Book "${title}" deleted successfully.`);
+          showToast(`Deleted book "${title}".`);
+          setConfirmModal(null);
           loadTabData("books");
         } catch (err: any) {
-          showToast(err?.response?.data?.message || "Error deleting book.");
+          showToast(err?.response?.data?.message || "Failed to delete book.");
         } finally {
           setDeletingBookId(null);
-          setConfirmModal(null);
         }
       },
     });
@@ -325,16 +324,17 @@ export function AdminDashboardPage() {
 
   // ---------------- INVENTORY ACTIONS ----------------
   const handleQuickStockUpdate = async (bookId: string, newStock: number) => {
-    if (newStock < 0) return;
     try {
       setUpdatingStockId(bookId);
       await quickUpdateStock(bookId, newStock);
+      showToast("Stock quantity updated.");
       setInventory((prev) =>
-        prev.map((b) => (b._id === bookId ? { ...b, stock: newStock } : b))
+        prev.map((item) =>
+          item._id === bookId ? { ...item, stock: newStock } : item
+        )
       );
-      showToast("Stock updated successfully!");
     } catch (err: any) {
-      showToast(err?.response?.data?.message || "Failed to update stock.");
+      showToast(err?.response?.data?.message || "Failed to update stock");
     } finally {
       setUpdatingStockId(null);
     }
@@ -348,7 +348,7 @@ export function AdminDashboardPage() {
   };
 
   const handleUpdateOrderStatus = async () => {
-    if (!selectedOrder || !newOrderStatus) return;
+    if (!selectedOrder) return;
     try {
       setUpdatingOrderStatus(true);
       await updateOrderStatus(
@@ -356,35 +356,30 @@ export function AdminDashboardPage() {
         newOrderStatus,
         orderStatusNote
       );
-      showToast(`Order status changed to ${newOrderStatus.toUpperCase()}`);
+      showToast(`Order status updated to ${newOrderStatus}.`);
       setSelectedOrder(null);
       loadTabData("orders");
     } catch (err: any) {
-      showToast(err?.response?.data?.message || "Failed to update order status.");
+      showToast(err?.response?.data?.message || "Failed to update order status");
     } finally {
       setUpdatingOrderStatus(false);
     }
   };
 
   // ---------------- USER ACTIONS ----------------
-  const handleToggleUserRole = (user: AdminUser) => {
-    const targetRole = user.role === "admin" ? "user" : "admin";
-    if (user._id === userDetails.id && targetRole !== "admin") {
-      showToast("You cannot demote yourself from the admin role.");
-      return;
-    }
+  const handleToggleUserRole = async (user: AdminUser) => {
+    const newRole = user.role === "admin" ? "user" : "admin";
     setConfirmModal({
       title: `Change User Role`,
-      message: `Change role of "${user.username}" to ${targetRole.toUpperCase()}?`,
+      message: `Are you sure you want to change ${user.username}'s role to ${newRole}?`,
       onConfirm: async () => {
         try {
-          await updateAdminUserRole(user._id, targetRole);
-          showToast(`Role updated to ${targetRole.toUpperCase()}`);
+          await updateAdminUserRole(user._id, newRole);
+          showToast(`User role updated to ${newRole}`);
+          setConfirmModal(null);
           loadTabData("users");
         } catch (err: any) {
-          showToast(err?.response?.data?.message || "Error updating role.");
-        } finally {
-          setConfirmModal(null);
+          showToast(err?.response?.data?.message || "Failed to update role");
         }
       },
     });
@@ -397,18 +392,18 @@ export function AdminDashboardPage() {
     }
     setConfirmModal({
       title: "Delete User",
-      message: `Are you sure you want to delete user "${user.username}" (${user.email})?`,
+      message: `Permanently delete ${user.username} (${user.email})?`,
       onConfirm: async () => {
         try {
           setDeletingUserId(user._id);
           await deleteAdminUser(user._id);
-          showToast(`User "${user.username}" deleted successfully.`);
+          showToast(`User ${user.username} deleted.`);
+          setConfirmModal(null);
           loadTabData("users");
         } catch (err: any) {
-          showToast(err?.response?.data?.message || "Error deleting user.");
+          showToast(err?.response?.data?.message || "Failed to delete user");
         } finally {
           setDeletingUserId(null);
-          setConfirmModal(null);
         }
       },
     });
@@ -417,55 +412,53 @@ export function AdminDashboardPage() {
   // ---------------- REVIEW ACTIONS ----------------
   const handleModerateReview = async (
     reviewId: string,
-    status: "published" | "flagged" | "hidden"
+    status: "published" | "hidden"
   ) => {
     try {
       await moderateAdminReview(reviewId, status);
-      showToast(`Review set to ${status.toUpperCase()}`);
+      showToast(`Review status set to ${status}.`);
       loadTabData("reviews");
     } catch (err: any) {
-      showToast(err?.response?.data?.message || "Error moderating review.");
+      showToast(err?.response?.data?.message || "Failed to moderate review");
     }
   };
 
   const handleDeleteReview = (reviewId: string) => {
     setConfirmModal({
       title: "Delete Review",
-      message: "Are you sure you want to permanently delete this review?",
+      message: "Permanently remove this customer review?",
       onConfirm: async () => {
         try {
           await deleteAdminReview(reviewId);
-          showToast("Review deleted permanently.");
+          showToast("Review deleted.");
+          setConfirmModal(null);
           loadTabData("reviews");
         } catch (err: any) {
-          showToast(err?.response?.data?.message || "Error deleting review.");
-        } finally {
-          setConfirmModal(null);
+          showToast(err?.response?.data?.message || "Failed to delete review");
         }
       },
     });
   };
 
-  // Block unauthorized non-admins
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300">
         <AppShell />
-        <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-20 h-20 rounded-2xl bg-rose-950/60 border border-rose-800/80 flex items-center justify-center mb-6 shadow-xl shadow-rose-950/30 text-rose-400">
-            <ShieldAlert className="w-10 h-10" />
+        <main className="flex-1 max-w-xl mx-auto px-4 py-20 flex flex-col items-center justify-center text-center">
+          <div className="w-20 h-20 rounded-3xl bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-500 mb-6 shadow-xl">
+            <AlertCircle className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-100 mb-3">
-            Access Restricted
+          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 mb-3">
+            Administrator Access Required
           </h1>
-          <p className="text-slate-400 max-w-md mb-8">
+          <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8">
             You must be logged into an authorized Administrator account to
             access the Book Store Control Center.
           </p>
           <div className="flex gap-4">
             <Link
               to="/books"
-              className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition-colors border border-slate-700"
+              className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition-colors border border-slate-200 dark:border-slate-700"
             >
               Back to Catalog
             </Link>
@@ -483,13 +476,13 @@ export function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white transition-colors duration-300">
       <AppShell />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 border border-indigo-500/50 text-white px-5 py-3.5 rounded-xl shadow-2xl animate-fade-in">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-slate-900 border border-indigo-500 text-slate-900 dark:text-white px-5 py-3.5 rounded-xl shadow-2xl animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
           <span className="text-sm font-medium">{toastMessage}</span>
         </div>
       )}
@@ -497,20 +490,20 @@ export function AdminDashboardPage() {
       {/* Confirmation Modal */}
       {confirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center gap-3 text-rose-400 mb-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-500 mb-4">
               <AlertCircle className="w-6 h-6 flex-shrink-0" />
-              <h3 className="text-lg font-bold text-slate-100">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 {confirmModal.title}
               </h3>
             </div>
-            <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+            <p className="text-slate-600 dark:text-slate-300 text-sm mb-6 leading-relaxed">
               {confirmModal.message}
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
               </button>
@@ -527,17 +520,17 @@ export function AdminDashboardPage() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Title & Admin Indicator */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-950/80 border border-indigo-700/80 text-indigo-400 flex items-center gap-1">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-700/80 text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" /> Admin Control Center
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-400 dark:text-slate-500">
                 Logged in as {userDetails.username}
               </span>
             </div>
-            <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
               Store & Catalog Management
             </h1>
           </div>
@@ -545,10 +538,10 @@ export function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => loadTabData(activeTab)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-medium transition-colors shadow-sm"
             >
               <RefreshCw
-                className={`w-4 h-4 ${loading ? "animate-spin text-indigo-400" : ""}`}
+                className={`w-4 h-4 ${loading ? "animate-spin text-indigo-600 dark:text-indigo-400" : ""}`}
               />
               Refresh Data
             </button>
@@ -562,7 +555,7 @@ export function AdminDashboardPage() {
         </div>
 
         {/* Tab Navigation Navigation Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-slate-800/80 scrollbar-thin">
+        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-slate-200 dark:border-slate-800/80 scrollbar-thin">
           {[
             { key: "overview", label: "Overview", icon: LayoutDashboard },
             { key: "books", label: "Books Catalog", icon: BookOpen },
@@ -580,8 +573,8 @@ export function AdminDashboardPage() {
                 onClick={() => setActiveTab(tab.key as TabKey)}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
                   isActive
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent hover:border-slate-800"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-800"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -604,8 +597,8 @@ export function AdminDashboardPage() {
         {/* ---------------- TAB CONTENT ---------------- */}
         {loading && !stats && !books.length && !orders.length && (
           <div className="py-24 flex flex-col items-center justify-center text-center">
-            <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
-            <p className="text-slate-400 font-medium">
+            <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-500 animate-spin mb-4" />
+            <p className="text-slate-500 dark:text-slate-400 font-medium">
               Loading dashboard metrics...
             </p>
           </div>
@@ -616,155 +609,155 @@ export function AdminDashboardPage() {
           <div className="space-y-8 animate-fade-in">
             {/* KPI Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Total Revenue
                   </span>
-                  <div className="w-9 h-9 rounded-xl bg-emerald-950/80 border border-emerald-800/80 flex items-center justify-center text-emerald-400">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                     <DollarSign className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="text-2xl font-black text-slate-100 mb-1">
+                <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-1">
                   NPR {stats.metrics.totalRevenue.toLocaleString()}
                 </div>
-                <div className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
+                <div className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
                   <TrendingUp className="w-3.5 h-3.5" /> Authoritative sales
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Total Orders
                   </span>
-                  <div className="w-9 h-9 rounded-xl bg-indigo-950/80 border border-indigo-800/80 flex items-center justify-center text-indigo-400">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                     <ShoppingBag className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="text-2xl font-black text-slate-100 mb-1">
+                <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-1">
                   {stats.metrics.totalOrders}
                 </div>
-                <div className="text-xs text-amber-400 font-medium flex items-center gap-1">
+                <div className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" /> {stats.metrics.pendingOrders}{" "}
                   pending orders
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Books Catalog
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Catalog Titles
                   </span>
-                  <div className="w-9 h-9 rounded-xl bg-purple-950/80 border border-purple-800/80 flex items-center justify-center text-purple-400">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/80 border border-purple-200 dark:border-purple-800/80 flex items-center justify-center text-purple-600 dark:text-purple-400">
                     <BookOpen className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="text-2xl font-black text-slate-100 mb-1">
+                <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-1">
                   {stats.metrics.totalBooks}
                 </div>
-                <div className="text-xs text-slate-400">
-                  Across {stats.topCategories.length} active genres
+                <div className="text-xs text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5" /> Across{" "}
+                  {stats.topCategories?.length || 0} genres
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative overflow-hidden">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Registered Users
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Reader Community
                   </span>
-                  <div className="w-9 h-9 rounded-xl bg-blue-950/80 border border-blue-800/80 flex items-center justify-center text-blue-400">
+                  <div className="w-9 h-9 rounded-xl bg-pink-50 dark:bg-pink-950/80 border border-pink-200 dark:border-pink-800/80 flex items-center justify-center text-pink-600 dark:text-pink-400">
                     <Users className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="text-2xl font-black text-slate-100 mb-1">
+                <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-1">
                   {stats.metrics.totalUsers}
                 </div>
-                <div className="text-xs text-blue-400 font-medium flex items-center gap-1">
-                  <UserCheck className="w-3.5 h-3.5" /> Verified accounts
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  {stats.recentReviews?.length || 0} verified reviews posted
                 </div>
               </div>
             </div>
 
-            {/* Status Breakdown Bar */}
-            <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
-                <Package className="w-4 h-4 text-indigo-400" /> Order Lifecycle
-                Distribution
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                {[
-                  {
-                    key: "pending",
-                    label: "Pending",
-                    bg: "bg-amber-950/50 text-amber-300 border-amber-800/60",
-                  },
-                  {
-                    key: "confirmed",
-                    label: "Confirmed",
-                    bg: "bg-blue-950/50 text-blue-300 border-blue-800/60",
-                  },
-                  {
-                    key: "processing",
-                    label: "Processing",
-                    bg: "bg-indigo-950/50 text-indigo-300 border-indigo-800/60",
-                  },
-                  {
-                    key: "shipped",
-                    label: "Shipped",
-                    bg: "bg-purple-950/50 text-purple-300 border-purple-800/60",
-                  },
-                  {
-                    key: "delivered",
-                    label: "Delivered",
-                    bg: "bg-emerald-950/50 text-emerald-300 border-emerald-800/60",
-                  },
-                  {
-                    key: "cancelled",
-                    label: "Cancelled",
-                    bg: "bg-rose-950/50 text-rose-300 border-rose-800/60",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.key}
-                    className={`p-3.5 rounded-xl border ${item.bg} flex flex-col items-center justify-center text-center`}
-                  >
-                    <span className="text-2xl font-black mb-0.5">
-                      {stats.orderStatusBreakdown[item.key] || 0}
-                    </span>
-                    <span className="text-xs font-semibold uppercase tracking-wider">
-                      {item.label}
-                    </span>
+            {/* Inventory Alerts Banner */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 shadow-sm flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5" />
                   </div>
-                ))}
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100">
+                      Low Stock Inventory Alert
+                    </h4>
+                    <p className="text-xs text-amber-800 dark:text-amber-200/80">
+                      {stats.metrics.lowStockBooksCount || 0} titles have 5 or
+                      fewer items left.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setInvFilter("low_stock");
+                    setActiveTab("inventory");
+                  }}
+                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-colors shadow"
+                >
+                  Manage
+                </button>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 shadow-sm flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 flex items-center justify-center">
+                    <XCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 dark:text-slate-100">Out of Stock Alert</h4>
+                    <p className="text-xs text-rose-800 dark:text-rose-200/80">
+                      {stats.metrics.outOfStockBooksCount || 0} titles are
+                      completely sold out.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setInvFilter("out_of_stock");
+                    setActiveTab("inventory");
+                  }}
+                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-colors shadow"
+                >
+                  Restock
+                </button>
               </div>
             </div>
 
-            {/* Recent Orders & Recent Reviews Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Quick Live Overview Rows */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Orders */}
-              <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg flex flex-col justify-between">
+              <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                      <ShoppingBag className="w-5 h-5 text-indigo-400" /> Recent
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <ShoppingBag className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Recent
                       Customer Orders
                     </h3>
                     <button
                       onClick={() => setActiveTab("orders")}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 font-semibold flex items-center gap-1"
                     >
                       View All <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="divide-y divide-slate-800/80">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
                     {stats.recentOrders.map((order: any) => (
                       <div
                         key={order._id}
                         className="py-3 flex items-center justify-between gap-4"
                       >
                         <div className="min-w-0">
-                          <div className="text-sm font-semibold text-slate-200 truncate">
+                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                             #{order._id.slice(-6).toUpperCase()} •{" "}
                             {order.userId?.username || "Guest"}
                           </div>
@@ -776,10 +769,10 @@ export function AdminDashboardPage() {
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                             order.status === "delivered"
-                              ? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/80"
+                              ? "bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80"
                               : order.status === "cancelled"
-                              ? "bg-rose-950/80 text-rose-400 border border-rose-800/80"
-                              : "bg-amber-950/80 text-amber-400 border border-amber-800/80"
+                              ? "bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80"
+                              : "bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/80"
                           }`}
                         >
                           {order.status}
@@ -791,40 +784,40 @@ export function AdminDashboardPage() {
               </div>
 
               {/* Recent Reviews */}
-              <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg flex flex-col justify-between">
+              <div className="p-6 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5 text-purple-400" />{" "}
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />{" "}
                       Latest Reviews & Ratings
                     </h3>
                     <button
                       onClick={() => setActiveTab("reviews")}
-                      className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1"
+                      className="text-xs text-purple-600 dark:text-purple-400 hover:text-purple-500 font-semibold flex items-center gap-1"
                     >
                       Moderate <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="divide-y divide-slate-800/80">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
                     {stats.recentReviews.map((rev: any) => (
                       <div key={rev._id} className="py-3">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-semibold text-slate-200 truncate max-w-[200px]">
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
                             {rev.bookId?.title || "Book"}
                           </span>
                           <div className="flex text-amber-400 text-xs">
                             {Array.from({ length: 5 }).map((_, i) => (
                               <Star
                                 key={i}
-                                className={`w-3 h-3 ${i < rev.rating ? "fill-amber-400" : "text-slate-700"}`}
+                                className={`w-3 h-3 ${i < rev.rating ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-700"}`}
                               />
                             ))}
                           </div>
                         </div>
-                        <p className="text-xs text-slate-400 line-clamp-1 italic">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1 italic">
                           "{rev.comment}"
                         </p>
-                        <div className="text-[11px] text-slate-500 mt-1">
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                           by {rev.userId?.username || "Reader"}
                         </div>
                       </div>
@@ -840,9 +833,9 @@ export function AdminDashboardPage() {
         {activeTab === "books" && (
           <div className="space-y-6 animate-fade-in">
             {/* Search & Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="relative flex-1 w-full max-w-md">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search books by title, author, or ISBN..."
@@ -851,29 +844,27 @@ export function AdminDashboardPage() {
                     setBookSearch(e.target.value);
                     setBookPage(1);
                   }}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
                 <select
                   value={bookGenre}
                   onChange={(e) => {
                     setBookGenre(e.target.value);
                     setBookPage(1);
                   }}
-                  className="px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="px-3.5 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="all">All Genres</option>
                   <option value="Fiction">Fiction</option>
                   <option value="Non-Fiction">Non-Fiction</option>
-                  <option value="Business & Investing">
-                    Business & Investing
-                  </option>
                   <option value="Self-Help">Self-Help</option>
-                  <option value="Science Fiction">Science Fiction</option>
+                  <option value="Business & Investing">Business</option>
+                  <option value="Science & Tech">Technology</option>
+                  <option value="Psychology">Psychology</option>
                   <option value="Biography">Biography</option>
-                  <option value="Technology">Technology</option>
                 </select>
 
                 <button
@@ -886,10 +877,10 @@ export function AdminDashboardPage() {
             </div>
 
             {/* Books Table */}
-            <div className="bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-300">
-                  <thead className="bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       <th className="px-6 py-4">Book Details</th>
                       <th className="px-6 py-4">Genre</th>
@@ -899,31 +890,32 @@ export function AdminDashboardPage() {
                       <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                     {books.map((book) => (
                       <tr
                         key={book._id}
-                        className="hover:bg-slate-800/40 transition-colors"
+                        className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <img
-                              src={
-                                book.image ||
-                                "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=150&q=80"
-                              }
-                              alt={book.title}
-                              className="w-10 h-14 object-cover rounded-md border border-slate-800 flex-shrink-0"
-                            />
+                            <div className="w-10 h-14 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden flex-shrink-0">
+                              <AppImage
+                                src={book.image}
+                                alt={book.title}
+                                fallbackType="book"
+                                fallbackText={book.title}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
                             <div>
-                              <div className="font-bold text-slate-100">
+                              <div className="font-bold text-slate-900 dark:text-slate-100">
                                 {book.title}
                               </div>
-                              <div className="text-xs text-slate-400">
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
                                 by {book.author}
                               </div>
                               {book.featured && (
-                                <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-400 border border-amber-800/80">
+                                <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/80">
                                   Featured
                                 </span>
                               )}
@@ -931,21 +923,21 @@ export function AdminDashboardPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-950 border border-slate-800 text-slate-300">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300">
                             {book.genre || "Uncategorized"}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="font-bold text-slate-100">
+                          <div className="font-bold text-slate-900 dark:text-slate-100">
                             NPR {book.price}
                           </div>
                           {book.discountPercentage &&
                           book.discountPercentage > 0 ? (
-                            <span className="text-xs text-emerald-400 font-semibold">
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                               {book.discountPercentage}% OFF
                             </span>
                           ) : (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-slate-400 dark:text-slate-500">
                               No discount
                             </span>
                           )}
@@ -954,10 +946,10 @@ export function AdminDashboardPage() {
                           <span
                             className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                               (book.stock ?? 0) <= 0
-                                ? "bg-rose-950 text-rose-400 border border-rose-800"
+                                ? "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
                                 : (book.stock ?? 0) <= 5
-                                ? "bg-amber-950 text-amber-400 border border-amber-800"
-                                : "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                                ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                                : "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                             }`}
                           >
                             {book.stock ?? 0} in stock
@@ -965,15 +957,15 @@ export function AdminDashboardPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1 text-amber-400 font-bold">
-                            <Star className="w-3.5 h-3.5 fill-amber-400" />
-                            <span>{book.rating?.toFixed(1) || "0.0"}</span>
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <span className="text-slate-800 dark:text-slate-200">{book.rating?.toFixed(1) || "0.0"}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => openEditBookModal(book)}
-                              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-400 transition-colors"
+                              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 transition-colors"
                               title="Edit Book"
                             >
                               <Edit3 className="w-4 h-4" />
@@ -983,7 +975,7 @@ export function AdminDashboardPage() {
                                 handleDeleteBook(book._id, book.title)
                               }
                               disabled={deletingBookId === book._id}
-                              className="p-2 rounded-lg bg-slate-800 hover:bg-rose-900/50 text-rose-400 transition-colors"
+                              className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-colors"
                               title="Delete Book"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -998,7 +990,7 @@ export function AdminDashboardPage() {
 
               {/* Pagination */}
               {bookTotalPages > 1 && (
-                <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>
                     Page {bookPage} of {bookTotalPages}
                   </span>
@@ -1006,7 +998,7 @@ export function AdminDashboardPage() {
                     <button
                       onClick={() => setBookPage((p) => Math.max(1, p - 1))}
                       disabled={bookPage <= 1}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
                     >
                       Previous
                     </button>
@@ -1015,7 +1007,7 @@ export function AdminDashboardPage() {
                         setBookPage((p) => Math.min(bookTotalPages, p + 1))
                       }
                       disabled={bookPage >= bookTotalPages}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
                     >
                       Next
                     </button>
@@ -1031,43 +1023,43 @@ export function AdminDashboardPage() {
           <div className="space-y-6 animate-fade-in">
             {/* Summary Banners */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">
                   Total Products
                 </div>
-                <div className="text-2xl font-black text-slate-100 mt-1">
+                <div className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
                   {invSummary.totalProducts}
                 </div>
               </div>
-              <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-800/60">
-                <div className="text-xs text-amber-300 uppercase font-bold tracking-wider flex items-center gap-1.5">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 shadow-sm">
+                <div className="text-xs text-amber-700 dark:text-amber-300 uppercase font-bold tracking-wider flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5" /> Low Stock (1-5
                   units)
                 </div>
-                <div className="text-2xl font-black text-amber-400 mt-1">
+                <div className="text-2xl font-black text-amber-700 dark:text-amber-400 mt-1">
                   {invSummary.lowStockCount}
                 </div>
               </div>
-              <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60">
-                <div className="text-xs text-rose-300 uppercase font-bold tracking-wider flex items-center gap-1.5">
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 shadow-sm">
+                <div className="text-xs text-rose-700 dark:text-rose-300 uppercase font-bold tracking-wider flex items-center gap-1.5">
                   <XCircle className="w-3.5 h-3.5" /> Out of Stock (0 units)
                 </div>
-                <div className="text-2xl font-black text-rose-400 mt-1">
+                <div className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-1">
                   {invSummary.outOfStockCount}
                 </div>
               </div>
             </div>
 
             {/* Filter Pills & Search */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="relative flex-1 w-full max-w-md">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search inventory items..."
                   value={invSearch}
                   onChange={(e) => setInvSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -1084,7 +1076,7 @@ export function AdminDashboardPage() {
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                       invFilter === pill.key
                         ? "bg-indigo-600 text-white"
-                        : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
+                        : "bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800"
                     }`}
                   >
                     {pill.label}
@@ -1094,9 +1086,9 @@ export function AdminDashboardPage() {
             </div>
 
             {/* Inventory Table */}
-            <div className="bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+              <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4">Item</th>
                     <th className="px-6 py-4">Price</th>
@@ -1105,32 +1097,32 @@ export function AdminDashboardPage() {
                     <th className="px-6 py-4 text-right">Direct Update</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                   {inventory.map((item) => {
                     const currentStock = item.stock ?? 0;
                     const draftVal = stockInputs[item._id] ?? currentStock;
                     return (
                       <tr
                         key={item._id}
-                        className="hover:bg-slate-800/40 transition-colors"
+                        className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                       >
-                        <td className="px-6 py-4 font-bold text-slate-100">
+                        <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
                           {item.title}
-                          <div className="text-xs font-normal text-slate-400">
+                          <div className="text-xs font-normal text-slate-500 dark:text-slate-400">
                             {item.author}
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-semibold text-slate-200">
+                        <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">
                           NPR {item.price}
                         </td>
                         <td className="px-6 py-4">
                           <span
                             className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                               currentStock <= 0
-                                ? "bg-rose-950 text-rose-400 border border-rose-800"
+                                ? "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
                                 : currentStock <= 5
-                                ? "bg-amber-950 text-amber-400 border border-amber-800"
-                                : "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                                ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                                : "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                             }`}
                           >
                             {currentStock} units
@@ -1146,7 +1138,7 @@ export function AdminDashboardPage() {
                                 )
                               }
                               disabled={updatingStockId === item._id}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300"
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300"
                             >
                               -1
                             </button>
@@ -1158,7 +1150,7 @@ export function AdminDashboardPage() {
                                 )
                               }
                               disabled={updatingStockId === item._id}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-400"
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-emerald-600 dark:text-emerald-400"
                             >
                               +5
                             </button>
@@ -1170,7 +1162,7 @@ export function AdminDashboardPage() {
                                 )
                               }
                               disabled={updatingStockId === item._id}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-indigo-400"
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-indigo-600 dark:text-indigo-400"
                             >
                               +20
                             </button>
@@ -1188,7 +1180,7 @@ export function AdminDashboardPage() {
                                   [item._id]: Number(e.target.value),
                                 })
                               }
-                              className="w-20 px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-sm text-center text-slate-100 focus:outline-none focus:border-indigo-500"
+                              className="w-20 px-2.5 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-center text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500"
                             />
                             <button
                               onClick={() =>
@@ -1233,8 +1225,8 @@ export function AdminDashboardPage() {
                   }}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors whitespace-nowrap ${
                     orderStatusFilter === tab.key
-                      ? "bg-indigo-600 text-white"
-                      : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm"
                   }`}
                 >
                   {tab.label}
@@ -1243,9 +1235,9 @@ export function AdminDashboardPage() {
             </div>
 
             {/* Orders Table */}
-            <div className="bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+              <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4">Order Ref</th>
                     <th className="px-6 py-4">Customer</th>
@@ -1255,37 +1247,37 @@ export function AdminDashboardPage() {
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                   {orders.map((order) => (
                     <tr
                       key={order._id}
-                      className="hover:bg-slate-800/40 transition-colors"
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                     >
-                      <td className="px-6 py-4 font-mono font-bold text-indigo-400">
+                      <td className="px-6 py-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
                         #{order._id.slice(-6).toUpperCase()}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-slate-100">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">
                           {order.userId?.username || "Customer"}
                         </div>
                         <div className="text-xs text-slate-500">
                           {order.userId?.email}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-300">
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
                         {order.books?.length || 0} item(s)
                       </td>
-                      <td className="px-6 py-4 font-bold text-slate-100">
+                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
                         NPR {order.totalAmount}
                       </td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                             order.status === "delivered"
-                              ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                              ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                               : order.status === "cancelled"
-                              ? "bg-rose-950 text-rose-400 border border-rose-800"
-                              : "bg-amber-950 text-amber-400 border border-amber-800"
+                              ? "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                              : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
                           }`}
                         >
                           {order.status}
@@ -1295,7 +1287,7 @@ export function AdminDashboardPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenStatusModal(order)}
-                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors shadow-sm"
                           >
                             Update Status
                           </button>
@@ -1308,7 +1300,7 @@ export function AdminDashboardPage() {
 
               {/* Order Pagination */}
               {orderTotalPages > 1 && (
-                <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>
                     Page {orderPage} of {orderTotalPages}
                   </span>
@@ -1316,7 +1308,7 @@ export function AdminDashboardPage() {
                     <button
                       onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
                       disabled={orderPage <= 1}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
                     >
                       Previous
                     </button>
@@ -1325,7 +1317,7 @@ export function AdminDashboardPage() {
                         setOrderPage((p) => Math.min(orderTotalPages, p + 1))
                       }
                       disabled={orderPage >= orderTotalPages}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
                     >
                       Next
                     </button>
@@ -1340,9 +1332,9 @@ export function AdminDashboardPage() {
         {activeTab === "users" && (
           <div className="space-y-6 animate-fade-in">
             {/* User Search & Filter */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="relative flex-1 w-full max-w-md">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search users by name or email..."
@@ -1351,7 +1343,7 @@ export function AdminDashboardPage() {
                     setUserSearch(e.target.value);
                     setUserPage(1);
                   }}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -1365,8 +1357,8 @@ export function AdminDashboardPage() {
                     }}
                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
                       userRoleFilter === role
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800"
                     }`}
                   >
                     {role}
@@ -1376,9 +1368,9 @@ export function AdminDashboardPage() {
             </div>
 
             {/* Users Table */}
-            <div className="bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <div className="bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+              <table className="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4">User</th>
                     <th className="px-6 py-4">Email</th>
@@ -1387,42 +1379,42 @@ export function AdminDashboardPage() {
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                   {users.map((user) => (
                     <tr
                       key={user._id}
-                      className="hover:bg-slate-800/40 transition-colors"
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-indigo-950 border border-indigo-700/80 flex items-center justify-center font-bold text-indigo-300 uppercase">
+                          <div className="w-9 h-9 rounded-full bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-700/80 flex items-center justify-center font-bold text-indigo-700 dark:text-indigo-300 uppercase">
                             {user.username.charAt(0)}
                           </div>
-                          <span className="font-bold text-slate-100">
+                          <span className="font-bold text-slate-900 dark:text-slate-100">
                             {user.username}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-slate-300">{user.email}</td>
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.email}</td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                             user.role === "admin"
-                              ? "bg-purple-950/80 text-purple-300 border border-purple-800"
-                              : "bg-slate-800 text-slate-400 border border-slate-700"
+                              ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                           }`}
                         >
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
+                      <td className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleToggleUserRole(user)}
-                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
                           >
                             {user.role === "admin"
                               ? "Demote to User"
@@ -1434,7 +1426,7 @@ export function AdminDashboardPage() {
                               deletingUserId === user._id ||
                               user._id === userDetails.id
                             }
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/50 text-rose-400 disabled:opacity-30 transition-colors"
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 disabled:opacity-30 transition-colors"
                             title="Delete User"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1448,7 +1440,7 @@ export function AdminDashboardPage() {
 
               {/* User Pagination */}
               {userTotalPages > 1 && (
-                <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>
                     Page {userPage} of {userTotalPages}
                   </span>
@@ -1456,7 +1448,7 @@ export function AdminDashboardPage() {
                     <button
                       onClick={() => setUserPage((p) => Math.max(1, p - 1))}
                       disabled={userPage <= 1}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
                     >
                       Previous
                     </button>
@@ -1465,7 +1457,7 @@ export function AdminDashboardPage() {
                         setUserPage((p) => Math.min(userTotalPages, p + 1))
                       }
                       disabled={userPage >= userTotalPages}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
                     >
                       Next
                     </button>
@@ -1487,8 +1479,8 @@ export function AdminDashboardPage() {
                   onClick={() => setReviewStatusFilter(status)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
                     reviewStatusFilter === status
-                      ? "bg-indigo-600 text-white"
-                      : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800 shadow-sm"
                   }`}
                 >
                   {status}
@@ -1501,11 +1493,11 @@ export function AdminDashboardPage() {
               {reviews.map((rev) => (
                 <div
                   key={rev._id}
-                  className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md flex flex-col md:flex-row justify-between gap-4"
+                  className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between gap-4"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-slate-100">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
                         {rev.bookId?.title || "Book"}
                       </span>
                       <div className="flex text-amber-400 text-xs">
@@ -1514,8 +1506,8 @@ export function AdminDashboardPage() {
                             key={i}
                             className={`w-3.5 h-3.5 ${
                               i < rev.rating
-                                ? "fill-amber-400"
-                                : "text-slate-700"
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-slate-300 dark:text-slate-700"
                             }`}
                           />
                         ))}
@@ -1523,27 +1515,27 @@ export function AdminDashboardPage() {
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           rev.status === "published"
-                            ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                            ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                             : rev.status === "flagged"
-                            ? "bg-rose-950 text-rose-400 border border-rose-800"
-                            : "bg-slate-800 text-slate-400"
+                            ? "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                         }`}
                       >
                         {rev.status}
                       </span>
                     </div>
 
-                    <p className="text-sm text-slate-300 leading-relaxed italic">
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
                       "{rev.comment}"
                     </p>
 
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-slate-400 dark:text-slate-500">
                       by {rev.userId?.username} ({rev.userId?.email}) •{" "}
                       {new Date(rev.createdAt).toLocaleDateString()}
                     </div>
 
                     {rev.isReported && rev.reportReason && (
-                      <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300">
+                      <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-700 dark:text-rose-300">
                         <span className="font-bold">Flagged Reason:</span>{" "}
                         {rev.reportReason}
                       </div>
@@ -1556,7 +1548,7 @@ export function AdminDashboardPage() {
                         onClick={() =>
                           handleModerateReview(rev._id, "published")
                         }
-                        className="px-3 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 text-xs font-bold"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold"
                       >
                         Approve / Publish
                       </button>
@@ -1564,14 +1556,14 @@ export function AdminDashboardPage() {
                     {rev.status !== "hidden" && (
                       <button
                         onClick={() => handleModerateReview(rev._id, "hidden")}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold"
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-700 dark:text-amber-300 text-xs font-bold"
                       >
                         Hide Review
                       </button>
                     )}
                     <button
                       onClick={() => handleDeleteReview(rev._id)}
-                      className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 text-xs font-bold"
+                      className="px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold"
                     >
                       Delete
                     </button>
@@ -1586,35 +1578,35 @@ export function AdminDashboardPage() {
         {activeTab === "categories" && (
           <div className="space-y-8 animate-fade-in">
             <div>
-              <h3 className="text-base font-bold text-slate-100 mb-4 flex items-center gap-2">
-                <Tags className="w-5 h-5 text-indigo-400" /> Genres & Category
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <Tags className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Genres & Category
                 Breakdown
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {categories.map((cat) => (
                   <div
                     key={cat.genre}
-                    className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm"
                   >
-                    <div className="font-bold text-slate-100 text-lg mb-2">
+                    <div className="font-bold text-slate-900 dark:text-slate-100 text-lg mb-2">
                       {cat.genre}
                     </div>
-                    <div className="space-y-1 text-xs text-slate-400">
+                    <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
                       <div className="flex justify-between">
                         <span>Books in Catalog:</span>
-                        <span className="font-bold text-slate-200">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
                           {cat.bookCount}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Total Inventory Stock:</span>
-                        <span className="font-bold text-slate-200">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
                           {cat.totalStock}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Average Price:</span>
-                        <span className="font-bold text-indigo-400">
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400">
                           NPR {cat.avgPrice}
                         </span>
                       </div>
@@ -1625,29 +1617,29 @@ export function AdminDashboardPage() {
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-slate-100 mb-4 flex items-center gap-2">
-                <BookMarked className="w-5 h-5 text-purple-400" /> Author
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <BookMarked className="w-5 h-5 text-purple-600 dark:text-purple-400" /> Author
                 Directory
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {authors.map((auth) => (
                   <div
                     key={auth.author}
-                    className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-sm"
                   >
-                    <div className="font-bold text-slate-100 text-base mb-2">
+                    <div className="font-bold text-slate-900 dark:text-slate-100 text-base mb-2">
                       {auth.author}
                     </div>
-                    <div className="space-y-1 text-xs text-slate-400">
+                    <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
                       <div className="flex justify-between">
                         <span>Published Works:</span>
-                        <span className="font-bold text-slate-200">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
                           {auth.bookCount}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Average Reader Rating:</span>
-                        <span className="font-bold text-amber-400">
+                        <span className="font-bold text-amber-500 dark:text-amber-400">
                           ★ {auth.avgRating || "N/A"}
                         </span>
                       </div>
@@ -1663,14 +1655,14 @@ export function AdminDashboardPage() {
       {/* ===================== ADD / EDIT BOOK MODAL ===================== */}
       {bookModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
-              <h2 className="text-xl font-bold text-slate-100">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl my-8">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 {editingBook ? "Edit Book" : "Add New Book to Store"}
               </h2>
               <button
                 onClick={() => setBookModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-white rounded-lg"
+                className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1679,7 +1671,7 @@ export function AdminDashboardPage() {
             <form onSubmit={handleSaveBook} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     Title *
                   </label>
                   <input
@@ -1689,12 +1681,12 @@ export function AdminDashboardPage() {
                     onChange={(e) =>
                       setBookForm({ ...bookForm, title: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     Author *
                   </label>
                   <input
@@ -1704,12 +1696,12 @@ export function AdminDashboardPage() {
                     onChange={(e) =>
                       setBookForm({ ...bookForm, author: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     Genre *
                   </label>
                   <input
@@ -1719,12 +1711,12 @@ export function AdminDashboardPage() {
                     onChange={(e) =>
                       setBookForm({ ...bookForm, genre: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     ISBN
                   </label>
                   <input
@@ -1733,12 +1725,12 @@ export function AdminDashboardPage() {
                     onChange={(e) =>
                       setBookForm({ ...bookForm, isbn: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     Price (NPR) *
                   </label>
                   <input
@@ -1752,12 +1744,12 @@ export function AdminDashboardPage() {
                         price: Number(e.target.value),
                       })
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     Discount %
                   </label>
                   <input
@@ -1771,12 +1763,12 @@ export function AdminDashboardPage() {
                         discountPercentage: Number(e.target.value),
                       })
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     Stock Quantity *
                   </label>
                   <input
@@ -1790,12 +1782,12 @@ export function AdminDashboardPage() {
                         stock: Number(e.target.value),
                       })
                     }
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                     Cover Image URL
                   </label>
                   <input
@@ -1805,13 +1797,13 @@ export function AdminDashboardPage() {
                       setBookForm({ ...bookForm, image: e.target.value })
                     }
                     placeholder="https://images.unsplash.com/..."
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
                   Book Description
                 </label>
                 <textarea
@@ -1820,24 +1812,24 @@ export function AdminDashboardPage() {
                   onChange={(e) =>
                     setBookForm({ ...bookForm, description: e.target.value })
                   }
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <div className="flex items-center gap-6 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-300">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
                   <input
                     type="checkbox"
                     checked={bookForm.featured}
                     onChange={(e) =>
                       setBookForm({ ...bookForm, featured: e.target.checked })
                     }
-                    className="w-4 h-4 rounded text-indigo-600 bg-slate-950 border-slate-800"
+                    className="w-4 h-4 rounded text-indigo-600 bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800"
                   />
                   Featured in Store
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-300">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300">
                   <input
                     type="checkbox"
                     checked={bookForm.isNewArrival}
@@ -1847,17 +1839,17 @@ export function AdminDashboardPage() {
                         isNewArrival: e.target.checked,
                       })
                     }
-                    className="w-4 h-4 rounded text-indigo-600 bg-slate-950 border-slate-800"
+                    className="w-4 h-4 rounded text-indigo-600 bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-800"
                   />
                   New Arrival
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setBookModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white"
+                  className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 >
                   Cancel
                 </button>
@@ -1877,14 +1869,14 @@ export function AdminDashboardPage() {
       {/* ===================== ORDER STATUS MODAL ===================== */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <h3 className="text-lg font-bold text-slate-100">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 Update Order #{selectedOrder._id.slice(-6).toUpperCase()}
               </h3>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="p-1.5 text-slate-400 hover:text-white"
+                className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1892,13 +1884,13 @@ export function AdminDashboardPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase text-slate-600 dark:text-slate-400 mb-1.5">
                   Select New Lifecycle Status
                 </label>
                 <select
                   value={newOrderStatus}
                   onChange={(e) => setNewOrderStatus(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
@@ -1910,7 +1902,7 @@ export function AdminDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase text-slate-600 dark:text-slate-400 mb-1.5">
                   Status Note / Reason
                 </label>
                 <input
@@ -1918,14 +1910,14 @@ export function AdminDashboardPage() {
                   placeholder="e.g., Courier tracking code, verified address..."
                   value={orderStatusNote}
                   onChange={(e) => setOrderStatusNote(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 >
                   Cancel
                 </button>
@@ -1946,3 +1938,5 @@ export function AdminDashboardPage() {
     </div>
   );
 }
+
+export default AdminDashboardPage;

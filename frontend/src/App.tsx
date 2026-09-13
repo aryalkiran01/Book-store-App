@@ -1,12 +1,15 @@
 import "./App.css";
 import { QueryClientProvider } from "./query";
 import { RouterProvider } from "./router";
+import { ThemeProvider } from "./context/ThemeContext";
 
 function App() {
   return (
-    <QueryClientProvider>
-      <RouterProvider />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider>
+        <RouterProvider />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

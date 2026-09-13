@@ -45,6 +45,7 @@ import { addToCart, isInWishlist, toggleWishlist } from "../utils/cartStorage";
 import { addRecentlyViewedBook } from "../utils/recentBooks";
 import { RecentlyViewed } from "../components/RecentlyViewed";
 import { useSEO } from "../utils/useSEO";
+import { AppImage } from "../components/common/AppImage";
 
 export function BookDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -167,32 +168,36 @@ export function BookDetailsPage() {
       const res = await getBookById({ bookId });
 
       if (res.isSuccess && res.data) {
-        const bookObj = res.data.result || res.data;
-        setBook(bookObj);
-        setWishlisted(isInWishlist(bookObj._id));
-        addRecentlyViewedBook(bookObj);
+        const bookData: TBook = res.data.result || (res.data as any);
+        setBook(bookData);
+        // Track recently viewed
+        addRecentlyViewedBook({
+          _id: bookData._id,
+          title: bookData.title,
+          author: bookData.author,
+          image: bookData.image,
+          price: bookData.price,
+          discountPercentage: bookData.discountPercentage,
+          averageRating: bookData.averageRating,
+        });
 
-        // Fetch related books by genre
-        if (bookObj.genre) {
-          const firstGenre = bookObj.genre.split(",")[0].trim();
-          const relRes = await getAllBooks({
-            genre: firstGenre,
-            limit: 4,
-          });
-          if (relRes.isSuccess && relRes.data) {
-            const relList = Array.isArray(relRes.data)
-              ? relRes.data
-              : (relRes.data as any).result || [];
-            setRelatedBooks(
-              relList.filter((b: TBook) => b._id !== bookObj._id).slice(0, 3)
-            );
-          }
+        // Load related books by category
+        if (bookData.genre) {
+          getAllBooks({ genre: bookData.genre.split(",")[0].trim(), limit: 4 })
+            .then((relatedRes) => {
+              if (relatedRes.isSuccess && relatedRes.data) {
+                setRelatedBooks(
+                  relatedRes.data.filter((b) => b._id !== bookId).slice(0, 4)
+                );
+              }
+            })
+            .catch(() => {});
         }
       } else {
-        setError(res.message || "Failed to load book information.");
+        setError(res.message || "Book not found");
       }
     } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.");
+      setError(err.message || "Failed to load book details");
     } finally {
       setLoading(false);
     }
@@ -201,24 +206,24 @@ export function BookDetailsPage() {
   const loadReviews = async (
     bookId: string,
     page: number,
-    sort: typeof sortBy,
-    starFilter?: number,
+    sort: string,
+    rating?: number,
     verified?: boolean
   ) => {
     try {
       setLoadingReviews(true);
       const res = await getReviews(bookId, {
         page,
-        limit: 8,
-        sortBy: sort,
-        ratingFilter: starFilter,
+        limit: 5,
+        sortBy: sort as any,
+        ratingFilter: rating,
         verifiedOnly: verified,
       });
 
       if (res.isSuccess) {
         setReviews(res.data || []);
-        if (res.stats) setReviewStats(res.stats);
-        if (res.pagination) setPagination(res.pagination);
+        setReviewStats(res.stats || null);
+        setPagination(res.pagination || null);
       }
     } catch (err) {
       console.error("Failed to load reviews:", err);
@@ -227,7 +232,7 @@ export function BookDetailsPage() {
     }
   };
 
-  const handleAddToCart = (redirectCheckout = false) => {
+  const handleAddToCart = (directCheckout = false) => {
     if (!book) return;
     addToCart(
       {
@@ -242,7 +247,7 @@ export function BookDetailsPage() {
       quantity
     );
 
-    if (redirectCheckout) {
+    if (directCheckout) {
       navigate("/checkout");
     } else {
       setAddedToCartToast(true);
@@ -398,7 +403,7 @@ export function BookDetailsPage() {
         );
       }
     } catch (err: any) {
-      alert(err.message || "Unable to vote review as helpful");
+      console.error("Helpful toggle error:", err);
     }
   };
 
@@ -408,9 +413,9 @@ export function BookDetailsPage() {
 
     try {
       setSubmittingReport(true);
-      const res = await reportReview(reportingReviewId, reportReason);
+      const res = await reportReview(reportingReviewId, reportReason.trim());
       if (res.isSuccess) {
-        alert("Thank you. The review has been reported for moderation.");
+        alert("Thank you. This review has been flagged for moderation.");
         setReportingReviewId(null);
         setReportReason("");
       }
@@ -423,17 +428,18 @@ export function BookDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col transition-colors">
         <AppShell />
-        <div className="flex-1 max-w-6xl mx-auto px-4 py-16 w-full animate-pulse space-y-8">
-          <div className="h-6 w-32 bg-slate-800 rounded"></div>
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-5 h-96 bg-slate-900 rounded-2xl"></div>
-            <div className="md:col-span-7 space-y-4">
-              <div className="h-8 bg-slate-900 rounded w-3/4"></div>
-              <div className="h-4 bg-slate-900 rounded w-1/2"></div>
-              <div className="h-6 bg-slate-900 rounded w-1/4 mt-4"></div>
-              <div className="h-24 bg-slate-900 rounded w-full mt-6"></div>
+        <div className="max-w-6xl mx-auto px-4 py-16 w-full flex-1">
+          <div className="animate-pulse space-y-8">
+            <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-1/4"></div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+              <div className="md:col-span-5 aspect-[3/4] bg-slate-200 dark:bg-slate-800 rounded-3xl"></div>
+              <div className="md:col-span-7 space-y-4">
+                <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-3/4"></div>
+                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
+                <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -444,20 +450,20 @@ export function BookDetailsPage() {
 
   if (error || !book) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col transition-colors">
         <AppShell />
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <AlertCircle className="w-16 h-16 text-rose-500 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Book Not Found</h1>
-          <p className="text-slate-400 max-w-md mb-6">
-            {error || "The requested book could not be found in our catalog."}
+        <div className="max-w-md mx-auto px-4 py-24 text-center flex-1">
+          <AlertCircle className="w-16 h-16 text-rose-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Book Not Found</h2>
+          <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+            {error || "The book you are looking for does not exist or has been removed."}
           </p>
-          <button
-            onClick={() => navigate("/books")}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition"
+          <Link
+            to="/books"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition"
           >
-            Back to Catalog
-          </button>
+            Browse Catalog
+          </Link>
         </div>
         <Footer />
       </div>
@@ -469,56 +475,58 @@ export function BookDetailsPage() {
       ? Number((book.price * (1 - book.discountPercentage / 100)).toFixed(2))
       : book.price;
 
-  const inStock = (book.stock ?? 10) > 0;
+  const inStock = (book.stock || 0) > 0;
   const ratingValue = book.averageRating || reviewStats?.averageRating || 0;
   const totalReviewsCount =
-    book.totalReviews !== undefined
-      ? book.totalReviews
-      : reviewStats?.totalReviews || reviews.length;
+    book.totalReviews || reviewStats?.totalReviews || reviews.length || 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col transition-colors duration-150">
       <AppShell />
 
-      {/* Added to Cart Notification Toast */}
+      {/* Added to cart toast */}
       {addedToCartToast && (
-        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="font-semibold text-sm">
-            Added "{book.title}" to cart!
-          </span>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-emerald-600 text-white px-5 py-3.5 rounded-2xl shadow-2xl animate-fade-in text-sm font-semibold">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+          <span>Added &ldquo;{book.title}&rdquo; to your shopping cart!</span>
+          <Link
+            to="/cart"
+            className="ml-2 underline font-bold hover:text-emerald-100 text-xs uppercase"
+          >
+            View Cart
+          </Link>
         </div>
       )}
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-8 w-full">
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs font-medium text-slate-400 mb-8">
-          <Link to="/" className="hover:text-white transition">
+        <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6 overflow-x-auto whitespace-nowrap">
+          <Link to="/" className="hover:text-indigo-600 dark:hover:text-white transition">
             Home
           </Link>
           <span>/</span>
-          <Link to="/books" className="hover:text-white transition">
+          <Link to="/books" className="hover:text-indigo-600 dark:hover:text-white transition">
             Books
           </Link>
           <span>/</span>
-          <span className="text-slate-200 truncate max-w-xs">{book.title}</span>
+          <span className="text-slate-800 dark:text-slate-200 truncate max-w-xs">{book.title}</span>
         </nav>
 
         {/* Product Details Hero Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 sm:p-10 backdrop-blur-xl">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 sm:p-10 backdrop-blur-xl shadow-xs dark:shadow-none transition-colors">
           {/* Book Cover Visual Column */}
           <div className="md:col-span-5 flex flex-col items-center">
-            <div className="relative w-full aspect-[3/4] max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-900 group">
-              <img
-                src={
-                  book.image ||
-                  "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80"
-                }
+            <div className="relative w-full aspect-[3/4] max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 group">
+              <AppImage
+                src={book.image}
                 alt={book.title}
+                fallbackType="book"
+                fallbackTitle={book.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                containerClassName="w-full h-full"
               />
               {book.discountPercentage && book.discountPercentage > 0 ? (
-                <div className="absolute top-3 left-3 bg-rose-600 text-white font-black text-xs px-3 py-1.5 rounded-full shadow-lg">
+                <div className="absolute top-3 left-3 bg-rose-600 text-white font-black text-xs px-3 py-1.5 rounded-full shadow-lg z-20">
                   {book.discountPercentage}% OFF
                 </div>
               ) : null}
@@ -527,10 +535,10 @@ export function BookDetailsPage() {
                   e.stopPropagation();
                   handleToggleWishlist();
                 }}
-                className={`absolute top-3 right-3 p-2.5 rounded-full shadow-lg backdrop-blur-md transition-all ${
+                className={`absolute top-3 right-3 p-2.5 rounded-full shadow-lg backdrop-blur-md transition-all z-20 ${
                   wishlisted
                     ? "bg-rose-600 text-white hover:bg-rose-700"
-                    : "bg-slate-950/70 text-slate-300 hover:text-white hover:bg-slate-900/90"
+                    : "bg-white/80 dark:bg-slate-950/70 text-slate-700 dark:text-slate-300 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-900/90"
                 }`}
                 title={wishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
               >
@@ -543,17 +551,17 @@ export function BookDetailsPage() {
             </div>
 
             {/* Quick Guarantee Badges */}
-            <div className="grid grid-cols-3 gap-2 w-full max-w-sm mt-6 text-center text-slate-400 text-[11px]">
-              <div className="flex flex-col items-center p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                <Truck size={18} className="text-indigo-400 mb-1" />
+            <div className="grid grid-cols-3 gap-2 w-full max-w-sm mt-6 text-center text-slate-600 dark:text-slate-400 text-[11px]">
+              <div className="flex flex-col items-center p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <Truck size={18} className="text-indigo-600 dark:text-indigo-400 mb-1" />
                 <span>Fast Delivery</span>
               </div>
-              <div className="flex flex-col items-center p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                <ShieldCheck size={18} className="text-emerald-400 mb-1" />
+              <div className="flex flex-col items-center p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 mb-1" />
                 <span>Original Copy</span>
               </div>
-              <div className="flex flex-col items-center p-2 rounded-xl bg-slate-900/60 border border-slate-800">
-                <RotateCcw size={18} className="text-amber-400 mb-1" />
+              <div className="flex flex-col items-center p-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <RotateCcw size={18} className="text-amber-600 dark:text-amber-400 mb-1" />
                 <span>Easy Returns</span>
               </div>
             </div>
@@ -567,7 +575,7 @@ export function BookDetailsPage() {
                 {book.genre?.split(",").map((g, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1 bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 rounded-full text-xs font-semibold"
+                    className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded-full text-xs font-semibold"
                   >
                     {g.trim()}
                   </span>
@@ -575,31 +583,31 @@ export function BookDetailsPage() {
               </div>
 
               {/* Title & Author */}
-              <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
                 {book.title}
               </h1>
-              <p className="text-base sm:text-lg text-slate-300 font-medium mb-4">
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-medium mb-4">
                 by{" "}
                 <Link
                   to={`/books?author=${encodeURIComponent(book.author)}`}
-                  className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4 decoration-indigo-400/40 hover:decoration-indigo-300 transition"
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline transition"
                 >
                   {book.author}
                 </Link>
               </p>
 
               {/* Ratings Summary Banner */}
-              <div className="flex items-center gap-3 mb-6 bg-slate-950/50 border border-slate-800/80 p-3 rounded-2xl w-fit">
-                <div className="flex items-center gap-1 text-amber-400">
+              <div className="flex items-center gap-3 mb-6 bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800/80 p-3 rounded-2xl w-fit">
+                <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400">
                   <Star size={18} fill="currentColor" />
-                  <span className="font-bold text-white text-base">
+                  <span className="font-bold text-slate-900 dark:text-white text-base">
                     {ratingValue.toFixed(1)}
                   </span>
                 </div>
-                <span className="text-slate-500">|</span>
+                <span className="text-slate-400 dark:text-slate-500">|</span>
                 <a
                   href="#reviews-section"
-                  className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition"
+                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition"
                 >
                   {totalReviewsCount} {totalReviewsCount === 1 ? "Review" : "Reviews"}
                 </a>
@@ -607,28 +615,27 @@ export function BookDetailsPage() {
 
               {/* Pricing & Stock Banner */}
               <div className="flex items-baseline gap-4 mb-6">
-                <span className="text-3xl sm:text-4xl font-black text-white">
+                <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">
                   NPR {finalPrice.toLocaleString()}
                 </span>
                 {book.discountPercentage && book.discountPercentage > 0 ? (
                   <>
-                    <span className="text-lg text-slate-500 line-through">
+                    <span className="text-lg text-slate-400 dark:text-slate-500 line-through">
                       NPR {book.price.toLocaleString()}
                     </span>
-                    <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-2.5 py-1 rounded-full">
-                      Save NPR{" "}
-                      {(book.price - finalPrice).toLocaleString()}
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-full">
+                      Save NPR {(book.price - finalPrice).toLocaleString()}
                     </span>
                   </>
                 ) : null}
 
                 <div className="ml-auto">
                   {inStock ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1.5 rounded-full">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-full">
                       <CheckCircle2 size={14} /> In Stock ({book.stock} left)
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800/80 px-3 py-1.5 rounded-full">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 px-3 py-1.5 rounded-full">
                       <AlertCircle size={14} /> Out of Stock
                     </span>
                   )}
@@ -637,53 +644,42 @@ export function BookDetailsPage() {
 
               {/* Description Overview */}
               <div className="mb-6">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-2">
                   <BookOpen size={14} /> Overview
                 </h3>
-                <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">
-                  {book.description ||
-                    "No description provided for this title."}
+                <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-line">
+                  {book.description || "No description provided for this title."}
                 </p>
               </div>
 
               {/* Specifications Matrix */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/60 border border-slate-800/80 p-4 rounded-xl text-xs text-slate-300 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 p-4 rounded-xl text-xs text-slate-700 dark:text-slate-300 mb-6">
                 {book.isbn ? (
                   <div>
-                    <span className="text-slate-500 block font-medium">
-                      ISBN
-                    </span>
-                    <span className="font-semibold text-slate-200">
-                      {book.isbn}
-                    </span>
+                    <span className="text-slate-500 block font-medium">ISBN</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-200">{book.isbn}</span>
                   </div>
                 ) : null}
                 {book.publisher ? (
                   <div>
-                    <span className="text-slate-500 block font-medium">
-                      Publisher
-                    </span>
-                    <span className="font-semibold text-slate-200 flex items-center gap-1">
+                    <span className="text-slate-500 block font-medium">Publisher</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
                       <Building size={12} /> {book.publisher}
                     </span>
                   </div>
                 ) : null}
                 {book.publicationDate ? (
                   <div>
-                    <span className="text-slate-500 block font-medium">
-                      Published
-                    </span>
-                    <span className="font-semibold text-slate-200 flex items-center gap-1">
+                    <span className="text-slate-500 block font-medium">Published</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
                       <Calendar size={12} /> {book.publicationDate}
                     </span>
                   </div>
                 ) : null}
                 {book.language ? (
                   <div>
-                    <span className="text-slate-500 block font-medium">
-                      Language
-                    </span>
-                    <span className="font-semibold text-slate-200 flex items-center gap-1">
+                    <span className="text-slate-500 block font-medium">Language</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-200 flex items-center gap-1">
                       <Globe size={12} /> {book.language}
                     </span>
                   </div>
@@ -692,17 +688,17 @@ export function BookDetailsPage() {
             </div>
 
             {/* CTA Controls */}
-            <div className="pt-4 border-t border-slate-800">
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 {inStock && (
-                  <div className="flex items-center border border-slate-700 bg-slate-900 rounded-xl px-2 py-1">
+                  <div className="flex items-center border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 rounded-xl px-2 py-1">
                     <button
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      className="px-3 py-1 text-lg font-bold text-slate-400 hover:text-white transition"
+                      className="px-3 py-1 text-lg font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
                     >
                       -
                     </button>
-                    <span className="px-4 font-bold text-white text-base">
+                    <span className="px-4 font-bold text-slate-900 dark:text-white text-base">
                       {quantity}
                     </span>
                     <button
@@ -711,7 +707,7 @@ export function BookDetailsPage() {
                           Math.min(book.stock || 20, q + 1)
                         )
                       }
-                      className="px-3 py-1 text-lg font-bold text-slate-400 hover:text-white transition"
+                      className="px-3 py-1 text-lg font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
                     >
                       +
                     </button>
@@ -724,7 +720,7 @@ export function BookDetailsPage() {
                   className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
                     inStock
                       ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 active:scale-[0.98]"
-                      : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                      : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                   }`}
                 >
                   <ShoppingCart size={18} /> Add to Cart
@@ -736,7 +732,7 @@ export function BookDetailsPage() {
                   className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
                     inStock
                       ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold active:scale-[0.98]"
-                      : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                      : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                   }`}
                 >
                   <Zap size={18} fill="currentColor" /> Buy Now
@@ -746,8 +742,8 @@ export function BookDetailsPage() {
                   onClick={handleToggleWishlist}
                   className={`p-3 rounded-xl border transition flex items-center justify-center ${
                     wishlisted
-                      ? "bg-rose-600/20 border-rose-500 text-rose-400 hover:bg-rose-600/30"
-                      : "bg-slate-900 border-slate-700 text-slate-300 hover:text-white hover:border-slate-600"
+                      ? "bg-rose-50 dark:bg-rose-600/20 border-rose-300 dark:border-rose-500 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
+                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                   }`}
                   title={wishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
                 >
@@ -758,23 +754,23 @@ export function BookDetailsPage() {
           </div>
         </div>
 
-        {/* PHASE 5: RATINGS & REVIEWS SECTION */}
+        {/* RATINGS & REVIEWS SECTION */}
         <section
           id="reviews-section"
-          className="mt-16 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 sm:p-10"
+          className="mt-16 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 sm:p-10 shadow-xs dark:shadow-none transition-colors"
         >
           {/* Section Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-slate-800">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-slate-200 dark:border-slate-800">
             <div>
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
                   Customer Reviews & Ratings
                 </h2>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
                   {totalReviewsCount} Reviews
                 </span>
               </div>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
                 Honest feedback from readers and verified purchasers
               </p>
             </div>
@@ -788,13 +784,13 @@ export function BookDetailsPage() {
           </div>
 
           {/* Rating Breakdown & Stats Matrix */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 my-8 pb-8 border-b border-slate-800">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 my-8 pb-8 border-b border-slate-200 dark:border-slate-800">
             {/* Overall Score Box */}
-            <div className="md:col-span-4 bg-slate-950/70 border border-slate-800/80 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
-              <span className="text-5xl font-black text-white mb-2">
+            <div className="md:col-span-4 bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+              <span className="text-5xl font-black text-slate-900 dark:text-white mb-2">
                 {ratingValue > 0 ? ratingValue.toFixed(1) : "0.0"}
               </span>
-              <div className="flex text-amber-400 mb-2">
+              <div className="flex text-amber-500 dark:text-amber-400 mb-2">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Star
                     key={s}
@@ -804,18 +800,17 @@ export function BookDetailsPage() {
                         ? "fill-amber-400 text-amber-400"
                         : ratingValue >= s - 0.5
                         ? "fill-amber-400/50 text-amber-400"
-                        : "text-slate-700"
+                        : "text-slate-300 dark:text-slate-700"
                     }
                   />
                 ))}
               </div>
-              <p className="text-xs text-slate-400 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 Based on {totalReviewsCount} customer ratings
               </p>
               {reviewStats?.verifiedReviewsCount ? (
-                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                  <ShieldCheck size={13} /> {reviewStats.verifiedReviewsCount}{" "}
-                  Verified Buyers
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+                  <ShieldCheck size={13} /> {reviewStats.verifiedReviewsCount} Verified Buyers
                 </div>
               ) : null}
             </div>
@@ -838,26 +833,26 @@ export function BookDetailsPage() {
                     }}
                     className={`flex items-center gap-3 group text-left w-full p-1.5 rounded-lg transition ${
                       isSelected
-                        ? "bg-indigo-950/60 ring-1 ring-indigo-500/50"
-                        : "hover:bg-slate-800/40"
+                        ? "bg-indigo-50 dark:bg-indigo-950/60 ring-1 ring-indigo-300 dark:ring-indigo-500/50"
+                        : "hover:bg-slate-100 dark:hover:bg-slate-800/40"
                     }`}
                   >
-                    <span className="w-12 text-xs font-semibold text-slate-300 flex items-center gap-1">
+                    <span className="w-12 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                       {stars} <Star size={12} className="fill-amber-400 text-amber-400" />
                     </span>
 
                     {/* Progress Bar */}
-                    <div className="flex-1 h-3 bg-slate-800 rounded-full overflow-hidden relative">
+                    <div className="flex-1 h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
                       <div
                         className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-500"
                         style={{ width: `${distItem.percentage}%` }}
                       ></div>
                     </div>
 
-                    <span className="w-12 text-right text-xs font-mono text-slate-400">
+                    <span className="w-12 text-right text-xs font-mono text-slate-600 dark:text-slate-400">
                       {distItem.percentage}%
                     </span>
-                    <span className="w-8 text-right text-xs text-slate-500">
+                    <span className="w-8 text-right text-xs text-slate-400 dark:text-slate-500">
                       ({distItem.count})
                     </span>
                   </button>
@@ -868,15 +863,15 @@ export function BookDetailsPage() {
 
           {/* Interactive Review Modal / Form */}
           {showReviewForm && (
-            <div className="mb-10 bg-slate-950 border border-indigo-500/40 p-6 sm:p-8 rounded-2xl shadow-2xl relative">
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Edit3 size={18} className="text-indigo-400" />
+            <div className="mb-10 bg-slate-50 dark:bg-slate-950 border border-indigo-200 dark:border-indigo-500/40 p-6 sm:p-8 rounded-2xl shadow-2xl relative">
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-slate-800">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Edit3 size={18} className="text-indigo-600 dark:text-indigo-400" />
                   {editingReviewId ? "Edit Your Review" : "Write a Customer Review"}
                 </h3>
                 <button
                   onClick={() => setShowReviewForm(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition"
                 >
                   <X size={18} />
                 </button>
@@ -886,8 +881,8 @@ export function BookDetailsPage() {
                 <div
                   className={`p-3.5 rounded-xl text-xs font-semibold mb-4 ${
                     reviewMsg.type === "success"
-                      ? "bg-emerald-950/80 text-emerald-300 border border-emerald-800/60"
-                      : "bg-rose-950/80 text-rose-300 border border-rose-800/60"
+                      ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60"
+                      : "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60"
                   }`}
                 >
                   {reviewMsg.text}
@@ -896,7 +891,7 @@ export function BookDetailsPage() {
 
               <form onSubmit={handleReviewSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                     Overall Rating *
                   </label>
                   <div className="flex items-center gap-2">
@@ -914,19 +909,19 @@ export function BookDetailsPage() {
                           className={
                             (hoverRating || ratingInput) >= star
                               ? "fill-amber-400 text-amber-400"
-                              : "text-slate-700"
+                              : "text-slate-300 dark:text-slate-700"
                           }
                         />
                       </button>
                     ))}
-                    <span className="text-sm font-bold text-amber-300 ml-3">
+                    <span className="text-sm font-bold text-amber-600 dark:text-amber-300 ml-3">
                       {ratingInput} of 5 Stars
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Headline / Title (Optional)
                   </label>
                   <input
@@ -934,12 +929,12 @@ export function BookDetailsPage() {
                     value={titleInput}
                     onChange={(e) => setTitleInput(e.target.value)}
                     placeholder="e.g. Masterpiece of storytelling!"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Written Review *
                   </label>
                   <textarea
@@ -948,7 +943,7 @@ export function BookDetailsPage() {
                     onChange={(e) => setReviewTextInput(e.target.value)}
                     placeholder="What did you like or dislike about this book? Who would you recommend it to?"
                     required
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                   />
                 </div>
 
@@ -956,7 +951,7 @@ export function BookDetailsPage() {
                   <button
                     type="button"
                     onClick={() => setShowReviewForm(false)}
-                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:bg-slate-800 transition"
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
                   >
                     Cancel
                   </button>
@@ -989,7 +984,7 @@ export function BookDetailsPage() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   ratingFilter === undefined && !verifiedOnly
                     ? "bg-indigo-600 text-white"
-                    : "bg-slate-800/80 text-slate-400 hover:text-white"
+                    : "bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 All Reviews
@@ -1003,18 +998,18 @@ export function BookDetailsPage() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
                   verifiedOnly
                     ? "bg-emerald-600 text-white"
-                    : "bg-slate-800/80 text-slate-400 hover:text-white"
+                    : "bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <ShieldCheck size={13} /> Verified Purchases
               </button>
 
               {ratingFilter !== undefined && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
                   {ratingFilter} Stars
                   <X
                     size={13}
-                    className="cursor-pointer hover:text-white"
+                    className="cursor-pointer hover:text-slate-900 dark:hover:text-white"
                     onClick={() => {
                       setRatingFilter(undefined);
                       setReviewPage(1);
@@ -1026,7 +1021,7 @@ export function BookDetailsPage() {
 
             {/* Sort Dropdown */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 flex items-center gap-1">
+              <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                 <SlidersHorizontal size={13} /> Sort by:
               </span>
               <select
@@ -1035,7 +1030,7 @@ export function BookDetailsPage() {
                   setSortBy(e.target.value as any);
                   setReviewPage(1);
                 }}
-                className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -1052,14 +1047,14 @@ export function BookDetailsPage() {
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-28 bg-slate-950/60 rounded-2xl border border-slate-800"
+                  className="h-28 bg-slate-100 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800"
                 ></div>
               ))}
             </div>
           ) : reviews.length === 0 ? (
-            <div className="text-center py-16 bg-slate-950/40 rounded-2xl border border-slate-800/60">
-              <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h4 className="text-slate-300 font-bold mb-1">
+            <div className="text-center py-16 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-200 dark:border-slate-800/60">
+              <BookOpen className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+              <h4 className="text-slate-800 dark:text-slate-300 font-bold mb-1">
                 No reviews match your filters
               </h4>
               <p className="text-slate-500 text-xs max-w-sm mx-auto mb-4">
@@ -1070,7 +1065,7 @@ export function BookDetailsPage() {
                   setRatingFilter(undefined);
                   setVerifiedOnly(false);
                 }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition"
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl transition"
               >
                 Reset Filters
               </button>
@@ -1095,12 +1090,12 @@ export function BookDetailsPage() {
                 return (
                   <div
                     key={rev._id}
-                    className="bg-slate-950/70 border border-slate-800/80 p-5 sm:p-6 rounded-2xl transition hover:border-slate-700"
+                    className="bg-slate-50/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80 p-5 sm:p-6 rounded-2xl transition hover:border-slate-300 dark:hover:border-slate-700"
                   >
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-700 to-purple-800 border border-indigo-500/30 flex items-center justify-center text-white font-black text-xs shadow-inner">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-purple-700 border border-indigo-400/30 flex items-center justify-center text-white font-black text-xs shadow-inner">
                           {rev.username ? (
                             rev.username.substring(0, 2).toUpperCase()
                           ) : (
@@ -1109,11 +1104,11 @@ export function BookDetailsPage() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-white">
+                            <span className="font-bold text-sm text-slate-900 dark:text-white">
                               {rev.username || "Anonymous Reader"}
                             </span>
                             {rev.isVerifiedPurchase && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/60">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/60">
                                 <Check size={11} /> Verified Buyer
                               </span>
                             )}
@@ -1134,7 +1129,7 @@ export function BookDetailsPage() {
                       </div>
 
                       {/* Stars */}
-                      <div className="flex text-amber-400 gap-0.5">
+                      <div className="flex text-amber-500 dark:text-amber-400 gap-0.5">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star
                             key={s}
@@ -1142,7 +1137,7 @@ export function BookDetailsPage() {
                             className={
                               rev.rating >= s
                                 ? "fill-amber-400 text-amber-400"
-                                : "text-slate-700"
+                                : "text-slate-300 dark:text-slate-700"
                             }
                           />
                         ))}
@@ -1151,24 +1146,24 @@ export function BookDetailsPage() {
 
                     {/* Review Title & Body */}
                     {rev.title && (
-                      <h4 className="font-bold text-sm text-slate-100 mb-1">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 mb-1">
                         {rev.title}
                       </h4>
                     )}
-                    <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line mb-4">
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line mb-4">
                       {rev.reviewText}
                     </p>
 
                     {/* Card Actions Footer */}
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-900 text-xs text-slate-400">
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-900 text-xs text-slate-500 dark:text-slate-400">
                       <div className="flex items-center gap-4">
                         {/* Helpful Button */}
                         <button
                           onClick={() => handleToggleHelpful(rev._id)}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
                             hasVotedHelpful
-                              ? "bg-indigo-950/80 text-indigo-300 border border-indigo-700"
-                              : "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                              ? "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700"
+                              : "bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                           }`}
                         >
                           <ThumbsUp size={13} className={hasVotedHelpful ? "fill-current" : ""} />
@@ -1184,7 +1179,7 @@ export function BookDetailsPage() {
                             }
                             setReportingReviewId(rev._id);
                           }}
-                          className="inline-flex items-center gap-1 text-slate-500 hover:text-rose-400 transition"
+                          className="inline-flex items-center gap-1 text-slate-400 hover:text-rose-500 transition"
                         >
                           <Flag size={12} /> Report
                         </button>
@@ -1195,14 +1190,14 @@ export function BookDetailsPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleOpenReviewForm(rev)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-300 hover:bg-slate-900 rounded-lg transition"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-slate-200 dark:hover:bg-slate-900 rounded-lg transition"
                             title="Edit Review"
                           >
                             <Edit3 size={14} />
                           </button>
                           <button
                             onClick={() => setDeletingReviewId(rev._id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-rose-500 hover:bg-slate-200 dark:hover:bg-slate-900 rounded-lg transition"
                             title="Delete Review"
                           >
                             <Trash2 size={14} />
@@ -1218,11 +1213,11 @@ export function BookDetailsPage() {
 
           {/* Review Pagination Controls */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-slate-800">
+            <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
               <button
                 disabled={!pagination.hasPrev}
                 onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
-                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -1234,8 +1229,8 @@ export function BookDetailsPage() {
                     onClick={() => setReviewPage(p)}
                     className={`w-9 h-9 rounded-xl text-xs font-bold transition ${
                       reviewPage === p
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                        : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     {p}
@@ -1246,7 +1241,7 @@ export function BookDetailsPage() {
               <button
                 disabled={!pagination.hasNext}
                 onClick={() => setReviewPage((p) => p + 1)}
-                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 <ChevronRight size={16} />
               </button>
@@ -1256,12 +1251,12 @@ export function BookDetailsPage() {
 
         {/* Report Review Modal */}
         {reportingReviewId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-                <Flag size={16} className="text-rose-400" /> Report Inappropriate Review
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <Flag size={16} className="text-rose-500" /> Report Inappropriate Review
               </h3>
-              <p className="text-xs text-slate-400 mb-4">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
                 Please explain why this review violates community guidelines or is abusive.
               </p>
               <form onSubmit={handleReportSubmit}>
@@ -1271,7 +1266,7 @@ export function BookDetailsPage() {
                   onChange={(e) => setReportReason(e.target.value)}
                   placeholder="Reason for reporting..."
                   required
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-4 resize-none"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 mb-4 resize-none"
                 />
                 <div className="flex items-center justify-end gap-2">
                   <button
@@ -1280,14 +1275,14 @@ export function BookDetailsPage() {
                       setReportingReviewId(null);
                       setReportReason("");
                     }}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800 transition"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submittingReport}
-                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition"
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition shadow-md"
                   >
                     {submittingReport ? "Reporting..." : "Submit Report"}
                   </button>
@@ -1299,25 +1294,25 @@ export function BookDetailsPage() {
 
         {/* Delete Confirmation Modal */}
         {deletingReviewId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center">
               <Trash2 className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-white mb-2">Delete Review?</h3>
-              <p className="text-xs text-slate-400 mb-6">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Delete Review?</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-6">
                 Are you sure you want to permanently delete this review? This action cannot be undone.
               </p>
               <div className="flex items-center justify-center gap-3">
                 <button
                   type="button"
                   onClick={() => setDeletingReviewId(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800 transition"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteReview(deletingReviewId)}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition"
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition shadow-md"
                 >
                   Confirm Delete
                 </button>
@@ -1330,10 +1325,10 @@ export function BookDetailsPage() {
         {relatedBooks.length > 0 && (
           <section className="mt-16">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">More Books You Might Like</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">More Books You Might Like</h2>
               <Link
                 to="/books"
-                className="text-indigo-400 hover:text-indigo-300 text-sm font-semibold"
+                className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-semibold"
               >
                 View All &rarr;
               </Link>
@@ -1355,35 +1350,35 @@ export function BookDetailsPage() {
                   <Link
                     key={relBook._id}
                     to={`/books/${relBook._id}`}
-                    className="group bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex flex-col hover:border-indigo-500/50 hover:shadow-xl hover:-translate-y-1 transition duration-300"
+                    className="group bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex flex-col hover:border-indigo-400 dark:hover:border-indigo-500/50 hover:shadow-xl hover:-translate-y-1 transition duration-300 shadow-xs dark:shadow-none"
                   >
-                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-slate-950">
-                      <img
-                        src={
-                          relBook.image ||
-                          "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80"
-                        }
+                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-slate-100 dark:bg-slate-950">
+                      <AppImage
+                        src={relBook.image}
                         alt={relBook.title}
+                        fallbackType="book"
+                        fallbackTitle={relBook.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        containerClassName="w-full h-full"
                       />
                       {relBook.discountPercentage ? (
-                        <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-20 shadow-md">
                           {relBook.discountPercentage}% OFF
                         </span>
                       ) : null}
                     </div>
-                    <h3 className="font-bold text-sm text-white line-clamp-1 group-hover:text-indigo-400 transition">
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
                       {relBook.title}
                     </h3>
-                    <p className="text-xs text-slate-400 line-clamp-1 mb-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-2">
                       by {relBook.author}
                     </p>
                     <div className="mt-auto flex items-baseline gap-2">
-                      <span className="font-bold text-sm text-white">
+                      <span className="font-bold text-sm text-slate-900 dark:text-white">
                         NPR {relPrice.toLocaleString()}
                       </span>
                       {relBook.discountPercentage ? (
-                        <span className="text-xs text-slate-500 line-through">
+                        <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
                           NPR {relBook.price.toLocaleString()}
                         </span>
                       ) : null}
@@ -1395,7 +1390,7 @@ export function BookDetailsPage() {
           </section>
         )}
 
-        <RecentlyViewed currentBookId={book?._id} className="mt-12 border-t border-slate-800 pt-8" />
+        <RecentlyViewed currentBookId={book?._id} className="mt-12 border-t border-slate-200 dark:border-slate-800 pt-8" />
       </main>
 
       <Footer />
