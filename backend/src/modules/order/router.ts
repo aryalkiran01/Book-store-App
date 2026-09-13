@@ -6,11 +6,16 @@ import {
   getOrderByIdController,
   getOrdersByUserController,
   updateOrderStatusController,
+  validateCartController,
 } from "./controller";
 import { checkAdmin, checkAuth } from "../auth/middleware";
 
 function createOrderRouter() {
   const router = Router();
+
+  // Public cart calculation & live stock validation
+  router.post("/validate-cart", validateCartController);
+  router.post("/preview", validateCartController);
 
   // Admin routes
   router.get("/admin/all", checkAuth, checkAdmin, getAllOrdersController);
@@ -27,4 +32,3 @@ function createOrderRouter() {
 }
 
 export const orderRouter = createOrderRouter();
-

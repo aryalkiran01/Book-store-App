@@ -17,30 +17,31 @@ import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
 import {
   Star,
+  Heart,
   ShoppingCart,
-  Zap,
-  BookOpen,
-  CheckCircle2,
-  AlertCircle,
   Truck,
   ShieldCheck,
   RotateCcw,
-  Sparkles,
-  User,
+  BookOpen,
   Calendar,
-  Globe,
   Building,
+  Globe,
+  CheckCircle2,
+  AlertCircle,
   ThumbsUp,
   Flag,
   Edit3,
   Trash2,
+  Check,
+  Zap,
+  User,
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
-  Check,
   X,
   MessageSquarePlus,
 } from "lucide-react";
+import { addToCart, isInWishlist, toggleWishlist } from "../utils/cartStorage";
 
 export function BookDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -59,6 +60,7 @@ export function BookDetailsPage() {
   // Interaction states
   const [quantity, setQuantity] = useState(1);
   const [addedToCartToast, setAddedToCartToast] = useState(false);
+  const [wishlisted, setWishlisted] = useState(false);
 
   // Review Filtering & Sorting states
   const [reviewPage, setReviewPage] = useState(1);
@@ -96,6 +98,21 @@ export function BookDetailsPage() {
   }, [id]);
 
   useEffect(() => {
+    if (book) {
+      setWishlisted(isInWishlist(book._id));
+    }
+    const syncWishlist = () => {
+      if (book) setWishlisted(isInWishlist(book._id));
+    };
+    window.addEventListener("cart-wishlist-update", syncWishlist);
+    window.addEventListener("storage", syncWishlist);
+    return () => {
+      window.removeEventListener("cart-wishlist-update", syncWishlist);
+      window.removeEventListener("storage", syncWishlist);
+    };
+  }, [book]);
+
+  useEffect(() => {
     if (id) {
       loadReviews(id, reviewPage, sortBy, ratingFilter, verifiedOnly);
     }
@@ -110,25 +127,29 @@ export function BookDetailsPage() {
       if (res.isSuccess && res.data) {
         const bookObj = res.data.result || res.data;
         setBook(bookObj);
+        setWishlisted(isInWishlist(bookObj._id));
 
         // Fetch related books by genre
         if (bookObj.genre) {
-          const primaryGenre = bookObj.genre.split(",")[0].trim();
-          const relatedRes = await getAllBooks({
-            genre: primaryGenre,
+          const firstGenre = bookObj.genre.split(",")[0].trim();
+          const relRes = await getAllBooks({
+            genre: firstGenre,
             limit: 4,
           });
-          if (relatedRes.isSuccess && relatedRes.data) {
+          if (relRes.isSuccess && relRes.data) {
+            const relList = Array.isArray(relRes.data)
+              ? relRes.data
+              : (relRes.data as any).result || [];
             setRelatedBooks(
-              relatedRes.data.filter((b) => b._id !== bookObj._id)
+              relList.filter((b: TBook) => b._id !== bookObj._id).slice(0, 3)
             );
           }
         }
       } else {
-        setError(res.message || "Book details not found");
+        setError(res.message || "Failed to load book information.");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load book details");
+      setError(err?.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -165,41 +186,41 @@ export function BookDetailsPage() {
 
   const handleAddToCart = (redirectCheckout = false) => {
     if (!book) return;
-    const effectivePrice =
-      book.discountPercentage && book.discountPercentage > 0
-        ? Number(
-            (book.price * (1 - book.discountPercentage / 100)).toFixed(2)
-          )
-        : book.price;
-
-    const savedCart = localStorage.getItem("cart");
-    const cart = savedCart ? JSON.parse(savedCart) : [];
-
-    const existingIndex = cart.findIndex((item: any) => item._id === book._id);
-    if (existingIndex > -1) {
-      cart[existingIndex].quantity =
-        (cart[existingIndex].quantity || 1) + quantity;
-    } else {
-      cart.push({
+    addToCart(
+      {
         _id: book._id,
         title: book.title,
         author: book.author,
-        price: effectivePrice,
-        originalPrice: book.price,
+        price: book.price,
+        discountPercentage: book.discountPercentage,
         image: book.image,
-        quantity: quantity,
-      });
-    }
-
-    localStorage.setItem("cart", JSON.stringify(cart));
-    window.dispatchEvent(new Event("storage"));
+        stock: book.stock,
+      },
+      quantity
+    );
 
     if (redirectCheckout) {
-      navigate("/Checkout");
+      navigate("/checkout");
     } else {
       setAddedToCartToast(true);
       setTimeout(() => setAddedToCartToast(false), 3000);
     }
+  };
+
+  const handleToggleWishlist = () => {
+    if (!book) return;
+    const isNowInWishlist = toggleWishlist({
+      _id: book._id,
+      title: book.title,
+      author: book.author,
+      price: book.price,
+      discountPercentage: book.discountPercentage,
+      image: book.image,
+      stock: book.stock,
+      genre: book.genre,
+      rating: book.averageRating,
+    });
+    setWishlisted(isNowInWishlist);
   };
 
   const handleOpenReviewForm = (existingRev?: TReview) => {
@@ -458,11 +479,24 @@ export function BookDetailsPage() {
                   {book.discountPercentage}% OFF
                 </div>
               ) : null}
-              {book.featured && (
-                <div className="absolute top-3 right-3 bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
-                  <Sparkles size={12} fill="currentColor" /> FEATURED
-                </div>
-              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleWishlist();
+                }}
+                className={`absolute top-3 right-3 p-2.5 rounded-full shadow-lg backdrop-blur-md transition-all ${
+                  wishlisted
+                    ? "bg-rose-600 text-white hover:bg-rose-700"
+                    : "bg-slate-950/70 text-slate-300 hover:text-white hover:bg-slate-900/90"
+                }`}
+                title={wishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+              >
+                <Heart
+                  size={18}
+                  fill={wishlisted ? "currentColor" : "none"}
+                  className={wishlisted ? "text-white" : ""}
+                />
+              </button>
             </div>
 
             {/* Quick Guarantee Badges */}
@@ -501,37 +535,31 @@ export function BookDetailsPage() {
               <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">
                 {book.title}
               </h1>
-              <p className="text-slate-400 text-base mb-4">
+              <p className="text-base sm:text-lg text-slate-300 font-medium mb-4">
                 by{" "}
-                <span className="text-indigo-300 font-semibold">
+                <Link
+                  to={`/books?author=${encodeURIComponent(book.author)}`}
+                  className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4 decoration-indigo-400/40 hover:decoration-indigo-300 transition"
+                >
                   {book.author}
-                </span>
+                </Link>
               </p>
 
-              {/* Ratings Summary */}
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
-                <div className="flex text-amber-400">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      size={18}
-                      className={
-                        ratingValue >= star
-                          ? "fill-amber-400"
-                          : ratingValue >= star - 0.5
-                          ? "fill-amber-400/50"
-                          : "text-slate-700"
-                      }
-                    />
-                  ))}
+              {/* Ratings Summary Banner */}
+              <div className="flex items-center gap-3 mb-6 bg-slate-950/50 border border-slate-800/80 p-3 rounded-2xl w-fit">
+                <div className="flex items-center gap-1 text-amber-400">
+                  <Star size={18} fill="currentColor" />
+                  <span className="font-bold text-white text-base">
+                    {ratingValue.toFixed(1)}
+                  </span>
                 </div>
-                <span className="font-bold text-white text-sm">
-                  {ratingValue > 0 ? ratingValue.toFixed(1) : "Unrated"}
-                </span>
-                <span className="text-slate-500 text-xs">
-                  ({totalReviewsCount}{" "}
-                  {totalReviewsCount === 1 ? "review" : "reviews"})
-                </span>
+                <span className="text-slate-500">|</span>
+                <a
+                  href="#reviews-section"
+                  className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition"
+                >
+                  {totalReviewsCount} {totalReviewsCount === 1 ? "Review" : "Reviews"}
+                </a>
               </div>
 
               {/* Pricing & Stock Banner */}
@@ -622,7 +650,7 @@ export function BookDetailsPage() {
 
             {/* CTA Controls */}
             <div className="pt-4 border-t border-slate-800">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
                 {inStock && (
                   <div className="flex items-center border border-slate-700 bg-slate-900 rounded-xl px-2 py-1">
                     <button
@@ -650,7 +678,7 @@ export function BookDetailsPage() {
                 <button
                   disabled={!inStock}
                   onClick={() => handleAddToCart(false)}
-                  className={`flex-1 w-full py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
+                  className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
                     inStock
                       ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 active:scale-[0.98]"
                       : "bg-slate-800 text-slate-500 cursor-not-allowed"
@@ -662,13 +690,25 @@ export function BookDetailsPage() {
                 <button
                   disabled={!inStock}
                   onClick={() => handleAddToCart(true)}
-                  className={`flex-1 w-full py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
+                  className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
                     inStock
                       ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold active:scale-[0.98]"
                       : "bg-slate-800 text-slate-500 cursor-not-allowed"
                   }`}
                 >
                   <Zap size={18} fill="currentColor" /> Buy Now
+                </button>
+
+                <button
+                  onClick={handleToggleWishlist}
+                  className={`p-3 rounded-xl border transition flex items-center justify-center ${
+                    wishlisted
+                      ? "bg-rose-600/20 border-rose-500 text-rose-400 hover:bg-rose-600/30"
+                      : "bg-slate-900 border-slate-700 text-slate-300 hover:text-white hover:border-slate-600"
+                  }`}
+                  title={wishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                >
+                  <Heart size={20} fill={wishlisted ? "currentColor" : "none"} />
                 </button>
               </div>
             </div>

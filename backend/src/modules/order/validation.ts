@@ -12,17 +12,29 @@ export const CreateOrderSchema = z.object({
     .min(1, "At least one book item is required to place an order"),
   totalAmount: z.number().min(0).optional(), // Calculated authoritatively by backend
   shippingAddress: z
-    .object({
-      fullName: z.string().optional(),
-      street: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-      postalCode: z.string().optional(),
-      phone: z.string().optional(),
-    })
+    .union([
+      z.string(),
+      z.object({
+        fullName: z.string().optional(),
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        postalCode: z.string().optional(),
+        phone: z.string().optional(),
+      }),
+    ])
     .optional(),
   paymentMethod: z.enum(["khalti", "cod", "card", "demo"]).default("khalti"),
   paymentId: z.string().optional(),
+});
+
+export const ValidateCartSchema = z.object({
+  items: z.array(
+    z.object({
+      bookId: z.string().min(1, "Book ID is required"),
+      quantity: z.number().int().min(1, "Quantity must be at least 1"),
+    })
+  ),
 });
 
 export const UpdateOrderStatusSchema = z.object({
@@ -33,4 +45,5 @@ export const UpdateOrderStatusSchema = z.object({
 });
 
 export type TCreateOrderInput = z.TypeOf<typeof CreateOrderSchema>;
+export type TValidateCartInput = z.TypeOf<typeof ValidateCartSchema>;
 export type TUpdateOrderStatusInput = z.TypeOf<typeof UpdateOrderStatusSchema>;

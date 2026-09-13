@@ -1,184 +1,218 @@
-import  { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { BellIcon, Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import clsx from "clsx";
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { User } from "./auth/user";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Logout } from "./auth/logout";
 import { IoBookSharp } from "react-icons/io5";
 import SearchBar from "./searchbar";
 import { FaOpencart } from "react-icons/fa6";
-
-
-
-const Navigation = ({ mobile = false }) => {
-  const navigation = [
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "Books", href: "/books" },
-    { name: "Your Books", href: "/" },
-  ];
-
-  
-
-  return (
-    <ul className={clsx("flex flex-col lg:flex-row items-center space-y-4 lg:space-y-0 lg:space-x-4", mobile ? "block space-y-2 p-4" : "hidden lg:flex")}> 
-      {navigation.map((item) => (
-        <li key={item.name}>
-          <Link to={item.href} className="text-indigo-200 hover:bg-indigo-800 hover:text-white rounded-md px-3 py-2 text-sm font-medium transition duration-150 ease-in-out">
-            {item.name}
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-};
+import { Heart, Compass, BookOpen, LayoutDashboard } from "lucide-react";
+import { getCart, getWishlist } from "../utils/cartStorage";
 
 export function AppShell() {
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   useEffect(() => {
-   
-    const savedCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    setCartCount(savedCart.length);
-
-    // Listen for storage updates
-    const handleStorageChange = () => {
-      const updatedCart = JSON.parse(localStorage.getItem("cart") || "[]");
-      setCartCount(updatedCart.length);
+    const syncCounts = () => {
+      setCartCount(getCart().reduce((sum, item) => sum + item.quantity, 0));
+      setWishlistCount(getWishlist().length);
     };
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    syncCounts();
+
+    window.addEventListener("storage", syncCounts);
+    window.addEventListener("cart-wishlist-update", syncCounts);
+    return () => {
+      window.removeEventListener("storage", syncCounts);
+      window.removeEventListener("cart-wishlist-update", syncCounts);
+    };
   }, []);
 
-  return (
-    <div className="min-h-full bg-gray-50">
-      <nav className="bg-gradient-to-r from-slate-900 to-purple-700 shadow-lg">
-        <div className="mx-auto max-w-7xl px-4 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center space-x-1 flex-shrink-0">
-              <IoBookSharp className="fill-white text-2xl" />
-              <span className="text-white text-xl font-semibold whitespace-nowrap">Book Store</span>
-            </div>
-            <div className="hidden md:flex flex-1 justify-center items-center">
-              <div className="text-sm italic text-white opacity-80 whitespace-nowrap overflow-hidden text-ellipsis px-2">“Where books are, dreams begin.”</div>
-            </div>
-            <div className="hidden lg:flex items-center space-x-4">
-              <Navigation />
-              <SearchBar />
-              <button className="relative p-1 rounded-full text-indigo-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-white">
-                <BellIcon className="h-6 w-6" aria-hidden="true" />
+  const navLinks = [
+    { name: "Explore", href: "/", icon: Compass },
+    { name: "Catalog", href: "/books", icon: BookOpen },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  ];
 
-              </button>
-              <Link to="/cart" className="relative p-1 rounded-full text-indigo-200 hover:text-white focus:outline-none focus:ring-2 focus:ring-white">
-                <FaOpencart className="h-6 w-6" aria-hidden="true" />
+  return (
+    <div className="bg-slate-950">
+      <nav className="bg-slate-900/90 border-b border-slate-800 backdrop-blur-md sticky top-0 z-40">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between gap-4">
+            {/* Logo */}
+            <Link
+              to="/"
+              className="flex items-center space-x-2.5 flex-shrink-0 group"
+            >
+              <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition">
+                <IoBookSharp className="text-xl" />
+              </div>
+              <span className="text-white text-lg font-black tracking-tight group-hover:text-indigo-300 transition">
+                PustakPasal
+              </span>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-1">
+              {navLinks.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                      isActive
+                        ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800"
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Search Bar */}
+            <div className="hidden lg:block flex-1 max-w-md mx-2">
+              <SearchBar />
+            </div>
+
+            {/* Actions & Profile */}
+            <div className="hidden sm:flex items-center space-x-3">
+              {/* Wishlist Icon */}
+              <Link
+                to="/wishlist"
+                className="relative p-2.5 rounded-xl text-slate-300 hover:text-rose-400 hover:bg-slate-800/80 transition"
+                title="Wishlist"
+              >
+                <Heart size={19} />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full ring-2 ring-slate-900 shadow">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Cart Icon */}
+              <Link
+                to="/cart"
+                className="relative p-2.5 rounded-xl text-slate-300 hover:text-indigo-400 hover:bg-slate-800/80 transition"
+                title="Shopping Cart"
+              >
+                <FaOpencart className="text-xl" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full ring-2 ring-slate-900 shadow">
                     {cartCount}
                   </span>
                 )}
               </Link>
+
+              {/* User Dropdown */}
               <Menu as="div" className="relative">
-                <MenuButton className="flex items-center rounded-full bg-indigo-600 text-sm text-white focus:ring-2 focus:ring-white">
+                <MenuButton className="flex items-center rounded-full bg-slate-800 text-sm text-white focus:ring-2 focus:ring-indigo-500">
                   <User />
-             
-                  
                 </MenuButton>
-                {/* <FaOpencart  className="flex items-center rounded-full bg-indigo-800 text-sm texxt-white focus:ring-2 focus:ring-white ml-32"/> */}
-                <MenuItems className="absolute right-0 mt-2 w-48 bg-white shadow-lg ring-1 ring-black ring-opacity-5">
-                
+                <MenuItems className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50">
                   <MenuItem>
-                    <Logout />
+                    <div className="p-1">
+                      <Logout />
+                    </div>
                   </MenuItem>
                 </MenuItems>
-                
               </Menu>
             </div>
-            <div className="lg:hidden">
-              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-white p-2 rounded-lg focus:ring-2 focus:ring-white">
-                {mobileMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
+
+            {/* Mobile menu toggle */}
+            <div className="flex sm:hidden items-center space-x-2">
+              <Link
+                to="/cart"
+                className="relative p-2 text-slate-300 hover:text-white"
+              >
+                <FaOpencart className="text-xl" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="text-slate-300 p-2 rounded-xl hover:bg-slate-800"
+              >
+                {mobileMenuOpen ? (
+                  <XMarkIcon className="h-6 w-6" />
+                ) : (
+                  <Bars3Icon className="h-6 w-6" />
+                )}
               </button>
             </div>
           </div>
         </div>
-{mobileMenuOpen && (
-  <div className="lg:hidden bg-slate-900 text-white px-6 py-8 space-y-6 flex flex-col items-center rounded-b-lg shadow-md transition-all duration-300 ease-in-out">
-    
-    {/* Navigation Links */}
-    <div className="w-full space-y-2">
-      {[
-        { name: "Dashboard", href: "/dashboard" },
-        { name: "Books", href: "/books" },
-        { name: "Your Books", href: "/" },
-      ].map((item) => (
-        <Link
-          key={item.name}
-          to={item.href}
-          className="block text-center w-full text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
-        >
-          {item.name}
-        </Link>
-      ))}
-    </div>
 
-    {/* Search Bar */}
-    <div className="w-full">
-      <SearchBar />
-    </div>
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="sm:hidden bg-slate-900 border-b border-slate-800 px-4 py-6 space-y-4">
+            <SearchBar />
 
-    {/* Cart Link */}
-    <Link
-      to="/cart"
-      className="flex items-center justify-center space-x-2 w-full text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
-    >
-      <FaOpencart className="h-5 w-5" />
-      <span>Cart</span>
-      {cartCount > 0 && (
-        <span className="ml-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-          {cartCount}
-        </span>
-      )}
-    </Link>
+            <div className="space-y-1 pt-2">
+              {navLinks.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2.5 rounded-xl text-sm font-bold text-slate-200 hover:bg-slate-800"
+                >
+                  {item.name}
+                </Link>
+              ))}
 
-    {/* Auth Section */}
-    {localStorage.getItem("token") ? (
-      <div className="flex flex-col items-center w-full space-y-3">
-        <div className="flex items-center justify-center space-x-2">
-          <User />
-        </div>
-        <div className="w-full">
-          <Logout />
-        </div>
-      </div>
-    ) : (
-      <div className="w-full space-y-2">
-        <Link
-          to="/login"
-          className="block w-full text-center text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
-        >
-          Login
-        </Link>
-        <Link
-          to="/register"
-          className="block w-full text-center text-white bg-indigo-600 hover:bg-blue-600 px-4 py-2 rounded-lg transition"
-        >
-          Register
-        </Link>
-      </div>
-    )}
-  </div>
-)}
+              <Link
+                to="/wishlist"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold text-slate-200 hover:bg-slate-800"
+              >
+                <span className="flex items-center gap-2">
+                  <Heart size={16} className="text-rose-400" /> Wishlist
+                </span>
+                {wishlistCount > 0 && (
+                  <span className="bg-rose-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
 
+              <Link
+                to="/cart"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold text-slate-200 hover:bg-slate-800"
+              >
+                <span className="flex items-center gap-2">
+                  <FaOpencart className="text-indigo-400" /> Cart
+                </span>
+                {cartCount > 0 && (
+                  <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+            </div>
 
-
-
+            <div className="pt-4 border-t border-slate-800 flex justify-center">
+              <Logout />
+            </div>
+          </div>
+        )}
       </nav>
-      <main>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"></div>
-        <Toaster />
-      </main>
+
+      <Toaster position="top-right" />
     </div>
   );
 }

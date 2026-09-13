@@ -15,32 +15,69 @@ import { useNavigate } from "react-router-dom";
 import finance from "../assets/finance_book-removebg-preview.png";
 
 import { AppShell } from "./AppShell";
-import { ShoppingCart } from "lucide-react";
-interface Book {
-  _id: string;
-  title: string;
-  author: string;
-  price: number;
-}
+import { ShoppingCart, Heart, CheckCircle2 } from "lucide-react";
+import { addToCart, toggleWishlist } from "../utils/cartStorage";
+
 export function HomePage() {
-  const [cartItems, setCartItems] = useState<Book[]>([]);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const savedCart = localStorage.getItem("cart");
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart) as Book[]);
-    }
+    const updateWishlist = () => {
+      try {
+        const saved = localStorage.getItem("wishlist");
+        if (saved) {
+          const list = JSON.parse(saved);
+          setWishlistIds(list.map((item: any) => item._id));
+        } else {
+          setWishlistIds([]);
+        }
+      } catch {
+        setWishlistIds([]);
+      }
+    };
+    updateWishlist();
+    window.addEventListener("cart-wishlist-update", updateWishlist);
+    window.addEventListener("storage", updateWishlist);
+    return () => {
+      window.removeEventListener("cart-wishlist-update", updateWishlist);
+      window.removeEventListener("storage", updateWishlist);
+    };
   }, []);
 
-  const addToCart = (book: Book) => {
-    const updatedCart = [...cartItems, book];
-    setCartItems(updatedCart);
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
-    window.dispatchEvent(new Event("storage"));
+  const handleAddToCart = (book: any) => {
+    addToCart({
+      _id: book._id,
+      title: book.title,
+      author: book.author,
+      price: book.price,
+      discountPercentage: book.discountPercentage,
+      image: book.image,
+      stock: book.stock,
+    });
+    setToastMsg(`Added "${book.title}" to cart!`);
+    setTimeout(() => setToastMsg(null), 3000);
   };
 
+  const handleToggleWishlist = (book: any) => {
+    const isNow = toggleWishlist({
+      _id: book._id,
+      title: book.title,
+      author: book.author,
+      price: book.price,
+      discountPercentage: book.discountPercentage,
+      image: book.image,
+      stock: book.stock,
+      genre: book.genre,
+    });
+    setToastMsg(
+      isNow
+        ? `Added "${book.title}" to wishlist!`
+        : `Removed "${book.title}" from wishlist.`
+    );
+    setTimeout(() => setToastMsg(null), 3000);
+  };
 
-  
   const { data, isLoading, isError, error } = useGetBooksQuery();
 
   const [visibleBooks, setVisibleBooks] = useState(3);
@@ -112,7 +149,13 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-purple-700 via-slate-100 to-blue-600">
-     < AppShell />
+      <AppShell />
+      {toastMsg && (
+        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+          <CheckCircle2 className="w-5 h-5" />
+          <span className="font-semibold text-sm">{toastMsg}</span>
+        </div>
+      )}
       <Component />
       {/* Genres Section */}
       <div className="p-8">
@@ -174,7 +217,8 @@ export function HomePage() {
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 transition-all duration-500 transform"
             style={{ transform: `translateX(-${bookScrollIndex * 100}%)` }}
           >
-            {bookData.slice(0, visibleBooks).map((book) => {
+            {bookData.slice(0, visibleBooks).map((book: any) => {
+              const isWishlisted = wishlistIds.includes(book._id);
               return (
                 <div
                   key={book._id}
@@ -192,6 +236,23 @@ export function HomePage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-80"></div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleWishlist(book);
+                      }}
+                      className={`absolute top-3 right-3 p-2 rounded-full shadow-md backdrop-blur-md transition-all ${
+                        isWishlisted
+                          ? "bg-rose-600 text-white"
+                          : "bg-slate-900/70 text-slate-300 hover:text-white hover:bg-slate-900"
+                      }`}
+                      title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                    >
+                      <Heart
+                        size={18}
+                        fill={isWishlisted ? "currentColor" : "none"}
+                      />
+                    </button>
                     <div className="absolute bottom-0 left-0 right-0 p-5">
                       <h2 className="text-xl font-bold text-white line-clamp-1">
                         {book.title}
@@ -204,7 +265,7 @@ export function HomePage() {
                   <div className="p-5 flex-1 flex flex-col justify-between">
                     <div>
                       <div className="mb-3 flex flex-wrap gap-1.5">
-                        {book.genre?.split(",").map((genre, index) => (
+                        {book.genre?.split(",").map((genre: string, index: number) => (
                           <span
                             key={index}
                             className="px-2.5 py-0.5 text-xs font-semibold text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 rounded-full"
@@ -230,7 +291,7 @@ export function HomePage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          addToCart(book);
+                          handleAddToCart(book);
                         }}
                         className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition text-sm flex items-center justify-center gap-2"
                       >

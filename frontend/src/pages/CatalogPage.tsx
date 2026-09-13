@@ -15,9 +15,14 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
-  Sparkles,
   RotateCcw,
+  Heart,
 } from "lucide-react";
+import {
+  addToCart as addCartItem,
+  toggleWishlist,
+  isInWishlist,
+} from "../utils/cartStorage";
 
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -141,33 +146,36 @@ export function CatalogPage() {
     e.preventDefault();
     e.stopPropagation();
 
-    const effectivePrice =
-      book.discountPercentage && book.discountPercentage > 0
-        ? Number((book.price * (1 - book.discountPercentage / 100)).toFixed(2))
-        : book.price;
-
-    const savedCart = localStorage.getItem("cart");
-    const cart = savedCart ? JSON.parse(savedCart) : [];
-
-    const existingIndex = cart.findIndex((item: any) => item._id === book._id);
-    if (existingIndex > -1) {
-      cart[existingIndex].quantity = (cart[existingIndex].quantity || 1) + 1;
-    } else {
-      cart.push({
-        _id: book._id,
-        title: book.title,
-        author: book.author,
-        price: effectivePrice,
-        originalPrice: book.price,
-        image: book.image,
-        quantity: 1,
-      });
-    }
-
-    localStorage.setItem("cart", JSON.stringify(cart));
-    window.dispatchEvent(new Event("storage"));
+    addCartItem({
+      _id: book._id,
+      title: book.title,
+      author: book.author,
+      price: book.price,
+      discountPercentage: book.discountPercentage,
+      image: book.image,
+      stock: book.stock,
+    }, 1);
 
     setToastMsg(`"${book.title}" added to cart!`);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleToggleWishlist = (book: TBook, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const added = toggleWishlist({
+      _id: book._id,
+      title: book.title,
+      author: book.author,
+      genre: book.genre,
+      price: book.price,
+      discountPercentage: book.discountPercentage,
+      image: book.image,
+      stock: book.stock,
+    });
+
+    setToastMsg(added ? `"${book.title}" added to Wishlist!` : `Removed "${book.title}" from Wishlist`);
     setTimeout(() => setToastMsg(null), 3000);
   };
 
@@ -418,11 +426,21 @@ export function CatalogPage() {
                             </span>
                           ) : null}
 
-                          {book.featured && (
-                            <span className="absolute top-2 right-2 bg-amber-500 text-slate-950 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-                              <Sparkles size={10} />
-                            </span>
-                          )}
+                          {/* Wishlist Heart Button */}
+                          <button
+                            onClick={(e) => handleToggleWishlist(book, e)}
+                            className="absolute bottom-2 right-2 p-1.5 rounded-full bg-slate-950/80 hover:bg-slate-900 text-slate-300 hover:text-rose-400 transition shadow backdrop-blur-md"
+                            title="Save to wishlist"
+                          >
+                            <Heart
+                              size={14}
+                              className={
+                                isInWishlist(book._id)
+                                  ? "fill-rose-500 text-rose-500"
+                                  : ""
+                              }
+                            />
+                          </button>
                         </div>
 
                         {/* Genre Tag */}

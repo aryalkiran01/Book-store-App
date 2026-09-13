@@ -21,6 +21,47 @@ export interface CreateOrderResponse {
   data: any;
 }
 
+export interface ValidatedCartItem {
+  bookId: string;
+  title: string;
+  author: string;
+  genre?: string;
+  image?: string;
+  originalPrice: number;
+  discountPercentage: number;
+  effectivePrice: number;
+  requestedQuantity: number;
+  quantity: number;
+  availableStock: number;
+  inStock: boolean;
+  hasSufficientStock: boolean;
+  itemTotal: number;
+}
+
+export interface ValidatedCartSummary {
+  items: ValidatedCartItem[];
+  rawSubtotal: number;
+  discountSavings: number;
+  subtotal: number;
+  shipping: number;
+  finalTotal: number;
+  totalItems: number;
+  isValid: boolean;
+  warnings: string[];
+}
+
+export async function validateCartApi(
+  items: Array<{ bookId: string; quantity: number }>
+): Promise<ValidatedCartSummary> {
+  const response = await axios.post<{
+    message: string;
+    isSuccess: boolean;
+    data: ValidatedCartSummary;
+  }>(`${getApiBaseUrl()}/validate-cart`, { items }, getAxiosConfig());
+
+  return response.data.data;
+}
+
 // Fetch all orders for a user
 export async function fetchOrdersByUser(userId: string) {
   const response = await axios.get(
@@ -84,4 +125,3 @@ export async function cancelOrder(orderId: string) {
   );
   return response.data;
 }
-

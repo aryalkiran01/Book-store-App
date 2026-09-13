@@ -9,7 +9,8 @@ import { DashboardPage } from "./pages/dashboard";
 import { CatalogPage } from "./pages/CatalogPage";
 import { BookDetailsPage } from "./pages/BookDetailsPage";
 import { MemesPage } from "./components/memespage";
-import { ShoppingCarts } from "./pages/shooping";
+import { CartPage } from "./pages/CartPage";
+import { WishlistPage } from "./pages/WishlistPage";
 import { CheckoutPage } from "./components/checkout";
 
 const router = createBrowserRouter([
@@ -34,6 +35,18 @@ const router = createBrowserRouter([
     element: <BookDetailsPage />,
   },
   {
+    path: "/cart",
+    element: <CartPage />,
+  },
+  {
+    path: "/shopping-cart",
+    element: <CartPage />,
+  },
+  {
+    path: "/wishlist",
+    element: <WishlistPage />,
+  },
+  {
     path: "/register",
     element: <RegisterPage />,
   },
@@ -48,10 +61,6 @@ const router = createBrowserRouter([
   {
     path: "/memes",
     element: <MemesPage />,
-  },
-  {
-    path: "/cart",
-    element: <ShoppingCarts />,
   },
   {
     path: "/checkout",

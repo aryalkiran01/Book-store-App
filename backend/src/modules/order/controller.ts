@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { APIError } from "../../utils/error";
-import { CreateOrderSchema, UpdateOrderStatusSchema } from "./validation";
+import { CreateOrderSchema, UpdateOrderStatusSchema, ValidateCartSchema } from "./validation";
 import {
   createOrderService,
   deleteOrderService,
@@ -8,7 +8,36 @@ import {
   getOrderByIdService,
   getOrdersByUserIdService,
   updateOrderStatusService,
+  validateCartService,
 } from "./service";
+
+export async function validateCartController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = ValidateCartSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid cart items format",
+        isSuccess: false,
+        data: null,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const cartResult = await validateCartService(data.items);
+    res.status(200).json({
+      message: "Cart validated successfully",
+      isSuccess: true,
+      data: cartResult,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 export async function createOrderController(
   req: Request,
