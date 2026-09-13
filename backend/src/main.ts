@@ -57,28 +57,42 @@ app.use(sanitizeInputMiddleware);
 app.use(cookieParser());
 app.use("/uploads", express.static("uploads"));
 
-const allowedOrigins = [
+const configuredOrigins = env.ALLOWED_ORIGINS
+  ? env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+  : [];
+
+const defaultOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
   "https://book-store-app-two-mu.vercel.app",
+  env.FRONTEND_URL,
 ];
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...configuredOrigins])).filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow requests with no origin (like mobile apps or curl requests)
+      // Allow requests with no origin (like mobile apps or server-to-server curl)
       if (!origin) return callback(null, true);
+
       if (
-        allowedOrigins.indexOf(origin) !== -1 ||
-        /^http:\/\/localhost:\d+$/.test(origin) ||
-        /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)
+        allowedOrigins.includes(origin) ||
+        (env.NODE_ENV !== "production" &&
+          (/^http:\/\/localhost:\d+$/.test(origin) ||
+            /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)))
       ) {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive in dev
+
+      if (env.NODE_ENV === "production") {
+        return callback(APIError.forbidden("CORS policy does not allow access from this origin."));
+      }
+
+      return callback(null, true);
     },
     credentials: true,
   })
@@ -96,11 +110,27 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
+import mongoose from "mongoose";
+
 app.get("/api/health", (req: Request, res: Response) => {
-  res.json({
-    status: "ok",
+  const dbState = mongoose.connection.readyState;
+  const dbStatusMap: Record<number, string> = {
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting",
+  };
+
+  const isHealthy = dbState === 1;
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? "healthy" : "degraded",
+    database: dbStatusMap[dbState] || "unknown",
+    uptimeSeconds: Math.floor(process.uptime()),
+    memoryUsageMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    environment: env.NODE_ENV,
     timestamp: new Date().toISOString(),
-    isSuccess: true,
+    isSuccess: isHealthy,
   });
 });
 
@@ -177,6 +207,25 @@ const globalErrorHandler: ErrorRequestHandler = (
 
 app.use(globalErrorHandler);
 
-app.listen(env.PORT, () =>
+const server = app.listen(env.PORT, () =>
   console.log(`Server started on: http://localhost:${env.PORT}`)
 );
+
+// Graceful shutdown handling
+const gracefulShutdown = async (signal: string) => {
+  console.log(`Received ${signal}. Shutting down gracefully...`);
+  server.close(async () => {
+    console.log("HTTP server closed.");
+    try {
+      await mongoose.connection.close(false);
+      console.log("MongoDB connection closed.");
+    } catch (err) {
+      console.error("Error closing MongoDB connection:", err);
+    }
+    process.exit(0);
+  });
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
