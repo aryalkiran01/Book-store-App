@@ -10,6 +10,9 @@ export const CreateOrderSchema = z.object({
       })
     )
     .min(1, "At least one book item is required to place an order"),
+  subtotal: z.number().min(0).optional(),
+  shippingCost: z.number().min(0).optional(),
+  discount: z.number().min(0).optional(),
   totalAmount: z.number().min(0).optional(), // Calculated authoritatively by backend
   shippingAddress: z
     .union([
@@ -24,6 +27,7 @@ export const CreateOrderSchema = z.object({
       }),
     ])
     .optional(),
+  orderNote: z.string().max(500).optional(),
   paymentMethod: z.enum(["khalti", "cod", "card", "demo"]).default("khalti"),
   paymentId: z.string().optional(),
 });
@@ -38,12 +42,45 @@ export const ValidateCartSchema = z.object({
 });
 
 export const UpdateOrderStatusSchema = z.object({
-  status: z.enum(["pending", "processing", "shipped", "delivered", "cancelled"]),
+  status: z.enum([
+    "pending",
+    "confirmed",
+    "processing",
+    "shipped",
+    "delivered",
+    "cancelled",
+    "refunded",
+  ]),
   paymentStatus: z
     .enum(["pending", "completed", "failed", "refunded"])
+    .optional(),
+  note: z.string().max(500).optional(),
+});
+
+export const CancelOrderSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+export const OrderQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(50).default(20),
+  status: z
+    .enum([
+      "all",
+      "pending",
+      "confirmed",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled",
+      "refunded",
+    ])
     .optional(),
 });
 
 export type TCreateOrderInput = z.TypeOf<typeof CreateOrderSchema>;
 export type TValidateCartInput = z.TypeOf<typeof ValidateCartSchema>;
 export type TUpdateOrderStatusInput = z.TypeOf<typeof UpdateOrderStatusSchema>;
+export type TCancelOrderInput = z.TypeOf<typeof CancelOrderSchema>;
+export type TOrderQueryInput = z.TypeOf<typeof OrderQuerySchema>;
+

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import {
+  cancelOrderController,
   createOrderController,
   deleteOrderController,
   getAllOrdersController,
+  getMyOrdersController,
   getOrderByIdController,
   getOrdersByUserController,
   updateOrderStatusController,
@@ -22,8 +24,11 @@ function createOrderRouter() {
 
   // User & Order routes
   router.post("/", checkAuth, createOrderController);
+  router.get("/my-orders", checkAuth, getMyOrdersController);
   router.get("/user/:userId", checkAuth, getOrdersByUserController);
   router.get("/:orderId", checkAuth, getOrderByIdController);
+  router.post("/:orderId/cancel", checkAuth, cancelOrderController);
+  router.patch("/:orderId/status", checkAuth, checkAdmin, updateOrderStatusController);
   router.patch("/:orderId", checkAuth, checkAdmin, updateOrderStatusController);
   router.put("/:orderId", checkAuth, checkAdmin, updateOrderStatusController);
   router.delete("/:orderId", checkAuth, checkAdmin, deleteOrderController);
@@ -32,3 +37,4 @@ function createOrderRouter() {
 }
 
 export const orderRouter = createOrderRouter();
+

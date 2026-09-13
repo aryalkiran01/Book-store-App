@@ -17,4 +17,5 @@ export const InitiatePaymentSchema = z.object({
 
 export const VerifyPaymentSchema = z.object({
   pidx: z.string().min(1, "Payment ID (pidx) is required"),
+  orderId: z.string().optional(),
 });

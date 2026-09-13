@@ -8,7 +8,7 @@ import { Logout } from "./auth/logout";
 import { IoBookSharp } from "react-icons/io5";
 import SearchBar from "./searchbar";
 import { FaOpencart } from "react-icons/fa6";
-import { Heart, Compass, BookOpen, LayoutDashboard } from "lucide-react";
+import { Heart, Compass, BookOpen, LayoutDashboard, ShoppingBag } from "lucide-react";
 import { getCart, getWishlist } from "../utils/cartStorage";
 
 export function AppShell() {
@@ -36,6 +36,7 @@ export function AppShell() {
   const navLinks = [
     { name: "Explore", href: "/", icon: Compass },
     { name: "Catalog", href: "/books", icon: BookOpen },
+    { name: "Orders", href: "/orders", icon: ShoppingBag },
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   ];
 
@@ -49,11 +50,11 @@ export function AppShell() {
               to="/"
               className="flex items-center space-x-2.5 flex-shrink-0 group"
             >
-              <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition">
-                <IoBookSharp className="text-xl" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
+                <IoBookSharp className="text-xl text-white" />
               </div>
-              <span className="text-white text-lg font-black tracking-tight group-hover:text-indigo-300 transition">
-                PustakPasal
+              <span className="text-lg font-black tracking-tight text-white hidden sm:inline-block">
+                Kitab<span className="text-indigo-400">Ghar</span>
               </span>
             </Link>
 
@@ -119,7 +120,21 @@ export function AppShell() {
                 <MenuButton className="flex items-center rounded-full bg-slate-800 text-sm text-white focus:ring-2 focus:ring-indigo-500">
                   <User />
                 </MenuButton>
-                <MenuItems className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50">
+                <MenuItems className="absolute right-0 mt-2 w-52 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50 divide-y divide-slate-800">
+                  <div className="p-1 space-y-0.5">
+                    <Link
+                      to="/orders"
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                    >
+                      <ShoppingBag size={14} className="text-indigo-400" /> My Orders
+                    </Link>
+                    <Link
+                      to="/wishlist"
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                    >
+                      <Heart size={14} className="text-rose-400" /> My Wishlist
+                    </Link>
+                  </div>
                   <MenuItem>
                     <div className="p-1">
                       <Logout />

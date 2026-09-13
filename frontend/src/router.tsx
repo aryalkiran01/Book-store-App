@@ -12,6 +12,10 @@ import { MemesPage } from "./components/memespage";
 import { CartPage } from "./pages/CartPage";
 import { WishlistPage } from "./pages/WishlistPage";
 import { CheckoutPage } from "./components/checkout";
+import { PaymentPage } from "./pages/PaymentPage";
+import { OrderSuccessPage } from "./pages/OrderSuccessPage";
+import { OrderHistoryPage } from "./pages/OrderHistoryPage";
+import { OrderDetailsPage } from "./pages/OrderDetailsPage";
 
 const router = createBrowserRouter([
   {
@@ -69,6 +73,30 @@ const router = createBrowserRouter([
   {
     path: "/Checkout",
     element: <CheckoutPage />,
+  },
+  {
+    path: "/payment",
+    element: <PaymentPage />,
+  },
+  {
+    path: "/order-success",
+    element: <OrderSuccessPage />,
+  },
+  {
+    path: "/order-confirmation",
+    element: <OrderSuccessPage />,
+  },
+  {
+    path: "/orders",
+    element: <OrderHistoryPage />,
+  },
+  {
+    path: "/my-orders",
+    element: <OrderHistoryPage />,
+  },
+  {
+    path: "/orders/:orderId",
+    element: <OrderDetailsPage />,
   },
 ]);
 

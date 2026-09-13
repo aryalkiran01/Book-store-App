@@ -70,7 +70,7 @@ export function sanitizeInputMiddleware(req: any, res: any, next: any) {
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // max 20 requests per IP per window
+  max: process.env.NODE_ENV === "production" ? 20 : 100, // max 100 in dev for test suites
   standardHeaders: true,
   legacyHeaders: false,
   message: {

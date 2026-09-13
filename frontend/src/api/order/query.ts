@@ -37,7 +37,8 @@ export function useCreateOrder() {
 export function useCancelOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: cancelOrder,
+    mutationFn: ({ orderId, reason }: { orderId: string; reason?: string }) =>
+      cancelOrder(orderId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     },

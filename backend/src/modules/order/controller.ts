@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { APIError } from "../../utils/error";
 import { CreateOrderSchema, UpdateOrderStatusSchema, ValidateCartSchema } from "./validation";
 import {
+  cancelOrderService,
   createOrderService,
   deleteOrderService,
   getAllOrdersService,
@@ -93,6 +94,33 @@ export async function getAllOrdersController(
   }
 }
 
+export async function getMyOrdersController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const userId = req.user.id;
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const status = req.query.status ? String(req.query.status) : undefined;
+
+    const result = await getOrdersByUserIdService(userId, {
+      page,
+      limit,
+      status,
+    });
+    res.status(200).json({
+      message: "My orders retrieved successfully",
+      isSuccess: true,
+      data: result.orders,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getOrdersByUserController(
   req: Request,
   res: Response,
@@ -115,8 +143,13 @@ export async function getOrdersByUserController(
 
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const status = req.query.status ? String(req.query.status) : undefined;
 
-    const result = await getOrdersByUserIdService(requestedUserId, { page, limit });
+    const result = await getOrdersByUserIdService(requestedUserId, {
+      page,
+      limit,
+      status,
+    });
     res.status(200).json({
       message: "Orders retrieved successfully",
       isSuccess: true,
@@ -135,25 +168,40 @@ export async function getOrderByIdController(
 ) {
   try {
     const orderId = req.params.orderId;
-    const order = await getOrderByIdService(orderId);
-
-    const orderOwnerId =
-      (order.userId as any)?._id?.toString() || order.userId?.toString();
-
-    if (
-      req.user.role !== "admin" &&
-      req.user.id !== orderOwnerId
-    ) {
-      res.status(403).json({
-        message: "Forbidden: Cannot view this order",
-        isSuccess: false,
-        data: null,
-      });
-      return;
-    }
+    const order = await getOrderByIdService(
+      orderId,
+      req.user.id,
+      req.user.role
+    );
 
     res.status(200).json({
       message: "Order retrieved successfully",
+      isSuccess: true,
+      data: order,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function cancelOrderController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const orderId = req.params.orderId;
+    const reason = req.body?.reason ? String(req.body.reason) : undefined;
+
+    const order = await cancelOrderService(
+      orderId,
+      req.user.id,
+      req.user.role,
+      reason
+    );
+
+    res.status(200).json({
+      message: "Order cancelled successfully",
       isSuccess: true,
       data: order,
     });
@@ -181,7 +229,11 @@ export async function updateOrderStatusController(
       return;
     }
 
-    const updatedOrder = await updateOrderStatusService(orderId, data);
+    const updatedOrder = await updateOrderStatusService(
+      orderId,
+      data,
+      req.user?.username || "admin"
+    );
     res.status(200).json({
       message: "Order status updated successfully",
       isSuccess: true,
@@ -209,4 +261,5 @@ export async function deleteOrderController(
     next(error);
   }
 }
+
 

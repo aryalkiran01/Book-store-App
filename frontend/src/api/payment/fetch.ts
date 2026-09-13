@@ -46,11 +46,11 @@ export async function initiatePayment(
 }
 
 // Verify Payment for Khalti
-export async function verifyPayment(pidx: string) {
+export async function verifyPayment(pidx: string, orderId?: string) {
   try {
     const response = await axios.post(
       `${getApiBaseUrl()}/verify`,
-      { pidx },
+      { pidx, orderId },
       getAxiosConfig()
     );
     return response.data;

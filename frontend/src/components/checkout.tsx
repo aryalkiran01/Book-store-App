@@ -20,7 +20,7 @@ import { useUserDetailsStore } from "../store/useUsersDetails";
 
 export const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { userDetails } = useUserDetailsStore();
+  const { userDetails, isAuthenticated } = useUserDetailsStore();
 
   const [cartItems, setCartItems] = useState(getCart());
   const [validatedSummary, setValidatedSummary] =
@@ -85,6 +85,12 @@ export const CheckoutPage = () => {
   };
 
   const handleProceedToPayment = () => {
+    if (!isAuthenticated) {
+      alert("Please log in or register to complete your order checkout.");
+      navigate("/login");
+      return;
+    }
+
     if (!cartItems.length) return;
 
     if (deliveryType === "delivery" && !shippingAddress.trim()) {

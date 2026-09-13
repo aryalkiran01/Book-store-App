@@ -43,7 +43,10 @@ export async function verifyPaymentController(
       });
     }
 
-    const verificationResponse = await verifyPaymentService(result.data.pidx);
+    const verificationResponse = await verifyPaymentService(
+      result.data.pidx,
+      result.data.orderId
+    );
     res.status(200).json({
       message: "Payment verified successfully",
       data: verificationResponse,

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { env } from "../../utils/config";
 import { APIError } from "../../utils/error";
+import { OrderModel } from "../order/model";
 
 const KHALTI_API_KEY = env.KHALTI_API_KEY;
 const KHALTI_INITIATE_URL =
@@ -38,32 +39,33 @@ export async function initiatePaymentService(paymentData: any) {
   }
 }
 
-export async function verifyPaymentService(pidx: string) {
+export async function verifyPaymentService(pidx: string, orderId?: string) {
+  let verification: any;
   try {
     if (pidx.startsWith("mock_pidx_")) {
-      return {
+      verification = {
         pidx,
         status: "Completed",
         transaction_id: `txn_${Date.now()}`,
         fee: 0,
         refunded: false,
       };
+    } else {
+      const response = await axios.post(
+        KHALTI_LOOKUP_URL,
+        { pidx },
+        {
+          headers: {
+            Authorization: `Key ${KHALTI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      verification = response.data;
     }
-
-    const response = await axios.post(
-      KHALTI_LOOKUP_URL,
-      { pidx },
-      {
-        headers: {
-          Authorization: `Key ${KHALTI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    return response.data;
   } catch (error: any) {
     console.warn("Khalti lookup returned:", error.response?.data || error.message);
-    return {
+    verification = {
       pidx,
       status: "Completed",
       transaction_id: `txn_${Date.now()}`,
@@ -71,5 +73,30 @@ export async function verifyPaymentService(pidx: string) {
       refunded: false,
     };
   }
+
+  // Update order status if orderId is found or matched
+  if (verification?.status === "Completed") {
+    const targetOrder = orderId
+      ? await OrderModel.findById(orderId)
+      : await OrderModel.findOne({ paymentId: pidx });
+
+    if (targetOrder && targetOrder.paymentStatus !== "completed") {
+      targetOrder.paymentStatus = "completed";
+      targetOrder.paymentId = pidx;
+      if (targetOrder.status === "pending") {
+        targetOrder.status = "confirmed";
+      }
+      targetOrder.statusHistory.push({
+        status: targetOrder.status,
+        changedAt: new Date(),
+        note: `Payment verified (${verification.transaction_id || pidx})`,
+        changedBy: "payment_system",
+      });
+      await targetOrder.save();
+    }
+  }
+
+  return verification;
 }
+
 
