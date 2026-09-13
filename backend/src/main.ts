@@ -18,6 +18,7 @@ import { bookRouter } from "./modules/book/router";
 import { reviewRouter } from "./modules/review/router";
 import { orderRouter } from "./modules/order/router";
 import paymentRoutes from "./modules/payment/router";
+import { adminRouter } from "./modules/admin/router";
 import { multerErrorHandler } from "./modules/auth/middleware";
 
 dotenv.config();
@@ -105,6 +106,7 @@ app.get("/api/health", (req: Request, res: Response) => {
 
 // API Routes
 app.use("/api/auth", authRouter);
+app.use("/api/admin", adminRouter);
 app.use("/api/books", bookRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/orders", orderRouter); // Alias for plural

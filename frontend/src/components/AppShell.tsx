@@ -8,11 +8,13 @@ import { Logout } from "./auth/logout";
 import { IoBookSharp } from "react-icons/io5";
 import SearchBar from "./searchbar";
 import { FaOpencart } from "react-icons/fa6";
-import { Heart, Compass, BookOpen, LayoutDashboard, ShoppingBag } from "lucide-react";
+import { Heart, Compass, BookOpen, ShoppingBag, ShieldCheck } from "lucide-react";
 import { getCart, getWishlist } from "../utils/cartStorage";
+import { useUserDetailsStore } from "../store/useUsersDetails";
 
 export function AppShell() {
   const location = useLocation();
+  const { isAdmin } = useUserDetailsStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
@@ -37,7 +39,9 @@ export function AppShell() {
     { name: "Explore", href: "/", icon: Compass },
     { name: "Catalog", href: "/books", icon: BookOpen },
     { name: "Orders", href: "/orders", icon: ShoppingBag },
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    ...(isAdmin
+      ? [{ name: "Admin Panel", href: "/admin", icon: ShieldCheck, badge: "Admin" }]
+      : []),
   ];
 
   return (
@@ -122,6 +126,14 @@ export function AppShell() {
                 </MenuButton>
                 <MenuItems className="absolute right-0 mt-2 w-52 bg-slate-900 border border-slate-800 rounded-2xl p-1.5 shadow-2xl z-50 divide-y divide-slate-800">
                   <div className="p-1 space-y-0.5">
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-indigo-300 hover:text-white bg-indigo-950/40 hover:bg-indigo-900/60 rounded-xl transition border border-indigo-800/60 mb-1"
+                      >
+                        <ShieldCheck size={14} className="text-indigo-400" /> Admin Control Center
+                      </Link>
+                    )}
                     <Link
                       to="/orders"
                       className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"

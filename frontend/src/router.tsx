@@ -63,6 +63,14 @@ const router = createBrowserRouter([
     element: <DashboardPage />,
   },
   {
+    path: "/admin",
+    element: <DashboardPage />,
+  },
+  {
+    path: "/admin/*",
+    element: <DashboardPage />,
+  },
+  {
     path: "/memes",
     element: <MemesPage />,
   },
