@@ -8,6 +8,7 @@ import {
   deleteBookService,
   getBookByIdService,
   getBooksService,
+  getSearchSuggestionsService,
   updateBookService,
 } from "./service";
 import { getReviewsByBookIdService } from "../review/service";
@@ -243,31 +244,20 @@ export async function getBookByIdController(
 }
 
 
-// export async function searchBooksController(
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ) {
-//   try {
-//     const { q } = req.query;
-
-//     if (!q || typeof q !== "string") {
-//       res.status(400).json({
-//         message: "Search query (q) is required",
-//         isSuccess: false,
-//         data: null,
-//       });
-//       return;
-//     }
-
-//     const books = await searchGoogleBooksService(q);
-
-//     res.status(200).json({
-//       message: "Books fetched from Google API",
-//       isSuccess: true,
-//       data: books,
-//     });
-//   } catch (error) {
-//     next(new APIError(500, (error as Error).message));
-//   }
-// }
+export async function getSearchSuggestionsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const q = (req.query.q || req.query.query || req.query.search || "") as string;
+    const suggestions = await getSearchSuggestionsService(q);
+    res.status(200).json({
+      message: "Search suggestions fetched successfully",
+      isSuccess: true,
+      data: suggestions,
+    });
+  } catch (error) {
+    next(error);
+  }
+}

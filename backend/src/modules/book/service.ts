@@ -218,26 +218,25 @@ export async function getBookByIdService(id: string) {
 }
 
 
-// google books
-// export async function searchGoogleBooksService(query: string) {
-//   const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20`;
+export async function getSearchSuggestionsService(query: string) {
+  if (!query || !query.trim()) {
+    return [];
+  }
 
-//   const res = await fetch(apiUrl);
-//   if (!res.ok) {
-//     throw new Error("Failed to fetch from Google Books API");
-//   }
+  const s = query.trim();
+  const searchRegex = new RegExp(s, "i");
 
-//   const json = await res.json();
+  const suggestions = await BookModel.find({
+    $or: [
+      { title: searchRegex },
+      { author: searchRegex },
+      { genre: searchRegex },
+      { isbn: searchRegex },
+    ],
+  })
+    .select("title author genre price discountPercentage image rating stock")
+    .limit(6)
+    .lean();
 
-//   return json.items?.map((item: any) => {
-//     const info = item.volumeInfo;
-//     return {
-//       title: info.title,
-//       author: info.authors?.[0] || "Unknown",
-//       genre: info.categories?.[0] || "General",
-//       description: info.description || "No description",
-//       image: info.imageLinks?.thumbnail || "",
-//       previewLink: info.previewLink || "",
-//     };
-//   });
-// }
+  return suggestions;
+}

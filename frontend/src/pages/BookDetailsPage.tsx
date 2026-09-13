@@ -42,6 +42,8 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { addToCart, isInWishlist, toggleWishlist } from "../utils/cartStorage";
+import { addRecentlyViewedBook } from "../utils/recentBooks";
+import { RecentlyViewed } from "../components/RecentlyViewed";
 
 export function BookDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -128,6 +130,7 @@ export function BookDetailsPage() {
         const bookObj = res.data.result || res.data;
         setBook(bookObj);
         setWishlisted(isInWishlist(bookObj._id));
+        addRecentlyViewedBook(bookObj);
 
         // Fetch related books by genre
         if (bookObj.genre) {
@@ -1351,6 +1354,8 @@ export function BookDetailsPage() {
             </div>
           </section>
         )}
+
+        <RecentlyViewed currentBookId={book?._id} className="mt-12 border-t border-slate-800 pt-8" />
       </main>
 
       <Footer />

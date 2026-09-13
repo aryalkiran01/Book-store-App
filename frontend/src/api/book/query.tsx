@@ -12,6 +12,8 @@ import {
   TGetBookByIdOutput,
   TUpdateBookInput,
   TUpdateBookOutput,
+  TSearchSuggestion,
+  getSearchSuggestions,
   updateBook,
 } from "./fetch";
 
@@ -83,4 +85,14 @@ export function useGetBookByIdQuery(id: string) {
     queryFn: () => getBookById({ bookId: id }),
     enabled: Boolean(id),
   });
-}
+}
+
+export function useSearchSuggestionsQuery(query: string) {
+  return useQuery<TSearchSuggestion[], Error>({
+    queryKey: ["book-suggestions", query],
+    queryFn: () => getSearchSuggestions(query),
+    enabled: Boolean(query && query.trim().length >= 2),
+    staleTime: 1000 * 60, // 1 minute
+  });
+}
+

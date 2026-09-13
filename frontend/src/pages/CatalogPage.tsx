@@ -23,6 +23,7 @@ import {
   toggleWishlist,
   isInWishlist,
 } from "../utils/cartStorage";
+import { RecentlyViewed } from "../components/RecentlyViewed";
 
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -547,6 +548,8 @@ export function CatalogPage() {
             )}
           </section>
         </div>
+
+        <RecentlyViewed className="mt-12 border-t border-slate-800/80 pt-8" />
       </main>
 
       {/* Mobile Filters Slide-over Modal */}

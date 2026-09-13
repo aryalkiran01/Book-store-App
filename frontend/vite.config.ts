@@ -6,9 +6,21 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://book-store-app-u8b4.onrender.com",
+        target: "http://localhost:4000",
         changeOrigin: true,
-        secure: true,
+        secure: false,
+      },
+    },
+  },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-icons": ["lucide-react", "react-icons"],
+        },
       },
     },
   },

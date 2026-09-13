@@ -251,3 +251,23 @@ export async function getBookById(
   return data;
 }
 
+export type TSearchSuggestion = {
+  _id: string;
+  title: string;
+  author: string;
+  genre?: string;
+  price: number;
+  image?: string;
+  averageRating?: number;
+};
+
+export async function getSearchSuggestions(query: string): Promise<TSearchSuggestion[]> {
+  if (!query || query.trim().length === 0) return [];
+  const res = await fetch(`${env.BACKEND_URL}/api/books/suggestions?q=${encodeURIComponent(query.trim())}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  return data.data || [];
+}
+

@@ -7,6 +7,7 @@ import {
   getFeaturedBooksController,
   getGenresController,
   getNewArrivalsController,
+  getSearchSuggestionsController,
   updateBookController,
 } from "./controller";
 import { checkAdmin, checkAuth } from "../auth/middleware";
@@ -14,6 +15,7 @@ import { checkAdmin, checkAuth } from "../auth/middleware";
 function createBookRouter() {
   const router = Router();
   router.get("/", getBooksController);
+  router.get("/suggestions", getSearchSuggestionsController);
   router.get("/genres", getGenresController);
   router.get("/featured", getFeaturedBooksController);
   router.get("/new-arrivals", getNewArrivalsController);
