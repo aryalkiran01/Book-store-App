@@ -16,6 +16,7 @@ import { PaymentPage } from "./pages/PaymentPage";
 import { OrderSuccessPage } from "./pages/OrderSuccessPage";
 import { OrderHistoryPage } from "./pages/OrderHistoryPage";
 import { OrderDetailsPage } from "./pages/OrderDetailsPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 const router = createBrowserRouter([
   {
@@ -105,6 +106,10 @@ const router = createBrowserRouter([
   {
     path: "/orders/:orderId",
     element: <OrderDetailsPage />,
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
   },
 ]);
 

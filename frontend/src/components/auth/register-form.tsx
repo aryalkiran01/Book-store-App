@@ -1,185 +1,216 @@
-
-
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useRegisterUserMutation } from "../../api/auth/query";
 import { errorToast, successToast } from "../toaster";
+import { Mail, Lock, User, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
+import { IoBookSharp } from "react-icons/io5";
 
 const registerSchema = z
   .object({
-    email: z.string().email(),
-    username: z.string().min(3).max(20),
-    password: z.string().min(6).max(25),
-    confirmPassword: z.string().min(6).max(25),
+    username: z
+      .string()
+      .min(3, "Username must be at least 3 characters")
+      .max(25, "Username must be under 25 characters")
+      .regex(/^[a-zA-Z0-9_ -]+$/, "Alphanumeric, dashes, and underscores only"),
+    email: z.string().email("Please enter a valid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Please confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
+type RegisterSchemaType = z.infer<typeof registerSchema>;
+
 export function RegisterForm() {
   const navigate = useNavigate();
   const registerUserMutation = useRegisterUserMutation();
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm({
-    mode: "all",
+  } = useForm<RegisterSchemaType>({
+    mode: "onBlur",
     defaultValues: {
-      email: "",
       username: "",
+      email: "",
       password: "",
       confirmPassword: "",
     },
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit: SubmitHandler<z.infer<typeof registerSchema>> = (data) => {
+  const onSubmit: SubmitHandler<RegisterSchemaType> = async (data) => {
     try {
-      registerUserMutation.mutateAsync(
+      await registerUserMutation.mutateAsync(
         {
           email: data.email,
           username: data.username,
           password: data.password,
         },
         {
-          onSuccess(data) {
-            successToast(data.message);
+          onSuccess(res) {
+            successToast(res.message || "Account created successfully! Please sign in.");
             reset();
             navigate("/login");
           },
-          onError(error) {
-            console.error("error", error);
-            errorToast(error.message);
+          onError(error: any) {
+            errorToast(error?.response?.data?.message || error.message || "Registration failed");
           },
         }
       );
-    } catch (error) {
-      console.error("error", error);
-      errorToast("something went wrong");
+    } catch (error: any) {
+      errorToast(error?.response?.data?.message || "Something went wrong");
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="space-y-12">
-        <div className="border-b border-gray-900/10 pb-12">
-          <h2 className="text-base font-semibold leading-7 text-gray-900">
-            Register an account
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-gray-600">
-            You can register an account for free.
-          </p>
+    <div className="w-full max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl relative overflow-hidden animate-fade-in my-8">
+      {/* Accent Glow */}
+      <div className="absolute top-0 left-0 w-32 h-32 bg-purple-600/10 blur-3xl pointer-events-none rounded-full"></div>
 
-          <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-            <div className="sm:col-span-3">
-              <label
-                htmlFor="username"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Username
-              </label>
-              <div className="mt-2">
-                <input
-                  id="username"
-                  type="text"
-                  placeholder="Enter your username"
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  {...register("username")}
-                />
-                {errors.username && (
-                  <p className="text-red-500">{errors.username.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="sm:col-span-3">
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Email
-              </label>
-              <div className="mt-2">
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  {...register("email")}
-                />
-                {errors.email && (
-                  <p className="text-red-500">{errors.email.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="sm:col-span-4">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Password
-              </label>
-              <div className="mt-2">
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  {...register("password")}
-                />
-                {errors.password && (
-                  <p className="text-red-500">{errors.password.message}</p>
-                )}
-              </div>
-            </div>
-            <div className="sm:col-span-4">
-              <label
-                htmlFor="confirm-password"
-                className="block text-sm font-medium leading-6 text-gray-900"
-              >
-                Confirm Password
-              </label>
-              <div className="mt-2">
-                <input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="Enter your password"
-                  className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  {...register("confirmPassword")}
-                />
-                {errors.confirmPassword && (
-                  <p className="text-red-500">
-                    {errors.confirmPassword.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+      {/* Header */}
+      <div className="text-center space-y-2 mb-8">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center mx-auto shadow-lg shadow-purple-600/30 text-white">
+          <IoBookSharp className="text-2xl" />
         </div>
+        <h2 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight">
+          Create Account
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-400">
+          Join KitabGhar to review books, save wishlists, and buy online
+        </p>
       </div>
 
-      <div className="mt-6 flex items-center justify-end gap-x-6">
-        <p>
-          Already have an account?{" "}
-          <Link className="text-indigo-600 underline" to="/login">
-            Login
-          </Link>
-        </p>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Username Field */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Username
+          </label>
+          <div className="relative">
+            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="bookworm123"
+              {...register("username")}
+              className={`w-full pl-10 pr-4 py-3 bg-slate-950 border ${
+                errors.username ? "border-rose-500" : "border-slate-800"
+              } rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
+            />
+          </div>
+          {errors.username && (
+            <p className="text-xs text-rose-400 mt-1">{errors.username.message}</p>
+          )}
+        </div>
+
+        {/* Email Field */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Email Address
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="email"
+              placeholder="you@example.com"
+              {...register("email")}
+              className={`w-full pl-10 pr-4 py-3 bg-slate-950 border ${
+                errors.email ? "border-rose-500" : "border-slate-800"
+              } rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
+            />
+          </div>
+          {errors.email && (
+            <p className="text-xs text-rose-400 mt-1">{errors.email.message}</p>
+          )}
+        </div>
+
+        {/* Password Field */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Password
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              {...register("password")}
+              className={`w-full pl-10 pr-10 py-3 bg-slate-950 border ${
+                errors.password ? "border-rose-500" : "border-slate-800"
+              } rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {errors.password && (
+            <p className="text-xs text-rose-400 mt-1">{errors.password.message}</p>
+          )}
+        </div>
+
+        {/* Confirm Password Field */}
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+            Confirm Password
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              {...register("confirmPassword")}
+              className={`w-full pl-10 pr-4 py-3 bg-slate-950 border ${
+                errors.confirmPassword ? "border-rose-500" : "border-slate-800"
+              } rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition`}
+            />
+          </div>
+          {errors.confirmPassword && (
+            <p className="text-xs text-rose-400 mt-1">
+              {errors.confirmPassword.message}
+            </p>
+          )}
+        </div>
+
+        {/* Submit Button */}
         <button
           type="submit"
-          className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           disabled={registerUserMutation.isPending}
+          className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
         >
-          {registerUserMutation.isPending ? "Registering..." : "Register"}
+          {registerUserMutation.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Creating Account...
+            </>
+          ) : (
+            <>
+              Register Free Account <ArrowRight className="w-4 h-4" />
+            </>
+          )}
         </button>
+      </form>
+
+      {/* Switch to Login */}
+      <div className="mt-6 pt-6 border-t border-slate-800/80 text-center text-xs text-slate-400">
+        Already have an account?{" "}
+        <Link
+          to="/login"
+          className="font-bold text-indigo-400 hover:text-indigo-300 underline underline-offset-4"
+        >
+          Sign In Here
+        </Link>
       </div>
-    </form>
+    </div>
   );
 }

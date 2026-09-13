@@ -1,51 +1,87 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import { useGetBooksQuery } from "../api/book/query";
-import { MdNavigateNext } from "react-icons/md";
-import { GrFormPrevious } from "react-icons/gr";
-import tablepng from "../assets/pngegg.png";
-import Component from "./carousel";
-import { MdBookmarkAdded } from "react-icons/md";
-import bookcollection from "../assets/book collection.png";
-import book1 from "../assets/book2-2.png";
-import book2 from "../assets/book3.png";
-import book3 from "../assets/book1-1.png";
-import book4 from "../assets/book4.png";
-import book5 from "../assets/book5.png";
-import { useNavigate } from "react-router-dom";
-import finance from "../assets/finance_book-removebg-preview.png";
-
+import { Link } from "react-router-dom";
+import {
+  BookOpen,
+  Compass,
+  Star,
+  ShoppingBag,
+  Heart,
+  CheckCircle2,
+  TrendingUp,
+  Sparkles,
+  ArrowRight,
+  BookMarked,
+  Layers,
+  Quote,
+  Flame,
+  Award,
+} from "lucide-react";
 import { AppShell } from "./AppShell";
-import { ShoppingCart, Heart, CheckCircle2 } from "lucide-react";
+import { Footer } from "../pages/Footer";
+import { getAllBooks, TBook } from "../api/book/fetch";
 import { addToCart, toggleWishlist } from "../utils/cartStorage";
 
+const POPULAR_GENRES = [
+  { name: "Fiction", icon: BookMarked, count: "1,200+ Books", color: "from-blue-600 to-indigo-600" },
+  { name: "Business & Investing", icon: TrendingUp, count: "850+ Books", color: "from-emerald-600 to-teal-600" },
+  { name: "Self-Help", icon: Sparkles, count: "950+ Books", color: "from-amber-600 to-orange-600" },
+  { name: "Science Fiction", icon: Layers, count: "620+ Books", color: "from-purple-600 to-pink-600" },
+  { name: "Biography", icon: Award, count: "480+ Books", color: "from-rose-600 to-red-600" },
+  { name: "Technology", icon: Compass, count: "740+ Books", color: "from-cyan-600 to-blue-600" },
+];
+
 export function HomePage() {
+  const [featuredBooks, setFeaturedBooks] = useState<TBook[]>([]);
+  const [newArrivals, setNewArrivals] = useState<TBook[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const updateWishlist = () => {
-      try {
-        const saved = localStorage.getItem("wishlist");
-        if (saved) {
-          const list = JSON.parse(saved);
-          setWishlistIds(list.map((item: any) => item._id));
-        } else {
-          setWishlistIds([]);
-        }
-      } catch {
-        setWishlistIds([]);
-      }
-    };
-    updateWishlist();
-    window.addEventListener("cart-wishlist-update", updateWishlist);
-    window.addEventListener("storage", updateWishlist);
+    loadBooks();
+    syncWishlist();
+
+    const handleUpdate = () => syncWishlist();
+    window.addEventListener("cart-wishlist-update", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
     return () => {
-      window.removeEventListener("cart-wishlist-update", updateWishlist);
-      window.removeEventListener("storage", updateWishlist);
+      window.removeEventListener("cart-wishlist-update", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
     };
   }, []);
 
-  const handleAddToCart = (book: any) => {
+  const syncWishlist = () => {
+    try {
+      const raw = localStorage.getItem("wishlist");
+      if (raw) {
+        const list = JSON.parse(raw);
+        setWishlistIds(list.map((item: any) => item._id));
+      } else {
+        setWishlistIds([]);
+      }
+    } catch {
+      setWishlistIds([]);
+    }
+  };
+
+  const loadBooks = async () => {
+    try {
+      setLoading(true);
+      const [featRes, newRes] = await Promise.all([
+        getAllBooks({ limit: 8, featured: true }),
+        getAllBooks({ limit: 8, isNewArrival: true }),
+      ]);
+      setFeaturedBooks(featRes.data.length > 0 ? featRes.data : (await getAllBooks({ limit: 8 })).data);
+      setNewArrivals(newRes.data.length > 0 ? newRes.data : (await getAllBooks({ limit: 8, page: 2 })).data);
+    } catch (err) {
+      console.error("Error loading homepage books:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddToCart = (book: TBook) => {
     addToCart({
       _id: book._id,
       title: book.title,
@@ -59,460 +95,536 @@ export function HomePage() {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  const handleToggleWishlist = (book: any) => {
-    const isNow = toggleWishlist({
+  const handleToggleWishlist = (book: TBook) => {
+    toggleWishlist({
       _id: book._id,
       title: book.title,
       author: book.author,
+      genre: book.genre,
       price: book.price,
       discountPercentage: book.discountPercentage,
       image: book.image,
       stock: book.stock,
-      genre: book.genre,
     });
-    setToastMsg(
-      isNow
-        ? `Added "${book.title}" to wishlist!`
-        : `Removed "${book.title}" from wishlist.`
-    );
-    setTimeout(() => setToastMsg(null), 3000);
+    syncWishlist();
   };
-
-  const { data, isLoading, isError, error } = useGetBooksQuery();
-
-  const [visibleBooks, setVisibleBooks] = useState(3);
-  const [genreScrollIndex, setGenreScrollIndex] = useState(0);
-  const [bookScrollIndex, setBookScrollIndex] = useState(0);
-  const handleGenreNext = () => setGenreScrollIndex((prev) => prev + 1);
-  const handleGenrePrev = () =>
-    setGenreScrollIndex((prev) => Math.max(prev - 1, 0));
-
-  const handleBookNext = () => setBookScrollIndex((prev) => prev + 1);
-  const handleBookPrev = () =>
-    setBookScrollIndex((prev) => Math.max(prev - 1, 0));
-
-  const handleLoadMore = () => setVisibleBooks((prev) => prev + 3);
-  const handleShowLess = () => setVisibleBooks((prev) => Math.max(prev - 3, 3));
-
-  const navigate = useNavigate();
-  const handleLoginClick = () => {
-    navigate("./login");
-  };
-
-  const navigater = useNavigate();
-  const handleRegisterClick = () => {
-    navigater("./register");
-  };
-  const genres = [
-    { name: "Arts & Photography", icon: "🎨" },
-    { name: "Boxed Sets", icon: "📦" },
-    { name: "Business & Investing", icon: "💼" },
-    { name: "Fiction & Literature", icon: "📖" },
-    { name: "Foreign Languages", icon: "🌐" },
-    { name: "History & Memoir", icon: "📜" },
-    { name: "Kids & Teens", icon: "👦" },
-    { name: "Learning & Reference", icon: "✏" },
-    { name: "Lifestyle & Wellness", icon: "🧘" },
-    { name: "Manga & Graphic Novels", icon: "📚" },
-    { name: "Miscellaneous", icon: "💡" },
-    { name: "Nature", icon: "🍃" },
-    { name: "Nepali", icon: "🇳🇵" },
-    { name: "Political Science", icon: "⚖️" },
-    { name: "Rare Coffee Table Books", icon: "📚" },
-    { name: "Religious", icon: "ૐ" },
-    { name: "Self Improvement", icon: "🧠" },
-    { name: "Technology", icon: "🧑🏼‍💻" },
-    { name: "Travel", icon: "✈️" },
-  ];
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-900 to-purple-700">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-r from-indigo-500 via-purple-800 to-pink-500">
-        <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg shadow">
-          {error.message}
-        </div>
-      </div>
-    );
-  }
-
-  
-
-  const bookData = data?.data || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-purple-700 via-slate-100 to-blue-600">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <AppShell />
+
+      {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="font-semibold text-sm">{toastMsg}</span>
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 border border-emerald-500/50 text-white px-5 py-3.5 rounded-xl shadow-2xl animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+          <span className="text-sm font-medium">{toastMsg}</span>
         </div>
       )}
-      <Component />
-      {/* Genres Section */}
-      <div className="p-8">
-        <div className="max-w-5xl mx-auto relative">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold mb-2">Genres</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={handleGenrePrev}
-                className="bg-slate-200 text-blue-950 p-2 rounded-full shadow-lg"
-              >
-                <GrFormPrevious />
-              </button>
-              <button
-                onClick={handleGenreNext}
-                className="bg-slate-200 text-blue-950 p-2 rounded-full shadow-lg"
-              >
-                <MdNavigateNext />
-              </button>
-            </div>
-          </div>
-          <p className=" text-amber-950 text-lg mb-6">
-            Browse Our Extensive Collection of Books Across Different Genres.
-          </p>
-          <div className="flex overflow-hidden relative">
-            <div
-              className="flex space-x-4 transition-transform duration-500"
-              style={{ transform: `translateX(-${genreScrollIndex * 100}px)` }}
-            >
-              {genres.map((genre, index) => (
-                <div
-                  key={index}
-                  onClick={() => navigate(`/books?genre=${encodeURIComponent(genre.name)}`)}
-                  className="flex flex-col items-center space-y-2 text-center p-4 hover:shadow-2xl cursor-pointer hover:scale-105 transition transform rounded-2xl bg-white/40 backdrop-blur-sm"
+
+      {/* ===================== HERO SECTION ===================== */}
+      <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28 border-b border-slate-900">
+        {/* Ambient Gradient Glows */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-indigo-600/20 via-purple-600/20 to-pink-600/10 blur-[130px] pointer-events-none -z-10 rounded-full"></div>
+        <div className="absolute top-10 right-10 w-72 h-72 bg-blue-600/10 blur-[100px] pointer-events-none -z-10 rounded-full"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Hero Content */}
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-700/80 text-indigo-300 text-xs font-bold tracking-wide shadow-inner">
+                <Flame className="w-4 h-4 text-amber-400" />
+                <span>Nepal's Largest Online Bookstore & Community</span>
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-100 tracking-tight leading-[1.12]">
+                Discover Stories That <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">Inspire, Educate</span> & Transform.
+              </h1>
+
+              <p className="text-base sm:text-lg text-slate-400 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                Explore thousands of curated titles across fiction, business, psychology, and technology. Read genuine reviews from avid readers and enjoy express doorstep delivery.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+                <Link
+                  to="/books"
+                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  <div className="text-4xl">{genre.icon}</div>
-                  <p className="text-sm font-medium whitespace-nowrap">{genre.name}</p>
+                  <BookOpen className="w-4 h-4" /> Browse Full Catalog
+                </Link>
+                <a
+                  href="#featured"
+                  className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 font-bold text-sm border border-slate-800 transition-all flex items-center justify-center gap-2"
+                >
+                  Trending Bestsellers <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
+
+              {/* Metric Counters */}
+              <div className="grid grid-cols-3 gap-6 pt-6 border-t border-slate-900 max-w-md mx-auto lg:mx-0">
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-100">10,000+</div>
+                  <div className="text-xs text-slate-500 font-medium">Titles in Stock</div>
                 </div>
-              ))}
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-100">99.4%</div>
+                  <div className="text-xs text-slate-500 font-medium">Positive Reviews</div>
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-black text-slate-100">24-48h</div>
+                  <div className="text-xs text-slate-500 font-medium">Express Courier</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Hero Visual Stack */}
+            <div className="lg:col-span-5 relative flex items-center justify-center">
+              <div className="relative w-full max-w-md h-[380px] sm:h-[440px] flex items-center justify-center">
+                {/* Book Card 1 */}
+                <div className="absolute left-4 sm:left-8 top-10 w-48 sm:w-56 h-64 sm:h-72 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden -rotate-6 transform hover:rotate-0 transition-transform duration-300 z-10">
+                  <img
+                    src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80"
+                    alt="Book Cover Preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* Book Card 2 (Center Hero) */}
+                <div className="absolute w-52 sm:w-60 h-72 sm:h-80 rounded-2xl bg-slate-900 border border-indigo-500/40 shadow-2xl shadow-indigo-500/20 overflow-hidden z-20 hover:scale-105 transition-transform duration-300">
+                  <img
+                    src="https://images.unsplash.com/photo-1592496431122-2349e0fbc666?auto=format&fit=crop&w=500&q=80"
+                    alt="Featured Bestseller"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
+                    <div className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 fill-amber-400" /> 4.9 (1.2k Reviews)
+                    </div>
+                    <div className="text-sm font-bold text-white truncate">The Psychology of Money</div>
+                  </div>
+                </div>
+
+                {/* Book Card 3 */}
+                <div className="absolute right-4 sm:right-8 top-12 w-48 sm:w-56 h-64 sm:h-72 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden rotate-6 transform hover:rotate-0 transition-transform duration-300 z-10">
+                  <img
+                    src="https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=400&q=80"
+                    alt="Book Cover Preview 3"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Stylish Heading */}
-      <div className="text-center py-12 bg-gradient-to-r from-purple-700 via-slate-100 to-blue-600">
-        <h1 className="text-5xl text-blue-950 tracking-wide drop-shadow-lg font-serif">
-          What do you want to read?
-        </h1>
-        <p className="text-xl text-amber-950 mt-2">
-          Find Your Next Great Read Among Our Best Sellers.
-        </p>
-      </div>
+      {/* ===================== POPULAR GENRES ===================== */}
+      <section className="py-16 bg-slate-900/40 border-b border-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                Explore by Category
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight mt-1">
+                Popular Reading Genres
+              </h2>
+            </div>
+            <Link
+              to="/books"
+              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+            >
+              View All Categories <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
 
-      {/* Book Slider Section */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="relative">
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6 transition-all duration-500 transform"
-            style={{ transform: `translateX(-${bookScrollIndex * 100}%)` }}
-          >
-            {bookData.slice(0, visibleBooks).map((book: any) => {
-              const isWishlisted = wishlistIds.includes(book._id);
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {POPULAR_GENRES.map((genre) => {
+              const Icon = genre.icon;
+              return (
+                <Link
+                  key={genre.name}
+                  to={`/books?genre=${encodeURIComponent(genre.name)}`}
+                  className="group p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/60 transition-all duration-200 text-center flex flex-col items-center justify-center hover:-translate-y-1"
+                >
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-gradient-to-tr ${genre.color} flex items-center justify-center text-white mb-3 shadow-lg group-hover:scale-110 transition-transform`}
+                  >
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-200 group-hover:text-indigo-300 transition-colors line-clamp-1">
+                    {genre.name}
+                  </h3>
+                  <span className="text-[11px] text-slate-500 mt-0.5">
+                    {genre.count}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== FEATURED BESTSELLERS ===================== */}
+      <section id="featured" className="py-20 border-b border-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <Flame className="w-4 h-4" /> Highly Recommended
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight mt-1">
+                Featured Bestsellers & Top Picks
+              </h2>
+            </div>
+            <Link
+              to="/books"
+              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+            >
+              See More Books <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-80 rounded-2xl bg-slate-900 border border-slate-800 animate-pulse"
+                ></div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+              {featuredBooks.map((book) => {
+                const inWishlist = wishlistIds.includes(book._id);
+                return (
+                  <div
+                    key={book._id}
+                    className="book-card-hover group flex flex-col justify-between rounded-2xl bg-slate-900/90 border border-slate-800 p-4 shadow-lg relative overflow-hidden"
+                  >
+                    {/* Wishlist Button */}
+                    <button
+                      onClick={() => handleToggleWishlist(book)}
+                      className={`absolute top-6 right-6 z-20 p-2 rounded-xl backdrop-blur-md transition-colors ${
+                        inWishlist
+                          ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+                          : "bg-slate-950/70 text-slate-300 hover:text-rose-400 hover:bg-slate-950"
+                      }`}
+                      title={inWishlist ? "In Wishlist" : "Add to Wishlist"}
+                    >
+                      <Heart
+                        className={`w-4 h-4 ${inWishlist ? "fill-white" : ""}`}
+                      />
+                    </button>
+
+                    {/* Discount Badge */}
+                    {book.discountPercentage && book.discountPercentage > 0 && (
+                      <span className="absolute top-6 left-6 z-20 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-md">
+                        {book.discountPercentage}% OFF
+                      </span>
+                    )}
+
+                    <div>
+                      {/* Thumbnail Container */}
+                      <Link
+                        to={`/books/${book._id}`}
+                        className="block aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 mb-4 relative"
+                      >
+                        <img
+                          src={
+                            book.image ||
+                            "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80"
+                          }
+                          alt={book.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </Link>
+
+                      {/* Genre & Rating */}
+                      <div className="flex items-center justify-between gap-2 mb-1.5 text-xs">
+                        <span className="text-slate-400 font-medium truncate">
+                          {book.genre || "Fiction"}
+                        </span>
+                        <div className="flex items-center gap-1 text-amber-400 font-bold flex-shrink-0">
+                          <Star className="w-3 h-3 fill-amber-400" />
+                          <span>{book.rating?.toFixed(1) || "5.0"}</span>
+                        </div>
+                      </div>
+
+                      {/* Title & Author */}
+                      <Link
+                        to={`/books/${book._id}`}
+                        className="block font-bold text-slate-100 text-sm hover:text-indigo-400 transition-colors line-clamp-1 mb-0.5"
+                      >
+                        {book.title}
+                      </Link>
+                      <div className="text-xs text-slate-500 mb-3 truncate">
+                        by {book.author}
+                      </div>
+                    </div>
+
+                    {/* Price & Add to Cart */}
+                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-black text-slate-100">
+                          NPR {book.price}
+                        </div>
+                        {book.stock !== undefined && (
+                          <div
+                            className={`text-[10px] font-semibold ${
+                              book.stock <= 0
+                                ? "text-rose-400"
+                                : book.stock <= 5
+                                ? "text-amber-400"
+                                : "text-emerald-400"
+                            }`}
+                          >
+                            {book.stock <= 0
+                              ? "Out of stock"
+                              : `${book.stock} in stock`}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleAddToCart(book)}
+                        disabled={(book.stock ?? 1) <= 0}
+                        className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                        title="Add to Cart"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ===================== NEW RELEASES SECTION ===================== */}
+      <section className="py-20 bg-slate-900/30 border-b border-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" /> Fresh off the press
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight mt-1">
+                New Arrivals & Recent Publications
+              </h2>
+            </div>
+            <Link
+              to="/books"
+              className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1"
+            >
+              Explore All Books <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+            {newArrivals.map((book) => {
+              const inWishlist = wishlistIds.includes(book._id);
               return (
                 <div
                   key={book._id}
-                  onClick={() => navigate(`/books/${book._id}`)}
-                  className="group bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-transform duration-500 transform hover:scale-[1.02] cursor-pointer flex flex-col justify-between"
+                  className="book-card-hover group flex flex-col justify-between rounded-2xl bg-slate-900/90 border border-slate-800 p-4 shadow-lg relative overflow-hidden"
                 >
-                  {/* Image Section */}
-                  <div className="relative h-80 bg-slate-950">
-                    <img
-                      src={
-                        book.image ||
-                        "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80"
-                      }
-                      alt={book.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  <button
+                    onClick={() => handleToggleWishlist(book)}
+                    className={`absolute top-6 right-6 z-20 p-2 rounded-xl backdrop-blur-md transition-colors ${
+                      inWishlist
+                        ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+                        : "bg-slate-950/70 text-slate-300 hover:text-rose-400 hover:bg-slate-950"
+                    }`}
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${inWishlist ? "fill-white" : ""}`}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-80"></div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleWishlist(book);
-                      }}
-                      className={`absolute top-3 right-3 p-2 rounded-full shadow-md backdrop-blur-md transition-all ${
-                        isWishlisted
-                          ? "bg-rose-600 text-white"
-                          : "bg-slate-900/70 text-slate-300 hover:text-white hover:bg-slate-900"
-                      }`}
-                      title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                  </button>
+
+                  <div>
+                    <Link
+                      to={`/books/${book._id}`}
+                      className="block aspect-[3/4] rounded-xl overflow-hidden bg-slate-950 mb-4 relative"
                     >
-                      <Heart
-                        size={18}
-                        fill={isWishlisted ? "currentColor" : "none"}
+                      <img
+                        src={
+                          book.image ||
+                          "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80"
+                        }
+                        alt={book.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                    </button>
-                    <div className="absolute bottom-0 left-0 right-0 p-5">
-                      <h2 className="text-xl font-bold text-white line-clamp-1">
-                        {book.title}
-                      </h2>
-                      <p className="text-sm text-amber-200">by {book.author}</p>
+                    </Link>
+
+                    <div className="flex items-center justify-between gap-2 mb-1.5 text-xs">
+                      <span className="text-slate-400 font-medium truncate">
+                        {book.genre || "Fiction"}
+                      </span>
+                      <div className="flex items-center gap-1 text-amber-400 font-bold flex-shrink-0">
+                        <Star className="w-3 h-3 fill-amber-400" />
+                        <span>{book.rating?.toFixed(1) || "5.0"}</span>
+                      </div>
+                    </div>
+
+                    <Link
+                      to={`/books/${book._id}`}
+                      className="block font-bold text-slate-100 text-sm hover:text-purple-400 transition-colors line-clamp-1 mb-0.5"
+                    >
+                      {book.title}
+                    </Link>
+                    <div className="text-xs text-slate-500 mb-3 truncate">
+                      by {book.author}
                     </div>
                   </div>
 
-                  {/* Content Section */}
-                  <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="mb-3 flex flex-wrap gap-1.5">
-                        {book.genre?.split(",").map((genre: string, index: number) => (
-                          <span
-                            key={index}
-                            className="px-2.5 py-0.5 text-xs font-semibold text-indigo-300 bg-indigo-950/80 border border-indigo-800/60 rounded-full"
-                          >
-                            {genre.trim()}
-                          </span>
-                        ))}
-                      </div>
-                      {/* Description */}
-                      <div className="text-xs text-slate-300 mb-4">
-                        <p className="line-clamp-2">
-                          {book.description}
-                        </p>
-                      </div>
+                  <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                    <div className="text-sm font-black text-slate-100">
+                      NPR {book.price}
                     </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-lg font-bold text-white">NPR {book.price}</p>
-                        <span className="text-xs text-indigo-400 font-semibold group-hover:underline">View Details &rarr;</span>
-                      </div>
-                      {/* Add to Cart Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToCart(book);
-                        }}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition text-sm flex items-center justify-center gap-2"
-                      >
-                        <ShoppingCart size={16} /> Add to Cart
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleAddToCart(book)}
+                      disabled={(book.stock ?? 1) <= 0}
+                      className="p-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white shadow-md shadow-purple-600/30 transition-all active:scale-95"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={handleBookPrev}
-              className="bg-slate-200 text-blue-950 p-2 rounded-full shadow-lg mx-2"
-            >
-              <GrFormPrevious />
-            </button>
-            <button
-              onClick={handleBookNext}
-              className="bg-slate-200 text-blue-950 p-2 rounded-full shadow-lg mx-2"
-            >
-              <MdNavigateNext />
-            </button>
+        </div>
+      </section>
+
+      {/* ===================== READER TESTIMONIALS & COMMUNITY SPOTLIGHT ===================== */}
+      <section className="py-20 border-b border-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+              Reader Community
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-100 tracking-tight mt-1">
+              Loved by Thousands of Readers
+            </h2>
+            <p className="text-sm text-slate-400 mt-2">
+              See what readers are saying about our bookstore collection, genuine verified reviews, and fast delivery.
+            </p>
           </div>
-          <div className="flex justify-center mt-4">
-            <button
-              onClick={handleLoadMore}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg mx-2"
-            >
-              Load More
-            </button>
-            <button
-              onClick={handleShowLess}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg mx-2"
-            >
-              Show Less
-            </button>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative flex flex-col justify-between">
+              <div>
+                <Quote className="w-8 h-8 text-indigo-500/40 mb-3" />
+                <div className="flex text-amber-400 text-xs mb-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400" />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed italic">
+                  "KitabGhar made it so easy to get original psychology and finance books delivered right to Pokhara within 24 hours. The review community is genuinely insightful!"
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-950 border border-indigo-700 flex items-center justify-center font-bold text-indigo-300">
+                  AP
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-100">Anish Pokhrel</div>
+                  <div className="text-xs text-slate-500">Verified Reader • 14 Books Purchased</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative flex flex-col justify-between">
+              <div>
+                <Quote className="w-8 h-8 text-purple-500/40 mb-3" />
+                <div className="flex text-amber-400 text-xs mb-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400" />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed italic">
+                  "The verified purchase badges give so much credibility to the reviews. I always check ratings here before picking my next weekend novel."
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-950 border border-purple-700 flex items-center justify-center font-bold text-purple-300">
+                  SS
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-100">Sneha Shrestha</div>
+                  <div className="text-xs text-slate-500">Avid Book Club Member</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg relative flex flex-col justify-between">
+              <div>
+                <Quote className="w-8 h-8 text-emerald-500/40 mb-3" />
+                <div className="flex text-amber-400 text-xs mb-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400" />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed italic">
+                  "Smooth Khalti payment, live inventory counts, and reliable packaging. Hands down the best bookstore experience in Nepal!"
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-950 border border-emerald-700 flex items-center justify-center font-bold text-emerald-300">
+                  RB
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-slate-100">Rohan Baral</div>
+                  <div className="text-xs text-slate-500">Tech Lead & Reader</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-<div className="w-full mx-auto relative min-h-[450px] bg-slate-100 flex items-center">
-  <div className="flex flex-col items-start justify-start pl-44 h-80">
-    <div className="flex items-center mt-24">
-      <MdBookmarkAdded className="text-6xl" />
-      <h2 className="text-2xl font-semibold mb-2 pl-4">
-        Used Books Starting at Just <br /> Rs. 250
-      </h2>
-    </div>
-    <p className="text-lg mt-4">
-      Explore a Wide Range of Popular Used Books in Excellent Condition.
-    </p>
-    <button
-      onClick={() => navigate("/books")}
-      className="mt-4 px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
-    >
-      Explore Books
-    </button>
-  </div>
+      </section>
 
-  <div>
-    {/* Book collection image visible only on desktop */}
-    <div className="absolute top-1 right-0 z-30 mt-10 mr-52 hidden md:block">
-      <img
-        src={bookcollection}
-        alt="Book Collection"
-        className="w-[500px]"
-      />
-    </div>
+      {/* ===================== CALL TO ACTION BANNER ===================== */}
+      <section className="py-20 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative rounded-3xl bg-gradient-to-r from-indigo-900/80 via-purple-900/80 to-slate-900 p-8 sm:p-12 lg:p-16 border border-indigo-500/30 shadow-2xl overflow-hidden text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-8">
+            <div className="space-y-4 max-w-xl">
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                Join the Community
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                Ready to Start Your Next Reading Journey?
+              </h2>
+              <p className="text-slate-300 text-sm leading-relaxed">
+                Create a free account to track your wishlist, write verified reviews, and earn reader badges.
+              </p>
+            </div>
 
-    {/* Table image visible only on desktop */}
-    <div className="absolute bottom-1/4 right-0 mr-52 hidden md:block">
-      <img
-        src={tablepng}
-        alt="Table"
-        className="h-52 w-[500px]"
-      />
-    </div>
-  </div>
-</div>
-
-<div className="bg-slate-200 w-full mx-auto flex flex-col items-center justify-center relative">
-  <div className="flex flex-col items-center justify-center">
-    <p className="bold text-[20px] font-inter mt-20">
-      Explore From Our Amazing Collection of
-    </p>
-    <p className="pr-10 font-bold text-black font-inter text-[40px] pl-20">
-      Thousand of Nepali Books
-    </p>
-  </div>
-
-
-  <div className="w-[170px] hidden sm:flex flex-row justify-center items-center absolute end1/5 mt-16 ml-20">
-    <img src={book1} alt="" />
-    <img src={book2} alt="" />
-    <img src={book3} alt="" />
-    <img src={book4} alt="" />
-    <img src={book5} alt="" />
-  </div>
-
-  {/* Table image: hidden on mobile */}
-  <div className="mt-36 sm:mt-44">
-    <img
-      src={tablepng}
-      alt="Table"
-      className="w-[990px] hidden sm:block"
-    />
-  </div>
-
-  <button
-    onClick={() => navigate("/books?genre=Nepali")}
-    className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg mt-16 mb-24"
-  >
-    Explore Nepali Books
-  </button>
-</div>
-
-<div className="bg-slate-300 w-full min-h-[600px] mx-auto flex flex-col items-start justify-start relative">
-  <div className="flex flex-col items-start justify-start pl-6 sm:pl-10 md:pl-20 lg:pl-44 mt-16">
-    <h1 className="text-2xl font-semibold mb-2">Our picks for you</h1>
-
-    <p className="font-serif text-base sm:text-lg">
-      We will curate special book recommendations for you <br className="hidden sm:block" />
-      based on your genre preferences.
-    </p>
-
-    <p className="mt-5 font-semibold">Login or create account to get started.</p>
-
-    <div className="flex flex-col sm:flex-row mt-5 gap-4">
-      <button
-        className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
-        onClick={handleLoginClick}
-      >
-        Login
-      </button>
-      <button
-        className="px-9 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition text-lg"
-        onClick={handleRegisterClick}
-      >
-        Register Now
-      </button>
-    </div>
-
-    <div className="font-bold font-mono text-[28px] sm:text-[36px] lg:text-[40px] mt-10">
-      <h1>
-        THE MORE YOU LEARN, <br />
-        <span>THE MORE YOU EARN....</span>
-      </h1>
-    </div>
-  </div>
-
-
-  <div className="absolute right-[10%] bottom-0 pb-32 hidden lg:block">
-    <img src={finance} alt="Finance" className="rounded-lg shadow w-[350px] h-auto" />
-  </div>
-</div>
-
-<div className="bg-slate-200 w-full mx-auto flex flex-col lg:flex-row items-start justify-start px-4 sm:px-10 lg:px-44 py-10">
-  <div className="flex flex-col items-start justify-start w-full">
-    <h1 className="font-bold text-[24px] sm:text-[30px]">Bestselling Authors</h1>
-    <p className="text-base sm:text-lg mt-2">
-      Discover Books by Bestselling Authors in Our Collection, Ranked by Popularity.
-    </p>
-
-    {/* Scrollable row of authors */}
-    <div className="flex flex-row items-center mt-6 space-x-5 overflow-x-auto w-full pb-4">
-      {[
-        {
-          name: "J.K. Rowling",
-          src: "https://upload.wikimedia.org/wikipedia/commons/5/5d/J._K._Rowling_2010.jpg",
-        },
-        {
-          name: "George R.R. Martin",
-          src: "https://hips.hearstapps.com/hmg-prod/images/gettyimages-187751114.jpg?crop=1.00xw:1.00xh;0,0&resize=1200:*",
-        },
-        {
-          name: "Stephen King",
-          src: "https://upload.wikimedia.org/wikipedia/commons/e/e3/Stephen_King%2C_Comicon.jpg",
-        },
-        {
-          name: "James Clear",
-          src: "https://images.squarespace-cdn.com/content/v1/5da5150079965b6c99a48868/1707175216487-8W0INSCEMXMMXEO0HJDK/James+Clear+Big+Image.jpg?format=1500w",
-        },
-        {
-          name: "Paulo Coelho",
-          src: "https://images3.penguinrandomhouse.com/author/5234",
-        },
-        {
-          name: "Michelle Obama",
-          src: "https://hips.hearstapps.com/hmg-prod/images/michelle-obama-gettyimages-85246899.jpg",
-        },
-        {
-          name: "Colleen Hoover",
-          src: "https://compote.slate.com/images/8cec4fe5-14b8-422e-b3b6-9edd3947b273.jpeg?crop=1560%2C1040%2Cx0%2Cy0",
-        },
-        {
-          name: "Yuval Noah Harari",
-          src: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSTGpIIv9u8iQ3fNwq5pgh46fuZSl38WUwqWA&s",
-        },
-      ].map((author, index) => (
-        <div
-          className="flex flex-col items-center min-w-[150px] cursor-pointer hover:scale-105 transition"
-          key={index}
-          onClick={() => navigate(`/books?author=${encodeURIComponent(author.name)}`)}
-        >
-          <img
-            src={author.src}
-            alt={author.name}
-            className="w-[120px] h-[120px] sm:w-[150px] sm:h-[150px] rounded-full object-cover shadow-md"
-          />
-          <p className="text-center mt-2 text-[14px] sm:text-[16px] font-mono font-bold text-slate-800 hover:text-indigo-600 transition">
-            {author.name}
-          </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 flex-shrink-0">
+              <Link
+                to="/register"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white text-slate-950 font-bold text-sm hover:bg-slate-100 shadow-xl transition-all hover:scale-105 active:scale-95"
+              >
+                Join Free Today
+              </Link>
+              <Link
+                to="/books"
+                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-950/80 hover:bg-slate-900 text-white font-bold text-sm border border-slate-700 transition-all"
+              >
+                Explore Books
+              </Link>
+            </div>
+          </div>
         </div>
-      ))}
-    </div>
-  </div>
-</div>
+      </section>
 
-
+      <Footer />
     </div>
   );
 }
+
 export default HomePage;
