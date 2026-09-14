@@ -59,9 +59,9 @@ export async function initializeProductionAdmin() {
  */
 export async function seedDatabase() {
   try {
-    // In production, do NOT seed sample books, reviews, or mock users unless explicitly enabled via SEED_DB=true
-    if (env.NODE_ENV === "production" && !env.SEED_DB) {
-      await initializeProductionAdmin();
+    // Strictly gate seed functionality: never seed in production
+    if (env.NODE_ENV === "production") {
+      console.warn("🛡️ [SECURITY] Database seeding is strictly disabled in production.");
       return;
     }
 

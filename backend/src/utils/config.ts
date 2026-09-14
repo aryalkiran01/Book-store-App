@@ -34,8 +34,8 @@ const ESEWA_STATUS_CHECK_URL =
 const UPLOADS_DIR = process.env.UPLOADS_DIR || "uploads/";
 
 const SEED_DB =
-  process.env.SEED_DB === "true" ||
-  (NODE_ENV !== "production" && process.env.SEED_DB !== "false");
+  NODE_ENV !== "production" &&
+  (process.env.SEED_DB === "true" || process.env.ALLOW_DEV_SEED === "true");
 const INITIAL_ADMIN_EMAIL = process.env.INITIAL_ADMIN_EMAIL || "";
 const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || "";
 const INITIAL_ADMIN_USERNAME = process.env.INITIAL_ADMIN_USERNAME || "Admin";

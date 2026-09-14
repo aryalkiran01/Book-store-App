@@ -29,9 +29,9 @@ import { seedDatabase, initializeProductionAdmin } from "./utils/seed";
 createDBConnection()
   .then(async () => {
     console.log("Database connected successfully");
-    if (env.SEED_DB || env.NODE_ENV !== "production") {
+    if (env.NODE_ENV !== "production" && env.SEED_DB) {
       await seedDatabase();
-    } else {
+    } else if (env.NODE_ENV === "production") {
       await initializeProductionAdmin();
     }
   })
