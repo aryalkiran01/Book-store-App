@@ -124,6 +124,10 @@ export async function initiateKhaltiPaymentService(
     throw APIError.badRequest("This order has already been paid for.");
   }
 
+  if (order.status === "cancelled") {
+    throw APIError.badRequest("Cannot initiate payment for a cancelled order.");
+  }
+
   const isProduction =
     env.NODE_ENV === "production" || process.env.NODE_ENV === "production";
   const khaltiSecret = (env.KHALTI_SECRET_KEY || "").trim();
@@ -269,6 +273,10 @@ export async function verifyKhaltiPaymentService(
       order: targetOrder,
       message: "Payment was previously verified and completed",
     };
+  }
+
+  if (targetOrder.status === "cancelled") {
+    throw APIError.badRequest("Cannot verify payment for a cancelled order.");
   }
 
   const isMockPidx =
@@ -486,6 +494,10 @@ export async function initiateEsewaPaymentService(
     throw APIError.badRequest("This order has already been paid for.");
   }
 
+  if (order.status === "cancelled") {
+    throw APIError.badRequest("Cannot initiate payment for a cancelled order.");
+  }
+
   const subtotal = order.subtotal;
   const shippingCost = order.shippingCost || 0;
   const totalAmount = order.totalAmount;
@@ -598,6 +610,10 @@ export async function verifyEsewaPaymentService(
       order: targetOrder,
       message: "eSewa payment was previously verified and completed",
     };
+  }
+
+  if (targetOrder.status === "cancelled") {
+    throw APIError.badRequest("Cannot verify payment for a cancelled order.");
   }
 
   // Verify Gateway Status

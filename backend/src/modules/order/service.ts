@@ -140,8 +140,8 @@ export async function createOrderService(input: TCreateOrderInput) {
     throw APIError.badRequest("Order must contain at least one book item");
   }
 
-  // Validate quantities and sanitize list
-  const sanitizedItems: { bookId: string; quantity: number }[] = [];
+  // Validate quantities, sanitize list, and merge duplicate book IDs into consolidated requests
+  const itemMap = new Map<string, number>();
   for (const item of rawBooks) {
     validateObjectId(item.bookId, "Book ID");
     const qty = Number(item.quantity);
@@ -150,11 +150,15 @@ export async function createOrderService(input: TCreateOrderInput) {
         `Invalid quantity for book ID ${item.bookId}. Quantity must be a positive integer greater than 0.`
       );
     }
-    sanitizedItems.push({
-      bookId: item.bookId.toString(),
-      quantity: qty,
-    });
+    const key = item.bookId.toString();
+    const currentQty = itemMap.get(key) || 0;
+    itemMap.set(key, currentQty + qty);
   }
+
+  const sanitizedItems = Array.from(itemMap.entries()).map(([bookId, quantity]) => ({
+    bookId,
+    quantity,
+  }));
 
   // Track successfully decremented items for compensating rollback if any subsequent update fails
   const decrementedItems: { bookId: string; quantity: number }[] = [];
@@ -302,7 +306,7 @@ export async function createOrderService(input: TCreateOrderInput) {
       orderNote: input.orderNote || "",
       paymentMethod: input.paymentMethod || "khalti",
       paymentStatus: initialPaymentStatus,
-      paymentId: input.paymentId || "",
+      paymentId: "",
       status: initialStatus,
       statusHistory: [
         {
