@@ -249,3 +249,45 @@ export async function fetchAdminOrders(params?: {
   }>(`${getApiBaseUrl()}/orders?${query.toString()}`, getAxiosConfig());
   return response.data;
 }
+
+export interface OpenLibraryBook {
+  openLibraryId: string;
+  title: string;
+  author: string;
+  isbn: string;
+  coverId: string;
+  coverUrl: string;
+  firstPublishYear?: number;
+  genre: string;
+  pages: number;
+  publisher: string;
+  language: string;
+}
+
+// 13. Search Open Library
+export async function searchOpenLibraryBooks(
+  searchQuery: string,
+  page: number = 1,
+  limit: number = 20
+): Promise<{
+  data: OpenLibraryBook[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  const query = new URLSearchParams();
+  query.append("query", searchQuery);
+  query.append("page", String(page));
+  query.append("limit", String(limit));
+
+  const response = await axios.get<{
+    isSuccess: boolean;
+    data: OpenLibraryBook[];
+    total: number;
+    page: number;
+    limit: number;
+  }>(`${getApiBaseUrl()}/open-library/search?${query.toString()}`, getAxiosConfig());
+
+  return response.data;
+}
+

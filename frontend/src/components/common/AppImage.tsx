@@ -11,11 +11,14 @@ export interface AppImageProps extends React.ImgHTMLAttributes<HTMLImageElement>
   fallbackType?: ImageFallbackType;
   fallbackTitle?: string;
   fallbackText?: string;
+  isbn?: string | null;
+  coverId?: string | number | null;
+  openLibraryId?: string | null;
+  author?: string;
+  genre?: string;
   containerClassName?: string;
   aspectRatio?: string;
 }
-
-const DEFAULT_FALLBACK_BOOK_COVER = "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80";
 
 export function normalizeImageUrl(input: any): string | null {
   if (!input) return null;
@@ -66,6 +69,11 @@ export const AppImage: React.FC<AppImageProps> = ({
   fallbackType = "book",
   fallbackTitle,
   fallbackText,
+  isbn,
+  coverId,
+  openLibraryId,
+  author,
+  genre,
   className = "",
   containerClassName = "",
   aspectRatio,
@@ -73,32 +81,49 @@ export const AppImage: React.FC<AppImageProps> = ({
   onLoad,
   ...rest
 }) => {
-  const initialSrc = normalizeImageUrl(src);
-  const [currentSrc, setCurrentSrc] = useState<string | null>(initialSrc);
-  const [hasError, setHasError] = useState(!initialSrc);
-  const [triedBackup, setTriedBackup] = useState(false);
-  const [isLoading, setIsLoading] = useState(Boolean(initialSrc));
+  // Candidate fallback URLs
+  const candidateUrls = React.useMemo(() => {
+    const urls: string[] = [];
+    const normalized = normalizeImageUrl(src);
+    if (normalized) urls.push(normalized);
+
+    if (fallbackType === "book") {
+      const cleanIsbn = (isbn || "").replace(/[^0-9X]/gi, "").trim();
+      if (cleanIsbn) {
+        urls.push(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg?default=false`);
+      }
+      const cleanCoverId = String(coverId || "").trim();
+      if (cleanCoverId && cleanCoverId !== "0" && cleanCoverId !== "null") {
+        urls.push(`https://covers.openlibrary.org/b/id/${cleanCoverId}-L.jpg?default=false`);
+      }
+      const cleanOlid = (openLibraryId || "").trim();
+      if (cleanOlid) {
+        urls.push(`https://covers.openlibrary.org/b/olid/${cleanOlid}-L.jpg?default=false`);
+      }
+    }
+    return urls;
+  }, [src, isbn, coverId, openLibraryId, fallbackType]);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [hasError, setHasError] = useState(candidateUrls.length === 0);
+  const [isLoading, setIsLoading] = useState(candidateUrls.length > 0);
 
   const displayTitle = fallbackTitle || fallbackText || alt || "";
 
   useEffect(() => {
-    const freshSrc = normalizeImageUrl(src);
-    setCurrentSrc(freshSrc);
-    setTriedBackup(false);
-    if (!freshSrc) {
-      setHasError(true);
-      setIsLoading(false);
-    } else {
+    setCurrentIndex(0);
+    if (candidateUrls.length > 0) {
       setHasError(false);
       setIsLoading(true);
+    } else {
+      setHasError(true);
+      setIsLoading(false);
     }
-  }, [src]);
+  }, [candidateUrls]);
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    // If it's a book image and haven't tried fallback cover yet, attempt standard high-quality book image
-    if (fallbackType === "book" && !triedBackup && currentSrc !== DEFAULT_FALLBACK_BOOK_COVER) {
-      setTriedBackup(true);
-      setCurrentSrc(DEFAULT_FALLBACK_BOOK_COVER);
+    if (currentIndex + 1 < candidateUrls.length) {
+      setCurrentIndex((prev) => prev + 1);
       setIsLoading(true);
       return;
     }
@@ -122,7 +147,7 @@ export const AppImage: React.FC<AppImageProps> = ({
     .join("")
     .toUpperCase();
 
-  if (hasError || !currentSrc) {
+  if (hasError || candidateUrls.length === 0) {
     if (fallbackType === "avatar") {
       return (
         <div
@@ -141,17 +166,24 @@ export const AppImage: React.FC<AppImageProps> = ({
     if (fallbackType === "book") {
       return (
         <div
-          className={`relative flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-slate-900 dark:to-indigo-950/40 text-slate-700 dark:text-slate-300 border border-indigo-100 dark:border-slate-800 shadow-inner select-none w-full h-full ${containerClassName || className}`}
+          className={`relative flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-slate-200 border border-indigo-500/20 shadow-inner select-none w-full h-full ${containerClassName || className}`}
           style={aspectRatio ? { aspectRatio } : undefined}
           title={alt}
         >
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2 shadow-sm">
-            <BookOpen className="w-5 h-5" />
+          {/* Spine crease shadow */}
+          <div className="absolute left-0 top-0 bottom-0 w-2.5 bg-gradient-to-r from-black/50 to-transparent pointer-events-none" />
+          <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md text-indigo-400 flex items-center justify-center mb-2 shadow-sm border border-white/10">
+            <BookOpen className="w-4 h-4" />
           </div>
-          <span className="text-[11px] font-bold line-clamp-2 px-1 text-slate-700 dark:text-slate-300">
+          <span className="text-[11px] font-bold line-clamp-2 px-1 text-slate-100 drop-shadow">
             {displayTitle || "Book Cover"}
           </span>
-          <span className="text-[9px] text-indigo-500/80 dark:text-indigo-400/80 font-semibold uppercase tracking-wider mt-1">
+          {author && (
+            <span className="text-[9px] text-slate-400 italic line-clamp-1 mt-0.5">
+              {author}
+            </span>
+          )}
+          <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-wider mt-2 border-t border-white/10 pt-1 w-full">
             KitabGhar
           </span>
         </div>
@@ -169,6 +201,8 @@ export const AppImage: React.FC<AppImageProps> = ({
       </div>
     );
   }
+
+  const currentSrc = candidateUrls[currentIndex];
 
   return (
     <div className={`relative overflow-hidden w-full h-full ${containerClassName}`}>

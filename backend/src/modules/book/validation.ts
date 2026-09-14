@@ -35,6 +35,8 @@ export const AddBookControllerSchema = z.object({
     .optional()
     .default(20),
   isbn: z.string().max(50, "ISBN cannot exceed 50 characters").optional().default(""),
+  openLibraryId: z.string().max(100).optional().default(""),
+  coverId: z.string().max(100).optional().default(""),
   publisher: z.string().max(100, "Publisher cannot exceed 100 characters").optional().default(""),
   publicationDate: z.string().optional().default(""),
   pages: z.number().int().min(0).optional().default(0),

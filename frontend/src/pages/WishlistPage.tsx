@@ -162,6 +162,9 @@ export function WishlistPage() {
                   <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                     <AppImage
                       src={item.image}
+                      isbn={item.isbn}
+                      author={item.author}
+                      genre={item.genre}
                       alt={item.title}
                       fallbackType="book"
                       fallbackText={item.title}

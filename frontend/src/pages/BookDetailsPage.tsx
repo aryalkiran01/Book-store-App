@@ -519,6 +519,11 @@ export function BookDetailsPage() {
             <div className="relative w-full aspect-[3/4] max-w-sm rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 group">
               <AppImage
                 src={book.image}
+                isbn={book.isbn}
+                coverId={(book as any).coverId}
+                openLibraryId={(book as any).openLibraryId}
+                author={book.author}
+                genre={book.genre}
                 alt={book.title}
                 fallbackType="book"
                 fallbackTitle={book.title}

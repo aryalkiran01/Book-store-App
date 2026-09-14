@@ -10,6 +10,9 @@ export interface CartItem {
   discountPercentage?: number;
   quantity: number;
   stock?: number;
+  isbn?: string;
+  openLibraryId?: string;
+  coverId?: string | number;
 }
 
 export interface WishlistItem {
@@ -22,6 +25,9 @@ export interface WishlistItem {
   originalPrice?: number;
   discountPercentage?: number;
   stock?: number;
+  isbn?: string;
+  openLibraryId?: string;
+  coverId?: string | number;
   addedAt?: string;
 }
 

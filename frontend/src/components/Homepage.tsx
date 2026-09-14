@@ -353,6 +353,9 @@ export function HomePage() {
                       >
                         <AppImage
                           src={book.image}
+                          isbn={book.isbn}
+                          author={book.author}
+                          genre={book.genre}
                           alt={book.title}
                           fallbackType="book"
                           fallbackTitle={book.title}
@@ -470,6 +473,9 @@ export function HomePage() {
                     >
                       <AppImage
                         src={book.image}
+                        isbn={book.isbn}
+                        author={book.author}
+                        genre={book.genre}
                         alt={book.title}
                         fallbackType="book"
                         fallbackTitle={book.title}

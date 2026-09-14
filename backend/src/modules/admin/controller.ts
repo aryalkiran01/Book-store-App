@@ -16,6 +16,7 @@ import {
   getAdminUsersService,
   moderateAdminReviewService,
   quickUpdateStockService,
+  searchOpenLibraryBooksService,
   updateAdminUserRoleService,
 } from "./service";
 
@@ -286,3 +287,29 @@ export async function deleteAdminReviewController(
     next(error);
   }
 }
+
+export async function searchOpenLibraryBooksController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const query = String(req.query.query || req.query.q || req.query.search || "").trim();
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+
+    const result = await searchOpenLibraryBooksService(query, page, limit);
+
+    res.status(200).json({
+      message: "Open Library search results fetched successfully",
+      isSuccess: true,
+      data: result.books,
+      total: result.total,
+      page,
+      limit,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

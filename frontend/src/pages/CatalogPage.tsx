@@ -415,6 +415,11 @@ export function CatalogPage() {
                         <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                           <AppImage
                             src={book.image}
+                            isbn={book.isbn}
+                            coverId={(book as any).coverId}
+                            openLibraryId={(book as any).openLibraryId}
+                            author={book.author}
+                            genre={book.genre}
                             alt={book.title}
                             fallbackType="book"
                             fallbackTitle={book.title}

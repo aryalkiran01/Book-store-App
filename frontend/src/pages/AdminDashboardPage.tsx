@@ -29,10 +29,13 @@ import {
   Save,
   Star,
   BookMarked,
+  Globe,
+  Download,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
 import { AppImage } from "../components/common/AppImage";
+import { BookCoverImage } from "../components/common/BookCoverImage";
 import { useUserDetailsStore } from "../store/useUsersDetails";
 import {
   fetchAdminStats,
@@ -47,6 +50,8 @@ import {
   moderateAdminReview,
   deleteAdminReview,
   fetchAdminOrders,
+  searchOpenLibraryBooks,
+  OpenLibraryBook,
   AdminStatsData,
   AdminUser,
 } from "../api/admin/fetch";
@@ -149,9 +154,83 @@ export function AdminDashboardPage() {
     onConfirm: () => void;
   } | null>(null);
 
+  // Open Library Import state
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [olQuery, setOlQuery] = useState("");
+  const [olResults, setOlResults] = useState<OpenLibraryBook[]>([]);
+  const [olSearching, setOlSearching] = useState(false);
+  const [importingBookId, setImportingBookId] = useState<string | null>(null);
+  const [importSettings, setImportSettings] = useState<
+    Record<string, { price: number; stock: number; genre: string }>
+  >({});
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSearchOpenLibrary = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!olQuery.trim()) return;
+    try {
+      setOlSearching(true);
+      const res = await searchOpenLibraryBooks(olQuery.trim(), 1, 12);
+      setOlResults(res.data || []);
+      const initialSettings: Record<
+        string,
+        { price: number; stock: number; genre: string }
+      > = {};
+      (res.data || []).forEach((b) => {
+        initialSettings[b.openLibraryId] = {
+          price: 650,
+          stock: 25,
+          genre: b.genre || "Fiction",
+        };
+      });
+      setImportSettings(initialSettings);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Failed to search Open Library");
+    } finally {
+      setOlSearching(false);
+    }
+  };
+
+  const handleImportBook = async (b: OpenLibraryBook) => {
+    try {
+      setImportingBookId(b.openLibraryId);
+      const setting = importSettings[b.openLibraryId] || {
+        price: 650,
+        stock: 25,
+        genre: b.genre || "Fiction",
+      };
+
+      await addBook({
+        title: b.title,
+        author: b.author,
+        genre: setting.genre || b.genre || "Fiction",
+        price: Number(setting.price) || 650,
+        stock: Number(setting.stock) || 25,
+        isbn: b.isbn || "",
+        openLibraryId: b.openLibraryId || "",
+        coverId: b.coverId || "",
+        image: b.coverUrl || "",
+        publisher: b.publisher || "",
+        publicationDate: b.firstPublishYear ? String(b.firstPublishYear) : "",
+        pages: b.pages || 0,
+        language: b.language || "English",
+        description: `Curated edition imported from Open Library catalog. Published by ${b.publisher || "various publishers"}${b.firstPublishYear ? ` in ${b.firstPublishYear}` : ""}.`,
+        discountPercentage: 0,
+        featured: false,
+        isNewArrival: true,
+      });
+
+      showToast(`Successfully imported "${b.title}" into catalog!`);
+      loadTabData("books");
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Failed to import book");
+    } finally {
+      setImportingBookId(null);
+    }
   };
 
   // Auth Guard
@@ -868,6 +947,18 @@ export function AdminDashboardPage() {
                 </select>
 
                 <button
+                  onClick={() => {
+                    setImportModalOpen(true);
+                    if (olResults.length === 0 && !olQuery) {
+                      setOlQuery("fiction bestseller");
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-purple-600/30 transition-all"
+                >
+                  <Globe className="w-4 h-4" /> Import from Open Library
+                </button>
+
+                <button
                   onClick={openAddBookModal}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/30 transition-all"
                 >
@@ -901,6 +992,11 @@ export function AdminDashboardPage() {
                             <div className="w-10 h-14 rounded-md border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden flex-shrink-0">
                               <AppImage
                                 src={book.image}
+                                isbn={book.isbn}
+                                coverId={(book as any).coverId}
+                                openLibraryId={(book as any).openLibraryId}
+                                author={book.author}
+                                genre={book.genre}
                                 alt={book.title}
                                 fallbackType="book"
                                 fallbackText={book.title}
@@ -1983,6 +2079,211 @@ export function AdminDashboardPage() {
                   {updatingOrderStatus ? "Updating..." : "Update Status"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== OPEN LIBRARY IMPORT MODAL ===================== */}
+      {importModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] flex flex-col my-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-600/10 dark:bg-purple-600/20 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                    Import Books from Open Library
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Search Open Library's public catalog, preview covers, and import to your local MongoDB
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setImportModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search Bar */}
+            <form onSubmit={handleSearchOpenLibrary} className="flex gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by book title, author, or ISBN (e.g. 'Dune', 'Harari', '9780062316097')..."
+                  value={olQuery}
+                  onChange={(e) => setOlQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={olSearching}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-600/30 disabled:opacity-50 flex items-center gap-2 transition"
+              >
+                {olSearching ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4" /> Search
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Results Grid / List */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 min-h-[320px] max-h-[500px]">
+              {olSearching ? (
+                <div className="flex flex-col items-center justify-center h-64 text-slate-400 space-y-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  <p className="text-sm">Fetching verified metadata from Open Library...</p>
+                </div>
+              ) : olResults.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center">
+                  <BookOpen className="w-12 h-12 mb-3 opacity-40 text-purple-500" />
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    No Open Library search results yet
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                    Enter a title, author name, or 10/13-digit ISBN above and press Search to discover public domain and published books.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {olResults.map((b) => {
+                    const currentSetting = importSettings[b.openLibraryId] || {
+                      price: 650,
+                      stock: 25,
+                      genre: b.genre || "Fiction",
+                    };
+                    const isImporting = importingBookId === b.openLibraryId;
+
+                    return (
+                      <div
+                        key={b.openLibraryId}
+                        className="flex gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 hover:border-purple-500/40 transition shadow-sm"
+                      >
+                        {/* Book Cover Preview */}
+                        <div className="w-20 aspect-[2/3] rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex-shrink-0">
+                          <BookCoverImage
+                            src={b.coverUrl}
+                            isbn={b.isbn}
+                            coverId={b.coverId}
+                            openLibraryId={b.openLibraryId}
+                            title={b.title}
+                            author={b.author}
+                            genre={b.genre}
+                            alt={b.title}
+                          />
+                        </div>
+
+                        {/* Metadata & Controls */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 truncate block">
+                              {b.genre || "General"}
+                            </span>
+                            <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-snug">
+                              {b.title}
+                            </h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                              by {b.author}
+                            </p>
+                            <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
+                              {b.isbn && <span>ISBN: {b.isbn}</span>}
+                              {b.firstPublishYear && (
+                                <span>• Year: {b.firstPublishYear}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Price / Stock Customization & Import Button */}
+                          <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-2">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                                  Price (NPR)
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={currentSetting.price}
+                                  onChange={(e) =>
+                                    setImportSettings({
+                                      ...importSettings,
+                                      [b.openLibraryId]: {
+                                        ...currentSetting,
+                                        price: Number(e.target.value),
+                                      },
+                                    })
+                                  }
+                                  className="w-full px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                                  Stock
+                                </label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={currentSetting.stock}
+                                  onChange={(e) =>
+                                    setImportSettings({
+                                      ...importSettings,
+                                      [b.openLibraryId]: {
+                                        ...currentSetting,
+                                        stock: Number(e.target.value),
+                                      },
+                                    })
+                                  }
+                                  className="w-full px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold"
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleImportBook(b)}
+                              disabled={isImporting}
+                              className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5 transition"
+                            >
+                              {isImporting ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Importing...
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="w-3.5 h-3.5" /> Import to Catalog
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
+              <span>Source: OpenLibrary.org Public Catalog & Covers API</span>
+              <button
+                onClick={() => setImportModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold transition"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

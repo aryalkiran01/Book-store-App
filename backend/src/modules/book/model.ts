@@ -15,6 +15,8 @@ const bookSchema = new mongoose.Schema(
     discountPercentage: { type: Number, default: 0, min: 0, max: 100 },
     stock: { type: Number, default: 20, min: 0, index: true },
     isbn: { type: String, default: "", trim: true, index: true },
+    openLibraryId: { type: String, default: "", trim: true, index: true },
+    coverId: { type: String, default: "", trim: true },
     publisher: { type: String, default: "", trim: true },
     publicationDate: { type: String, default: "" },
     pages: { type: Number, default: 0, min: 0 },

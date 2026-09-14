@@ -11,6 +11,7 @@ import {
   getAdminUsersController,
   moderateAdminReviewController,
   quickUpdateStockController,
+  searchOpenLibraryBooksController,
   updateAdminUserRoleController,
 } from "./controller";
 import {
@@ -34,9 +35,10 @@ function createAdminRouter() {
   router.patch("/users/:userId/role", updateAdminUserRoleController);
   router.delete("/users/:userId", deleteAdminUserController);
 
-  // 3. Inventory Management
+  // 3. Inventory & Book Import Management
   router.get("/inventory", getAdminInventoryController);
   router.patch("/inventory/:bookId/stock", quickUpdateStockController);
+  router.get("/open-library/search", searchOpenLibraryBooksController);
 
   // 4. Categories & Authors
   router.get("/categories", getAdminCategoriesController);

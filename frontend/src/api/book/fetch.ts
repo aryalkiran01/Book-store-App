@@ -47,6 +47,8 @@ export type TAddBookInput = {
   discountPercentage?: number;
   stock?: number;
   isbn?: string;
+  openLibraryId?: string;
+  coverId?: string | number;
   publisher?: string;
   publicationDate?: string;
   pages?: number;

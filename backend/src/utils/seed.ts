@@ -109,7 +109,9 @@ export async function seedDatabase() {
           genre: "Business & Investing",
           description:
             "Doing well with money isn't necessarily about what you know. It's about how you behave. And behavior is hard to teach, even to really smart people. Money—investing, personal finance, and business decisions—is typically taught as a math-based field.",
-          image: "https://images.unsplash.com/photo-1592496431122-2349e0fbc666?auto=format&fit=crop&w=600&q=80",
+          isbn: "9780857197689",
+          openLibraryId: "OL20668903W",
+          image: "https://covers.openlibrary.org/b/isbn/9780857197689-L.jpg",
           price: 650,
           discountPercentage: 10,
           stock: 30,
@@ -122,7 +124,9 @@ export async function seedDatabase() {
           genre: "Self Improvement",
           description:
             "An Easy & Proven Way to Build Good Habits & Break Bad Ones. No matter your goals, Atomic Habits offers a proven framework for improving--every day.",
-          image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80",
+          isbn: "9780735211292",
+          openLibraryId: "OL17930368W",
+          image: "https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg",
           price: 750,
           discountPercentage: 15,
           stock: 45,
@@ -135,7 +139,9 @@ export async function seedDatabase() {
           genre: "Nepali",
           description:
             "Karnali Blues is an epic journey through the bond between a father and son in rural Nepal, capturing the heart, struggle, and beauty of life in the western hills.",
-          image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80",
+          isbn: "9789389109962",
+          openLibraryId: "OL32478541M",
+          image: "https://covers.openlibrary.org/b/isbn/9789389109962-L.jpg",
           price: 550,
           discountPercentage: 0,
           stock: 20,
@@ -148,7 +154,9 @@ export async function seedDatabase() {
           genre: "Business & Investing",
           description:
             "What the Rich Teach Their Kids About Money That the Poor and Middle Class Do Not! An iconic guide to financial literacy and independence.",
-          image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&w=600&q=80",
+          isbn: "9781612680194",
+          openLibraryId: "OL3377770W",
+          image: "https://covers.openlibrary.org/b/isbn/9781612680194-L.jpg",
           price: 490,
           discountPercentage: 5,
           stock: 15,
@@ -161,6 +169,8 @@ export async function seedDatabase() {
           genre: "Nepali",
           description:
             "Madan Puraskar winning novel reflecting the deep agony, customs, and resilience of child widows in traditional Nepalese society.",
+          isbn: "9789937856416",
+          openLibraryId: "OL25439401M",
           image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=600&q=80",
           price: 520,
           discountPercentage: 0,
@@ -174,7 +184,9 @@ export async function seedDatabase() {
           genre: "History & Memoir",
           description:
             "From a renowned historian comes a groundbreaking narrative of humanity’s creation and evolution—exploring how biology and history have defined us.",
-          image: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80",
+          isbn: "9780062316097",
+          openLibraryId: "OL17079250W",
+          image: "https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg",
           price: 890,
           discountPercentage: 20,
           stock: 25,

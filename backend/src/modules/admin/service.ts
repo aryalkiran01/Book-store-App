@@ -1,3 +1,4 @@
+import axios from "axios";
 import { UserModel } from "../auth/model";
 import { BookModel } from "../book/model";
 import { OrderModel } from "../order/model";
@@ -472,3 +473,107 @@ export async function deleteAdminReviewService(reviewId: string) {
 
   return review;
 }
+
+export interface OpenLibrarySearchResult {
+  openLibraryId: string;
+  title: string;
+  author: string;
+  isbn: string;
+  coverId: string;
+  coverUrl: string;
+  firstPublishYear?: number;
+  genre: string;
+  pages: number;
+  publisher: string;
+  language: string;
+}
+
+/**
+ * Searches Open Library for free book metadata and covers for admin import.
+ */
+export async function searchOpenLibraryBooksService(
+  query: string,
+  page: number = 1,
+  limit: number = 20
+): Promise<{ books: OpenLibrarySearchResult[]; total: number }> {
+  if (!query || !query.trim()) {
+    return { books: [], total: 0 };
+  }
+
+  const cleanQuery = query.trim();
+  const targetPage = Math.max(1, page);
+  const targetLimit = Math.min(50, Math.max(1, limit));
+
+  try {
+    const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(
+      cleanQuery
+    )}&page=${targetPage}&limit=${targetLimit}&fields=key,title,author_name,first_publish_year,isbn,cover_i,subject,number_of_pages_median,publisher,language`;
+
+    const response = await axios.get(searchUrl, {
+      timeout: 10000,
+      headers: {
+        "User-Agent": "KitabGhar-Bookstore-App/1.0 (admin-import)",
+      },
+    });
+
+    const data = response.data as { docs?: any[]; numFound?: number } | undefined;
+    const docs = Array.isArray(data?.docs) ? data.docs : [];
+    const total = data?.numFound || docs.length;
+
+    const books: OpenLibrarySearchResult[] = docs.map((doc: any) => {
+      const openLibraryId = (doc.key || "").replace("/works/", "");
+      const author = Array.isArray(doc.author_name)
+        ? doc.author_name.slice(0, 3).join(", ")
+        : doc.author_name || "Unknown Author";
+
+      const isbn = Array.isArray(doc.isbn) && doc.isbn.length > 0 ? String(doc.isbn[0]).trim() : "";
+      const coverId = doc.cover_i ? String(doc.cover_i) : "";
+
+      let coverUrl = "";
+      if (coverId) {
+        coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
+      } else if (isbn) {
+        coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+      } else if (openLibraryId) {
+        coverUrl = `https://covers.openlibrary.org/b/olid/${openLibraryId}-L.jpg`;
+      }
+
+      const genre =
+        Array.isArray(doc.subject) && doc.subject.length > 0
+          ? doc.subject[0].slice(0, 50)
+          : "Fiction";
+
+      const publisher =
+        Array.isArray(doc.publisher) && doc.publisher.length > 0
+          ? doc.publisher[0]
+          : "";
+
+      const language =
+        Array.isArray(doc.language) && doc.language.length > 0
+          ? doc.language[0].toUpperCase()
+          : "English";
+
+      return {
+        openLibraryId,
+        title: doc.title || "Untitled Book",
+        author,
+        isbn,
+        coverId,
+        coverUrl,
+        firstPublishYear: doc.first_publish_year,
+        genre,
+        pages: doc.number_of_pages_median || 0,
+        publisher,
+        language,
+      };
+    });
+
+    return { books, total };
+  } catch (error: any) {
+    console.error("Open Library search error:", error.message);
+    throw APIError.badRequest(
+      `Failed to fetch books from Open Library: ${error.message}`
+    );
+  }
+}
+
