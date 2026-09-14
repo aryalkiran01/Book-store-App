@@ -12,6 +12,7 @@ import {
   updateBookService,
 } from "./service";
 import { getReviewsByBookIdService } from "../review/service";
+import { BookProviderService } from "./provider";
 
 export async function addBookController(
   req: Request,
@@ -177,10 +178,30 @@ export async function getFeaturedBooksController(
   next: NextFunction
 ) {
   try {
-    const books = await BookModel.find({ featured: true })
-      .sort({ averageRating: -1 })
+    let books = await BookModel.find({ featured: true })
+      .sort({ averageRating: -1, totalReviews: -1 })
       .limit(8)
       .lean();
+
+    // Resilient fallback: if no books are marked featured, provide highest-rated catalog books
+    if (books.length === 0) {
+      books = await BookModel.find()
+        .sort({ averageRating: -1, totalReviews: -1, createdAt: -1 })
+        .limit(8)
+        .lean();
+    }
+
+    // If still 0, discover real books from Open Library
+    if (books.length === 0) {
+      const discovered = await BookProviderService.discoverBooksBySubject("bestsellers", 8);
+      if (discovered.length > 0) {
+        await BookProviderService.persistExternalBooksBatch(discovered);
+        books = await BookModel.find()
+          .sort({ averageRating: -1, totalReviews: -1, createdAt: -1 })
+          .limit(8)
+          .lean();
+      }
+    }
 
     res.status(200).json({
       message: "Featured books retrieved successfully",
@@ -198,10 +219,30 @@ export async function getNewArrivalsController(
   next: NextFunction
 ) {
   try {
-    const books = await BookModel.find({ isNewArrival: true })
+    let books = await BookModel.find({ isNewArrival: true })
       .sort({ createdAt: -1 })
       .limit(8)
       .lean();
+
+    // Resilient fallback: if no books are marked new arrivals, provide newest catalog books
+    if (books.length === 0) {
+      books = await BookModel.find()
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .lean();
+    }
+
+    // If still 0, discover real books from Open Library
+    if (books.length === 0) {
+      const discovered = await BookProviderService.discoverBooksBySubject("science_fiction", 8);
+      if (discovered.length > 0) {
+        await BookProviderService.persistExternalBooksBatch(discovered);
+        books = await BookModel.find()
+          .sort({ createdAt: -1 })
+          .limit(8)
+          .lean();
+      }
+    }
 
     res.status(200).json({
       message: "New arrivals retrieved successfully",

@@ -35,7 +35,6 @@ import {
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
 import { AppImage } from "../components/common/AppImage";
-import { BookCoverImage } from "../components/common/BookCoverImage";
 import { useUserDetailsStore } from "../store/useUsersDetails";
 import {
   fetchAdminStats,
@@ -51,6 +50,7 @@ import {
   deleteAdminReview,
   fetchAdminOrders,
   searchOpenLibraryBooks,
+  importOpenLibraryBook,
   OpenLibraryBook,
   AdminStatsData,
   AdminUser,
@@ -169,12 +169,14 @@ export function AdminDashboardPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSearchOpenLibrary = async (e?: React.FormEvent) => {
+  const handleSearchOpenLibrary = async (e?: React.FormEvent, customQuery?: string) => {
     if (e) e.preventDefault();
-    if (!olQuery.trim()) return;
+    const query = (customQuery !== undefined ? customQuery : olQuery).trim();
+    if (!query) return;
     try {
       setOlSearching(true);
-      const res = await searchOpenLibraryBooks(olQuery.trim(), 1, 12);
+      if (customQuery !== undefined) setOlQuery(customQuery);
+      const res = await searchOpenLibraryBooks(query, 1, 16);
       setOlResults(res.data || []);
       const initialSettings: Record<
         string,
@@ -182,14 +184,14 @@ export function AdminDashboardPage() {
       > = {};
       (res.data || []).forEach((b) => {
         initialSettings[b.openLibraryId] = {
-          price: 650,
+          price: b.suggestedPriceNPR || 799,
           stock: 25,
           genre: b.genre || "Fiction",
         };
       });
       setImportSettings(initialSettings);
     } catch (err: any) {
-      showToast(err?.response?.data?.message || "Failed to search Open Library");
+      showToast(err?.response?.data?.message || err?.message || "Failed to search Open Library");
     } finally {
       setOlSearching(false);
     }
@@ -199,16 +201,16 @@ export function AdminDashboardPage() {
     try {
       setImportingBookId(b.openLibraryId);
       const setting = importSettings[b.openLibraryId] || {
-        price: 650,
+        price: b.suggestedPriceNPR || 799,
         stock: 25,
         genre: b.genre || "Fiction",
       };
 
-      await addBook({
+      const res = await importOpenLibraryBook({
         title: b.title,
         author: b.author,
         genre: setting.genre || b.genre || "Fiction",
-        price: Number(setting.price) || 650,
+        price: Number(setting.price) || b.suggestedPriceNPR || 799,
         stock: Number(setting.stock) || 25,
         isbn: b.isbn || "",
         openLibraryId: b.openLibraryId || "",
@@ -218,16 +220,24 @@ export function AdminDashboardPage() {
         publicationDate: b.firstPublishYear ? String(b.firstPublishYear) : "",
         pages: b.pages || 0,
         language: b.language || "English",
-        description: `Curated edition imported from Open Library catalog. Published by ${b.publisher || "various publishers"}${b.firstPublishYear ? ` in ${b.firstPublishYear}` : ""}.`,
+        description: `Acclaimed literary edition by ${b.author}. Published by ${b.publisher || "leading publishers"}${b.firstPublishYear ? ` in ${b.firstPublishYear}` : ""}.`,
         discountPercentage: 0,
         featured: false,
         isNewArrival: true,
       });
 
-      showToast(`Successfully imported "${b.title}" into catalog!`);
+      showToast(res.message || `Successfully imported "${b.title}" into catalog!`);
+      // Update local card state to reflect imported
+      setOlResults((prev) =>
+        prev.map((item) =>
+          item.openLibraryId === b.openLibraryId
+            ? { ...item, isAlreadyImported: true }
+            : item
+        )
+      );
       loadTabData("books");
     } catch (err: any) {
-      showToast(err?.response?.data?.message || "Failed to import book");
+      showToast(err?.response?.data?.message || err?.message || "Failed to import book");
     } finally {
       setImportingBookId(null);
     }
@@ -2111,41 +2121,69 @@ export function AdminDashboardPage() {
               </button>
             </div>
 
-            {/* Search Bar */}
-            <form onSubmit={handleSearchOpenLibrary} className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by book title, author, or ISBN (e.g. 'Dune', 'Harari', '9780062316097')..."
-                  value={olQuery}
-                  onChange={(e) => setOlQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-purple-500"
-                />
+            {/* Search Bar & Quick Chips */}
+            <div className="space-y-3">
+              <form onSubmit={(e) => handleSearchOpenLibrary(e)} className="flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by book title, author, or ISBN (e.g. 'Dune', 'Atomic Habits', '9780062316097')..."
+                    value={olQuery}
+                    onChange={(e) => setOlQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={olSearching}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-600/30 disabled:opacity-50 flex items-center gap-2 transition"
+                >
+                  {olSearching ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4" /> Search
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Quick Topic Chips */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+                <span className="text-slate-400 dark:text-slate-500 text-[11px] font-semibold whitespace-nowrap">
+                  Suggestions:
+                </span>
+                {[
+                  "Atomic Habits",
+                  "Dune",
+                  "1984",
+                  "Psychology of Money",
+                  "The Silent Patient",
+                  "Steve Jobs",
+                  "Clean Code",
+                  "Karnali Blues",
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => handleSearchOpenLibrary(undefined, chip)}
+                    className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/80 hover:bg-purple-100 dark:hover:bg-purple-950/50 hover:text-purple-600 dark:hover:text-purple-300 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap transition border border-slate-200/60 dark:border-slate-700/60"
+                  >
+                    {chip}
+                  </button>
+                ))}
               </div>
-              <button
-                type="submit"
-                disabled={olSearching}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-purple-600/30 disabled:opacity-50 flex items-center gap-2 transition"
-              >
-                {olSearching ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4" /> Search
-                  </>
-                )}
-              </button>
-            </form>
+            </div>
 
             {/* Results Grid / List */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 min-h-[320px] max-h-[500px]">
               {olSearching ? (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-400 space-y-3">
                   <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-                  <p className="text-sm">Fetching verified metadata from Open Library...</p>
+                  <p className="text-sm font-medium">Fetching verified metadata & covers from Open Library...</p>
                 </div>
               ) : olResults.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center">
@@ -2161,7 +2199,7 @@ export function AdminDashboardPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {olResults.map((b) => {
                     const currentSetting = importSettings[b.openLibraryId] || {
-                      price: 650,
+                      price: b.suggestedPriceNPR || 799,
                       stock: 25,
                       genre: b.genre || "Fiction",
                     };
@@ -2170,28 +2208,41 @@ export function AdminDashboardPage() {
                     return (
                       <div
                         key={b.openLibraryId}
-                        className="flex gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800/80 hover:border-purple-500/40 transition shadow-sm"
+                        className={`flex gap-4 p-4 rounded-2xl border transition shadow-sm ${
+                          b.isAlreadyImported
+                            ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/60 dark:border-emerald-800/40"
+                            : "bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800/80 hover:border-purple-500/40"
+                        }`}
                       >
                         {/* Book Cover Preview */}
                         <div className="w-20 aspect-[2/3] rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex-shrink-0">
-                          <BookCoverImage
+                          <AppImage
                             src={b.coverUrl}
                             isbn={b.isbn}
                             coverId={b.coverId}
                             openLibraryId={b.openLibraryId}
-                            title={b.title}
                             author={b.author}
                             genre={b.genre}
                             alt={b.title}
+                            fallbackType="book"
+                            fallbackText={b.title}
+                            className="w-full h-full object-cover"
                           />
                         </div>
 
                         {/* Metadata & Controls */}
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 truncate block">
-                              {b.genre || "General"}
-                            </span>
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 truncate">
+                                {b.genre || "General"}
+                              </span>
+                              {b.isAlreadyImported && (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> In Store
+                                </span>
+                              )}
+                            </div>
                             <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-snug">
                               {b.title}
                             </h4>
@@ -2200,6 +2251,7 @@ export function AdminDashboardPage() {
                             </p>
                             <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
                               {b.isbn && <span>ISBN: {b.isbn}</span>}
+                              {b.pages ? <span>• {b.pages} pages</span> : null}
                               {b.firstPublishYear && (
                                 <span>• Year: {b.firstPublishYear}</span>
                               )}
@@ -2211,7 +2263,7 @@ export function AdminDashboardPage() {
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
                                 <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                                  Price (NPR)
+                                  Store Price (NPR)
                                 </label>
                                 <input
                                   type="number"
@@ -2231,11 +2283,11 @@ export function AdminDashboardPage() {
                               </div>
                               <div>
                                 <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                                  Stock
+                                  Stock Units
                                 </label>
                                 <input
                                   type="number"
-                                  min={1}
+                                  min={0}
                                   value={currentSetting.stock}
                                   onChange={(e) =>
                                     setImportSettings({
@@ -2254,15 +2306,23 @@ export function AdminDashboardPage() {
                             <button
                               onClick={() => handleImportBook(b)}
                               disabled={isImporting}
-                              className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-1.5 transition"
+                              className={`w-full py-2 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition ${
+                                b.isAlreadyImported
+                                  ? "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700"
+                                  : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/20"
+                              } disabled:opacity-50`}
                             >
                               {isImporting ? (
                                 <>
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Importing...
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Importing to MongoDB...
+                                </>
+                              ) : b.isAlreadyImported ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Update / Re-Import
                                 </>
                               ) : (
                                 <>
-                                  <Download className="w-3.5 h-3.5" /> Import to Catalog
+                                  <Download className="w-3.5 h-3.5" /> Import to Catalog (NPR {currentSetting.price})
                                 </>
                               )}
                             </button>

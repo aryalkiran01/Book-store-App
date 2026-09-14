@@ -2,6 +2,7 @@ import { APIError } from "../../utils/error";
 import { BookModel } from "./model";
 import { TAddBookControllerInput } from "./validation";
 import { validateObjectId } from "../../utils/security";
+import { BookProviderService } from "./provider";
 
 export async function createBookService(input: TAddBookControllerInput) {
   const {
@@ -22,15 +23,31 @@ export async function createBookService(input: TAddBookControllerInput) {
     isNewArrival,
   } = input;
 
-  const existingBook = await BookModel.findOne({ title });
+  const cleanTitle = title.trim();
+  const cleanAuthor = author.trim();
+  const cleanIsbn = isbn?.trim() || "";
+
+  if (cleanIsbn) {
+    const existingByIsbn = await BookModel.findOne({ isbn: cleanIsbn });
+    if (existingByIsbn) {
+      throw APIError.conflict(`A book with ISBN "${cleanIsbn}" already exists.`);
+    }
+  }
+
+  const existingBook = await BookModel.findOne({
+    title: cleanTitle,
+    author: cleanAuthor,
+  });
   if (existingBook) {
-    throw APIError.conflict("A book with this title already exists");
+    throw APIError.conflict(
+      `A book titled "${cleanTitle}" by ${cleanAuthor} already exists.`
+    );
   }
 
   const newBook = new BookModel({
-    title,
+    title: cleanTitle,
     genre,
-    author,
+    author: cleanAuthor,
     description: description || "",
     image:
       image ||
@@ -38,7 +55,7 @@ export async function createBookService(input: TAddBookControllerInput) {
     price,
     discountPercentage: discountPercentage ?? 0,
     stock: stock ?? 20,
-    isbn: isbn || "",
+    isbn: cleanIsbn,
     publisher: publisher || "",
     publicationDate: publicationDate || "",
     pages: pages || 0,
@@ -63,14 +80,33 @@ export async function updateBookService(
     throw APIError.notFound("Book not found");
   }
 
-  // If title was changed, check that new title isn't already taken by another book
-  if (input.title && input.title !== book.title) {
-    const existingTitle = await BookModel.findOne({
-      title: input.title,
+  const targetTitle = input.title !== undefined ? input.title.trim() : book.title;
+  const targetAuthor = input.author !== undefined ? input.author.trim() : book.author;
+  const targetIsbn = input.isbn !== undefined ? input.isbn.trim() : book.isbn;
+
+  if (targetIsbn && targetIsbn !== book.isbn) {
+    const existingIsbn = await BookModel.findOne({
+      isbn: targetIsbn,
       _id: { $ne: bookId },
     });
-    if (existingTitle) {
-      throw APIError.conflict("A book with this title already exists");
+    if (existingIsbn) {
+      throw APIError.conflict(`A book with ISBN "${targetIsbn}" already exists.`);
+    }
+  }
+
+  if (
+    (input.title !== undefined && input.title.trim() !== book.title) ||
+    (input.author !== undefined && input.author.trim() !== book.author)
+  ) {
+    const existingTitleAuthor = await BookModel.findOne({
+      title: targetTitle,
+      author: targetAuthor,
+      _id: { $ne: bookId },
+    });
+    if (existingTitleAuthor) {
+      throw APIError.conflict(
+        `A book titled "${targetTitle}" by ${targetAuthor} already exists.`
+      );
     }
   }
 
@@ -186,7 +222,7 @@ export async function getBooksService(query?: BookQueryParams) {
     sortOption = { createdAt: -1 };
   }
 
-  const [total, books] = await Promise.all([
+  let [total, books] = await Promise.all([
     BookModel.countDocuments(filter),
     BookModel.find(filter)
       .sort(sortOption)
@@ -194,6 +230,59 @@ export async function getBooksService(query?: BookQueryParams) {
       .limit(limit)
       .lean(),
   ]);
+
+  // Automatic External Discovery: If MongoDB has insufficient results, discover from Open Library & cache
+  if (books.length === 0 || (query?.search && books.length < limit && page === 1)) {
+    try {
+      if (query?.search && query.search.trim()) {
+        const external = await BookProviderService.searchExternalBooks(query.search.trim(), 1, 15);
+        if (external.books.length > 0) {
+          await BookProviderService.persistExternalBooksBatch(external.books);
+          [total, books] = await Promise.all([
+            BookModel.countDocuments(filter),
+            BookModel.find(filter)
+              .sort(sortOption)
+              .skip(skip)
+              .limit(limit)
+              .lean(),
+          ]);
+        }
+      } else if (query?.genre && query.genre !== "All" && books.length === 0) {
+        const external = await BookProviderService.discoverBooksBySubject(query.genre, 15);
+        if (external.length > 0) {
+          await BookProviderService.persistExternalBooksBatch(external);
+          [total, books] = await Promise.all([
+            BookModel.countDocuments(filter),
+            BookModel.find(filter)
+              .sort(sortOption)
+              .skip(skip)
+              .limit(limit)
+              .lean(),
+          ]);
+        }
+      } else if (!query?.search && (!query?.genre || query.genre === "All") && total === 0) {
+        // Broad initial empty catalog discovery
+        const subjects = ["fiction", "business", "science_fiction", "self-help", "history", "technology"];
+        const discoveries = await Promise.all(
+          subjects.map((s) => BookProviderService.discoverBooksBySubject(s, 5))
+        );
+        const flattened = discoveries.flat();
+        if (flattened.length > 0) {
+          await BookProviderService.persistExternalBooksBatch(flattened);
+          [total, books] = await Promise.all([
+            BookModel.countDocuments(filter),
+            BookModel.find(filter)
+              .sort(sortOption)
+              .skip(skip)
+              .limit(limit)
+              .lean(),
+          ]);
+        }
+      }
+    } catch (err: any) {
+      console.warn("Automatic external discovery non-fatal warning:", err.message);
+    }
+  }
 
   const totalPages = Math.ceil(total / limit) || 1;
 

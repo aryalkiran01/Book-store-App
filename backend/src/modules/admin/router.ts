@@ -12,6 +12,7 @@ import {
   moderateAdminReviewController,
   quickUpdateStockController,
   searchOpenLibraryBooksController,
+  importOpenLibraryBookController,
   updateAdminUserRoleController,
 } from "./controller";
 import {
@@ -39,6 +40,9 @@ function createAdminRouter() {
   router.get("/inventory", getAdminInventoryController);
   router.patch("/inventory/:bookId/stock", quickUpdateStockController);
   router.get("/open-library/search", searchOpenLibraryBooksController);
+  router.get("/openlibrary/search", searchOpenLibraryBooksController);
+  router.post("/open-library/import", importOpenLibraryBookController);
+  router.post("/openlibrary/import", importOpenLibraryBookController);
 
   // 4. Categories & Authors
   router.get("/categories", getAdminCategoriesController);

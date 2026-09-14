@@ -262,6 +262,29 @@ export interface OpenLibraryBook {
   pages: number;
   publisher: string;
   language: string;
+  suggestedPriceNPR?: number;
+  isAlreadyImported?: boolean;
+  existingBookId?: string;
+}
+
+export interface ImportOpenLibraryBookPayload {
+  title: string;
+  author: string;
+  genre?: string;
+  description?: string;
+  isbn?: string;
+  openLibraryId?: string;
+  coverId?: string;
+  image?: string;
+  publisher?: string;
+  publicationDate?: string;
+  pages?: number;
+  language?: string;
+  price?: number;
+  discountPercentage?: number;
+  stock?: number;
+  featured?: boolean;
+  isNewArrival?: boolean;
 }
 
 // 13. Search Open Library
@@ -287,6 +310,25 @@ export async function searchOpenLibraryBooks(
     page: number;
     limit: number;
   }>(`${getApiBaseUrl()}/open-library/search?${query.toString()}`, getAxiosConfig());
+
+  return response.data;
+}
+
+// 14. Import Book from Open Library into MongoDB
+export async function importOpenLibraryBook(
+  payload: ImportOpenLibraryBookPayload
+): Promise<{
+  message: string;
+  isSuccess: boolean;
+  data: any;
+  isNew: boolean;
+}> {
+  const response = await axios.post<{
+    message: string;
+    isSuccess: boolean;
+    data: any;
+    isNew: boolean;
+  }>(`${getApiBaseUrl()}/open-library/import`, payload, getAxiosConfig());
 
   return response.data;
 }

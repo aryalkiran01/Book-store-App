@@ -4,6 +4,7 @@ import {
   ModerateReviewSchema,
   UpdateStockSchema,
   UpdateUserRoleSchema,
+  ImportOpenLibraryBookSchema,
 } from "./validation";
 import {
   deleteAdminReviewService,
@@ -17,6 +18,7 @@ import {
   moderateAdminReviewService,
   quickUpdateStockService,
   searchOpenLibraryBooksService,
+  importOpenLibraryBookService,
   updateAdminUserRoleService,
 } from "./service";
 
@@ -307,6 +309,35 @@ export async function searchOpenLibraryBooksController(
       total: result.total,
       page,
       limit,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function importOpenLibraryBookController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, data, error } = ImportOpenLibraryBookSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid book import payload",
+        isSuccess: false,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const result = await importOpenLibraryBookService(data);
+
+    res.status(result.isNew ? 201 : 200).json({
+      message: result.message,
+      isSuccess: true,
+      data: result.book,
+      isNew: result.isNew,
     });
   } catch (error) {
     next(error);

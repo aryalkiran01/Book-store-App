@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { env } from "./config";
+import { BookModel } from "../modules/book/model";
 
 const uri = env.MONGO_URI;
 
@@ -22,6 +23,16 @@ export async function createDBConnection() {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
   });
+
+  try {
+    // Synchronize Mongoose model indexes to ensure obsolete indexes (e.g. old title_1 unique index)
+    // are safely dropped and new compound/partial indexes are built.
+    await BookModel.syncIndexes();
+  } catch (indexError) {
+    console.warn("Notice during BookModel index synchronization:", indexError);
+  }
+
   return db;
 }
+
 

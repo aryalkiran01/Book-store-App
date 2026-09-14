@@ -85,8 +85,12 @@ export function WishlistPage() {
 
       {/* Floating Action Toast */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 bg-white dark:bg-slate-900 border border-indigo-500 text-slate-900 dark:text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce text-sm">
-          <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 animate-fade-in text-sm font-semibold"
+        >
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 animate-check-pop" />
           <span>{toastMsg}</span>
         </div>
       )}

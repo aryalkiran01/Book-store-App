@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const bookSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, unique: true, trim: true, index: true },
+    title: { type: String, required: true, trim: true, index: true },
     author: { type: String, required: true, trim: true, index: true },
     genre: { type: String, required: true, trim: true, index: true },
     description: { type: String, default: "" },
@@ -14,8 +14,8 @@ const bookSchema = new mongoose.Schema(
     price: { type: Number, required: true, min: 0, index: true },
     discountPercentage: { type: Number, default: 0, min: 0, max: 100 },
     stock: { type: Number, default: 20, min: 0, index: true },
-    isbn: { type: String, default: "", trim: true, index: true },
-    openLibraryId: { type: String, default: "", trim: true, index: true },
+    isbn: { type: String, default: "", trim: true },
+    openLibraryId: { type: String, default: "", trim: true },
     coverId: { type: String, default: "", trim: true },
     publisher: { type: String, default: "", trim: true },
     publicationDate: { type: String, default: "" },
@@ -25,6 +25,12 @@ const bookSchema = new mongoose.Schema(
     totalReviews: { type: Number, default: 0, min: 0 },
     featured: { type: Boolean, default: false, index: true },
     isNewArrival: { type: Boolean, default: false, index: true },
+    source: {
+      type: String,
+      enum: ["openlibrary", "manual", "seeded"],
+      default: "manual",
+      index: true,
+    },
   },
   {
     timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
@@ -33,13 +39,40 @@ const bookSchema = new mongoose.Schema(
   }
 );
 
+// 1. Compound uniqueness: (Title + Author) allows same title for different authors
+bookSchema.index({ title: 1, author: 1 }, { unique: true });
+
+// 2. Partial unique index for ISBN (only applies when isbn is non-empty string)
+bookSchema.index(
+  { isbn: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isbn: { $type: "string", $gt: "" } },
+  }
+);
+
+// 3. Partial unique index for Open Library ID (only applies when openLibraryId is non-empty string)
+bookSchema.index(
+  { openLibraryId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { openLibraryId: { $type: "string", $gt: "" } },
+  }
+);
+
 // Compound text index for fuzzy search across title, author, genre, and description
-bookSchema.index({
-  title: "text",
-  author: "text",
-  genre: "text",
-  description: "text",
-});
+bookSchema.index(
+  {
+    title: "text",
+    author: "text",
+    genre: "text",
+    description: "text",
+  },
+  {
+    default_language: "none",
+    language_override: "none",
+  }
+);
 
 // Secondary compound indexes for common query patterns
 bookSchema.index({ genre: 1, price: 1 });

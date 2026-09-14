@@ -38,3 +38,27 @@ export const ModerateReviewSchema = z.object({
 });
 
 export type TModerateReviewInput = z.infer<typeof ModerateReviewSchema>;
+
+export const ImportOpenLibraryBookSchema = z.object({
+  title: z.string().min(1, "Title is required").trim(),
+  author: z.string().min(1, "Author is required").trim(),
+  genre: z.string().default("Fiction"),
+  description: z.string().default(""),
+  isbn: z.string().default(""),
+  openLibraryId: z.string().default(""),
+  coverId: z.string().default(""),
+  image: z.string().default(""),
+  publisher: z.string().default(""),
+  publicationDate: z.string().default(""),
+  pages: z.number().nonnegative().default(0),
+  language: z.string().default("English"),
+  price: z.number().min(0, "Price in NPR must be non-negative").default(799),
+  discountPercentage: z.number().min(0).max(100).default(0),
+  stock: z.number().int().min(0, "Stock must be non-negative").default(20),
+  featured: z.boolean().default(false),
+  isNewArrival: z.boolean().default(true),
+});
+
+export type TImportOpenLibraryBookInput = z.infer<
+  typeof ImportOpenLibraryBookSchema
+>;

@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node --max-old-space-size=4096 dist/main.js",
     "test": "node tests/run-all.mjs",
-    "create:admin": "node scripts/create-admin.mjs"
+    "create:admin": "node scripts/create-admin.mjs",
+    "import:books": "tsx scripts/import-curated-books.ts"
   },
   "keywords": [],
   "author": "",

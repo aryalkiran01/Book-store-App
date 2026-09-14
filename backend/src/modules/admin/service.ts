@@ -10,6 +10,7 @@ import {
   TModerateReviewInput,
   TUpdateStockInput,
   TUpdateUserRoleInput,
+  TImportOpenLibraryBookInput,
 } from "./validation";
 import { updateBookRatingAggregation } from "../review/service";
 
@@ -486,10 +487,54 @@ export interface OpenLibrarySearchResult {
   pages: number;
   publisher: string;
   language: string;
+  suggestedPriceNPR: number;
+  isAlreadyImported?: boolean;
+  existingBookId?: string;
+}
+
+export interface CachedSearchEntry {
+  candidates: Array<Omit<OpenLibrarySearchResult, "isAlreadyImported" | "existingBookId">>;
+  total: number;
+  cachedAt: number;
+}
+
+// Bounded in-memory cache for external Open Library search responses
+export const OPEN_LIBRARY_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+export const MAX_OPEN_LIBRARY_CACHE_ENTRIES = 200; // Maximum 200 cached queries
+
+const openLibrarySearchCache = new Map<string, CachedSearchEntry>();
+
+/**
+ * Diagnostic & testing helper to inspect cache statistics
+ */
+export function getOpenLibraryCacheStats() {
+  return {
+    size: openLibrarySearchCache.size,
+    maxEntries: MAX_OPEN_LIBRARY_CACHE_ENTRIES,
+    ttlMs: OPEN_LIBRARY_CACHE_TTL_MS,
+  };
 }
 
 /**
- * Searches Open Library for free book metadata and covers for admin import.
+ * Diagnostic & testing helper to clear cache (used in tests)
+ */
+export function clearOpenLibraryCache() {
+  openLibrarySearchCache.clear();
+}
+
+/**
+ * Normalizes query string for uniform caching across whitespace & case variations
+ */
+export function normalizeSearchQuery(query: string): string {
+  return query
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Searches Open Library for free book metadata and covers for admin import,
+ * utilizing a bounded 10-minute in-memory cache and cross-checking against MongoDB records in real time.
  */
 export async function searchOpenLibraryBooksService(
   query: string,
@@ -501,79 +546,271 @@ export async function searchOpenLibraryBooksService(
   }
 
   const cleanQuery = query.trim();
+  const normalizedQuery = normalizeSearchQuery(cleanQuery);
   const targetPage = Math.max(1, page);
   const targetLimit = Math.min(50, Math.max(1, limit));
+  const cacheKey = `ol_search:${normalizedQuery}:p${targetPage}:l${targetLimit}`;
 
-  try {
-    const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(
-      cleanQuery
-    )}&page=${targetPage}&limit=${targetLimit}&fields=key,title,author_name,first_publish_year,isbn,cover_i,subject,number_of_pages_median,publisher,language`;
+  const now = Date.now();
+  const cached = openLibrarySearchCache.get(cacheKey);
 
-    const response = await axios.get(searchUrl, {
-      timeout: 10000,
-      headers: {
-        "User-Agent": "KitabGhar-Bookstore-App/1.0 (admin-import)",
-      },
-    });
+  let mappedCandidates: Array<
+    Omit<OpenLibrarySearchResult, "isAlreadyImported" | "existingBookId">
+  >;
+  let total: number;
 
-    const data = response.data as { docs?: any[]; numFound?: number } | undefined;
-    const docs = Array.isArray(data?.docs) ? data.docs : [];
-    const total = data?.numFound || docs.length;
+  if (cached && now - cached.cachedAt < OPEN_LIBRARY_CACHE_TTL_MS) {
+    // Cache HIT: use cached external book candidates without re-querying Open Library
+    mappedCandidates = cached.candidates;
+    total = cached.total;
+  } else {
+    // Cache MISS or EXPIRED: fetch fresh metadata from Open Library
+    try {
+      const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(
+        cleanQuery
+      )}&page=${targetPage}&limit=${targetLimit}&fields=key,title,author_name,first_publish_year,isbn,cover_i,subject,number_of_pages_median,publisher,language`;
 
-    const books: OpenLibrarySearchResult[] = docs.map((doc: any) => {
-      const openLibraryId = (doc.key || "").replace("/works/", "");
-      const author = Array.isArray(doc.author_name)
-        ? doc.author_name.slice(0, 3).join(", ")
-        : doc.author_name || "Unknown Author";
+      const response = await axios.get(searchUrl, {
+        timeout: 10000,
+        headers: {
+          "User-Agent": "KitabGhar-Bookstore-App/1.0 (admin-import)",
+        },
+      });
 
-      const isbn = Array.isArray(doc.isbn) && doc.isbn.length > 0 ? String(doc.isbn[0]).trim() : "";
-      const coverId = doc.cover_i ? String(doc.cover_i) : "";
+      const data = response.data as { docs?: any[]; numFound?: number } | undefined;
+      const docs = Array.isArray(data?.docs) ? data.docs : [];
+      total = data?.numFound || docs.length;
 
-      let coverUrl = "";
-      if (coverId) {
-        coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
-      } else if (isbn) {
-        coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
-      } else if (openLibraryId) {
-        coverUrl = `https://covers.openlibrary.org/b/olid/${openLibraryId}-L.jpg`;
+      // Map raw docs to normalized candidate objects
+      mappedCandidates = docs.map((doc: any) => {
+        const openLibraryId = (doc.key || "").replace("/works/", "");
+        const author = Array.isArray(doc.author_name)
+          ? doc.author_name.slice(0, 3).join(", ")
+          : doc.author_name || "Unknown Author";
+
+        // Prefer ISBN-13 (starts with 978 or 979 or 13 digits), fallback to first available
+        let isbn = "";
+        if (Array.isArray(doc.isbn) && doc.isbn.length > 0) {
+          const isbn13 = doc.isbn.find(
+            (i: string) =>
+              String(i).trim().length === 13 ||
+              String(i).startsWith("978") ||
+              String(i).startsWith("979")
+          );
+          isbn = isbn13 ? String(isbn13).trim() : String(doc.isbn[0]).trim();
+        }
+
+        const coverId = doc.cover_i ? String(doc.cover_i) : "";
+
+        let coverUrl = "";
+        if (isbn) {
+          coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+        } else if (coverId) {
+          coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
+        } else if (openLibraryId) {
+          coverUrl = `https://covers.openlibrary.org/b/olid/${openLibraryId}-L.jpg`;
+        }
+
+        const genre =
+          Array.isArray(doc.subject) && doc.subject.length > 0
+            ? doc.subject[0].slice(0, 50)
+            : "Fiction";
+
+        const publisher =
+          Array.isArray(doc.publisher) && doc.publisher.length > 0
+            ? doc.publisher[0]
+            : "";
+
+        const language =
+          Array.isArray(doc.language) && doc.language.length > 0
+            ? doc.language[0].toUpperCase()
+            : "English";
+
+        const pages = doc.number_of_pages_median || 0;
+
+        // Deterministic NPR price based on pages / baseline
+        const basePrice = Math.max(
+          499,
+          Math.min(
+            1899,
+            Math.round(((pages || 280) * 2.2 + 250) / 50) * 50 - 1
+          )
+        );
+
+        return {
+          openLibraryId,
+          title: doc.title || "Untitled Book",
+          author,
+          isbn,
+          coverId,
+          coverUrl,
+          firstPublishYear: doc.first_publish_year,
+          genre,
+          pages,
+          publisher,
+          language,
+          suggestedPriceNPR: basePrice,
+        };
+      });
+
+      // Bounded cache maintenance: evict oldest entry if size limit reached
+      if (openLibrarySearchCache.size >= MAX_OPEN_LIBRARY_CACHE_ENTRIES) {
+        const oldestKey = openLibrarySearchCache.keys().next().value;
+        if (oldestKey) {
+          openLibrarySearchCache.delete(oldestKey);
+        }
       }
 
-      const genre =
-        Array.isArray(doc.subject) && doc.subject.length > 0
-          ? doc.subject[0].slice(0, 50)
-          : "Fiction";
-
-      const publisher =
-        Array.isArray(doc.publisher) && doc.publisher.length > 0
-          ? doc.publisher[0]
-          : "";
-
-      const language =
-        Array.isArray(doc.language) && doc.language.length > 0
-          ? doc.language[0].toUpperCase()
-          : "English";
-
-      return {
-        openLibraryId,
-        title: doc.title || "Untitled Book",
-        author,
-        isbn,
-        coverId,
-        coverUrl,
-        firstPublishYear: doc.first_publish_year,
-        genre,
-        pages: doc.number_of_pages_median || 0,
-        publisher,
-        language,
-      };
-    });
-
-    return { books, total };
-  } catch (error: any) {
-    console.error("Open Library search error:", error.message);
-    throw APIError.badRequest(
-      `Failed to fetch books from Open Library: ${error.message}`
-    );
+      // Store in cache with timestamp (only successful API responses are stored)
+      openLibrarySearchCache.set(cacheKey, {
+        candidates: mappedCandidates,
+        total,
+        cachedAt: now,
+      });
+    } catch (error: any) {
+      console.warn("Open Library external API warning/timeout:", error.message);
+      // Graceful fallback: return empty list on external network delay, do NOT cache failures
+      return { books: [], total: 0 };
+    }
   }
+
+  // Check existing books in MongoDB to mark isAlreadyImported in real-time
+  const isbns = mappedCandidates.map((b) => b.isbn).filter(Boolean);
+  const olids = mappedCandidates.map((b) => b.openLibraryId).filter(Boolean);
+  const titleAuthorPairs = mappedCandidates
+    .filter((b) => b.title && b.author)
+    .map((b) => ({ title: b.title.trim(), author: b.author.trim() }));
+
+  const orClauses: any[] = [];
+  if (isbns.length > 0) orClauses.push({ isbn: { $in: isbns } });
+  if (olids.length > 0) orClauses.push({ openLibraryId: { $in: olids } });
+  for (const p of titleAuthorPairs) {
+    orClauses.push({ title: p.title, author: p.author });
+  }
+
+  const existingBooks =
+    orClauses.length > 0
+      ? await BookModel.find({ $or: orClauses })
+          .select("_id title author isbn openLibraryId")
+          .lean()
+      : [];
+
+  const existingMap = new Map<string, string>(); // identifier -> _id
+  for (const eb of existingBooks) {
+    const idStr = eb._id.toString();
+    if (eb.isbn) existingMap.set(`isbn:${eb.isbn}`, idStr);
+    if (eb.openLibraryId) existingMap.set(`olid:${eb.openLibraryId}`, idStr);
+    if (eb.title && eb.author) {
+      existingMap.set(
+        `title_author:${eb.title.toLowerCase().trim()}:::${eb.author.toLowerCase().trim()}`,
+        idStr
+      );
+    }
+  }
+
+  const books: OpenLibrarySearchResult[] = mappedCandidates.map((c) => {
+    let existingBookId: string | undefined;
+
+    if (c.isbn && existingMap.has(`isbn:${c.isbn}`)) {
+      existingBookId = existingMap.get(`isbn:${c.isbn}`);
+    } else if (c.openLibraryId && existingMap.has(`olid:${c.openLibraryId}`)) {
+      existingBookId = existingMap.get(`olid:${c.openLibraryId}`);
+    } else if (
+      c.title &&
+      c.author &&
+      existingMap.has(
+        `title_author:${c.title.toLowerCase().trim()}:::${c.author.toLowerCase().trim()}`
+      )
+    ) {
+      existingBookId = existingMap.get(
+        `title_author:${c.title.toLowerCase().trim()}:::${c.author.toLowerCase().trim()}`
+      );
+    }
+
+    return {
+      ...c,
+      isAlreadyImported: Boolean(existingBookId),
+      existingBookId,
+    };
+  });
+
+  return { books, total };
+}
+
+/**
+ * Imports an Open Library book into MongoDB with duplicate protection and customizable pricing/stock.
+ */
+export async function importOpenLibraryBookService(
+  input: TImportOpenLibraryBookInput
+) {
+  const cleanTitle = input.title.trim();
+  const cleanAuthor = input.author.trim();
+  const cleanIsbn = input.isbn?.trim() || "";
+  const cleanOlid = input.openLibraryId?.trim() || "";
+
+  // 1. Duplicate check in MongoDB:
+  // - Matches ISBN (if provided)
+  // - Matches Open Library ID (if provided)
+  // - Matches exact Title + Author
+  const orClauses: any[] = [];
+  if (cleanIsbn) orClauses.push({ isbn: cleanIsbn });
+  if (cleanOlid) orClauses.push({ openLibraryId: cleanOlid });
+  if (cleanTitle && cleanAuthor) {
+    orClauses.push({ title: cleanTitle, author: cleanAuthor });
+  } else if (cleanTitle) {
+    orClauses.push({ title: cleanTitle });
+  }
+
+  const existingBook = orClauses.length > 0 ? await BookModel.findOne({ $or: orClauses }) : null;
+  if (existingBook) {
+    return {
+      book: existingBook,
+      isNew: false,
+      message: `"${existingBook.title}" by ${existingBook.author} is already in the catalog.`,
+    };
+  }
+
+  // 2. Resolve image URL
+  let resolvedImage = input.image?.trim();
+  if (!resolvedImage) {
+    if (cleanIsbn) {
+      resolvedImage = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
+    } else if (input.coverId) {
+      resolvedImage = `https://covers.openlibrary.org/b/id/${input.coverId}-L.jpg`;
+    } else if (cleanOlid) {
+      resolvedImage = `https://covers.openlibrary.org/b/olid/${cleanOlid}-L.jpg`;
+    } else {
+      resolvedImage = "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80";
+    }
+  }
+
+  // 3. Create and persist to MongoDB
+  const newBook = await BookModel.create({
+    title: cleanTitle,
+    author: input.author.trim(),
+    genre: input.genre?.trim() || "Fiction",
+    description:
+      input.description?.trim() ||
+      `An acclaimed literary work by ${input.author.trim()}.`,
+    image: resolvedImage,
+    price: Math.max(0, Number(input.price) || 799),
+    discountPercentage: Math.min(100, Math.max(0, Number(input.discountPercentage) || 0)),
+    stock: Math.max(0, Number(input.stock) || 20),
+    isbn: cleanIsbn,
+    openLibraryId: cleanOlid,
+    coverId: input.coverId?.trim() || "",
+    publisher: input.publisher?.trim() || "",
+    publicationDate: input.publicationDate?.trim() || "",
+    pages: Math.max(0, Number(input.pages) || 0),
+    language: input.language?.trim() || "English",
+    featured: Boolean(input.featured),
+    isNewArrival: input.isNewArrival !== undefined ? Boolean(input.isNewArrival) : true,
+  });
+
+  return {
+    book: newBook,
+    isNew: true,
+    message: `"${newBook.title}" has been successfully imported into the store catalog.`,
+  };
 }
 
