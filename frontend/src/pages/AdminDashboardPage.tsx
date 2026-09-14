@@ -1535,7 +1535,7 @@ export function AdminDashboardPage() {
                     </div>
 
                     <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                      "{rev.reviewText || rev.comment}"
+                      "{rev.reviewText}"
                     </p>
 
                     <div className="text-xs text-slate-400 dark:text-slate-500">

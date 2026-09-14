@@ -921,10 +921,11 @@ export function BookDetailsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label htmlFor="review-title-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Headline / Title (Optional)
                   </label>
                   <input
+                    id="review-title-input"
                     type="text"
                     value={titleInput}
                     onChange={(e) => setTitleInput(e.target.value)}
@@ -934,10 +935,11 @@ export function BookDetailsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label htmlFor="review-text-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                     Written Review *
                   </label>
                   <textarea
+                    id="review-text-input"
                     rows={4}
                     value={reviewTextInput}
                     onChange={(e) => setReviewTextInput(e.target.value)}
