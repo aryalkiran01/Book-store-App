@@ -120,18 +120,37 @@ export async function initiateKhaltiPaymentService(
     throw APIError.badRequest("This order has already been paid for.");
   }
 
+  const isProduction =
+    env.NODE_ENV === "production" || process.env.NODE_ENV === "production";
   const khaltiSecret = (env.KHALTI_SECRET_KEY || "").trim();
-  if (!isKhaltiConfigured(khaltiSecret)) {
-    throw APIError.badRequest(
-      "Khalti payment gateway is not properly configured. A valid Khalti secret key is required in backend/.env."
-    );
-  }
 
   // Authoritatively calculate and enforce expected paisa from DB order total
   const authoritativePaisa = Math.round(order.totalAmount * 100);
   const returnUrl =
     paymentData.return_url || `${env.FRONTEND_URL}/payment/callback?provider=khalti`;
   const websiteUrl = paymentData.website_url || env.FRONTEND_URL;
+
+  if (!isKhaltiConfigured(khaltiSecret)) {
+    if (isProduction) {
+      throw APIError.badRequest(
+        "Khalti payment gateway is not properly configured. A valid Khalti secret key is required in backend/.env."
+      );
+    }
+
+    // In dev/test with unconfigured key, simulate initiation URL for developer testing
+    const mockPidx = `mock_pidx_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    order.paymentId = mockPidx;
+    order.paymentMethod = "khalti";
+    await order.save();
+
+    return {
+      pidx: mockPidx,
+      payment_url: `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}pidx=${mockPidx}&purchase_order_id=${order._id.toString()}`,
+      expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+      expires_in: 3600,
+      user_fee: 0,
+    };
+  }
 
   const khaltiPayload = {
     return_url: returnUrl,
@@ -192,7 +211,8 @@ export async function verifyKhaltiPaymentService(
   pidx: string,
   orderId?: string,
   requestingUserId?: string,
-  requestingUserRole?: string
+  requestingUserRole?: string,
+  simulateProduction?: boolean
 ) {
   if (!pidx || typeof pidx !== "string" || !pidx.trim()) {
     throw APIError.badRequest("Payment identifier (pidx) is required");
@@ -243,53 +263,104 @@ export async function verifyKhaltiPaymentService(
     };
   }
 
-  let verification: any = null;
-  const khaltiSecret = (env.KHALTI_SECRET_KEY || "").trim();
-  if (!isKhaltiConfigured(khaltiSecret)) {
-    throw APIError.badRequest(
-      "Khalti payment gateway is not properly configured. A valid Khalti secret key is required in backend/.env."
-    );
-  }
-  const authHeader = khaltiSecret.startsWith("Key ") ? khaltiSecret : `Key ${khaltiSecret}`;
+  const isMockPidx =
+    cleanPidx.startsWith("mock_pidx_") ||
+    cleanPidx.startsWith("demo_pidx_") ||
+    cleanPidx.startsWith("mock_");
 
-  try {
-    const response = await axios.post(
-      env.KHALTI_LOOKUP_URL,
-      { pidx: cleanPidx },
-      {
-        headers: {
-          Authorization: authHeader,
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      }
-    );
+  const isProduction =
+    simulateProduction ||
+    env.NODE_ENV === "production" ||
+    process.env.NODE_ENV === "production";
 
-    verification = response.data;
-  } catch (error: any) {
-    const khaltiErrMsg =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
-      error.message ||
-      "Khalti payment verification service error";
-
-    console.warn("[Khalti Diagnostic] Lookup failed closed:", {
-      httpStatus: error.response?.status,
-      endpoint: env.KHALTI_LOOKUP_URL,
-      pidx: cleanPidx,
-      errorMsg: khaltiErrMsg,
-    });
-
+  // Security Rule: Mock/Demo shortcuts must NEVER work in production (Fail Closed)
+  if (isProduction && isMockPidx) {
     targetOrder.paymentStatus = "failed";
     targetOrder.statusHistory.push({
       status: targetOrder.status,
       changedAt: new Date(),
-      note: `Khalti verification failed: ${khaltiErrMsg}`,
-      changedBy: "payment_system",
+      note: "Mock/demo payment shortcut strictly rejected in production environment",
+      changedBy: "security_guard",
     });
     await targetOrder.save();
 
-    throw APIError.badRequest(`Payment verification failed: ${khaltiErrMsg}`);
+    throw APIError.badRequest(
+      "Mock/demo payment shortcuts are strictly forbidden in production environment."
+    );
+  }
+
+  let verification: any = null;
+  const expectedPaisa = Math.round(targetOrder.totalAmount * 100);
+
+  // Development/Test mock handling
+  if (!isProduction && isMockPidx) {
+    verification = {
+      pidx: cleanPidx,
+      total_amount: expectedPaisa,
+      status: "Completed",
+      transaction_id: `DEMO_TXN_${Date.now()}`,
+      fee: 0,
+      refunded: false,
+      purchase_order_id: targetOrder._id.toString(),
+    };
+  } else {
+    // Live Provider Verification via Khalti Lookup API
+    const khaltiSecret = (env.KHALTI_SECRET_KEY || "").trim();
+    if (!isKhaltiConfigured(khaltiSecret)) {
+      targetOrder.paymentStatus = "failed";
+      targetOrder.statusHistory.push({
+        status: targetOrder.status,
+        changedAt: new Date(),
+        note: "Khalti gateway is not configured on server",
+        changedBy: "payment_system",
+      });
+      await targetOrder.save();
+
+      throw APIError.badRequest(
+        "Khalti payment gateway is not properly configured. A valid Khalti secret key is required in backend/.env."
+      );
+    }
+    const authHeader = khaltiSecret.startsWith("Key ") ? khaltiSecret : `Key ${khaltiSecret}`;
+
+    try {
+      const response = await axios.post(
+        env.KHALTI_LOOKUP_URL,
+        { pidx: cleanPidx },
+        {
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+
+      verification = response.data;
+    } catch (error: any) {
+      const khaltiErrMsg =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        "Khalti payment verification service error";
+
+      console.warn("[Khalti Diagnostic] Lookup failed closed:", {
+        httpStatus: error.response?.status,
+        endpoint: env.KHALTI_LOOKUP_URL,
+        pidx: cleanPidx,
+        errorMsg: khaltiErrMsg,
+      });
+
+      targetOrder.paymentStatus = "failed";
+      targetOrder.statusHistory.push({
+        status: targetOrder.status,
+        changedAt: new Date(),
+        note: `Khalti verification failed: ${khaltiErrMsg}`,
+        changedBy: "payment_system",
+      });
+      await targetOrder.save();
+
+      throw APIError.badRequest(`Payment verification failed: ${khaltiErrMsg}`);
+    }
   }
 
   // Validate Verification Payload Status (FAIL CLOSED)
@@ -309,8 +380,26 @@ export async function verifyKhaltiPaymentService(
     );
   }
 
+  // Validate that the returned purchase_order_id matches this order (if provided by gateway)
+  if (
+    verification.purchase_order_id &&
+    verification.purchase_order_id !== targetOrder._id.toString()
+  ) {
+    targetOrder.paymentStatus = "failed";
+    targetOrder.statusHistory.push({
+      status: targetOrder.status,
+      changedAt: new Date(),
+      note: `Order ID mismatch: Gateway reported order ${verification.purchase_order_id}, but expected ${targetOrder._id.toString()}`,
+      changedBy: "security_guard",
+    });
+    await targetOrder.save();
+
+    throw APIError.badRequest(
+      "Payment verification failed: Gateway transaction belongs to a different order."
+    );
+  }
+
   // Authoritatively Verify Payment Amount (FAIL CLOSED)
-  const expectedPaisa = Math.round(targetOrder.totalAmount * 100);
   const paidPaisa = Number(
     verification.total_amount ?? verification.amount ?? 0
   );

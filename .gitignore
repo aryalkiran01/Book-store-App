@@ -17,3 +17,8 @@ frontend/.env.*
 
 # Uploads
 uploads/
+
+# Test & Scratch Scripts
+*.mjs
+scratch/
+backend/scratch/

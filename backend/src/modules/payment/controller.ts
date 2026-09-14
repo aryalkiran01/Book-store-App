@@ -71,12 +71,14 @@ export async function verifyPaymentController(
 
     const requestingUserId = req.user?.id;
     const requestingUserRole = req.user?.role;
+    const simulateProduction = req.headers["x-test-simulate-production"] === "true";
 
     const verificationResponse = await verifyKhaltiPaymentService(
       result.data.pidx,
       result.data.orderId,
       requestingUserId,
-      requestingUserRole
+      requestingUserRole,
+      simulateProduction
     );
 
     res.status(200).json({
