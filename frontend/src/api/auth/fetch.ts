@@ -137,3 +137,35 @@ export async function logout(): Promise<TLogoutOutput> {
   return data;
 }
 
+/**
+ * For change password api
+ */
+export type TChangePasswordInput = {
+  oldPassword: string;
+  newPassword: string;
+};
+
+export type TChangePasswordOutput = {
+  message: string;
+  isSuccess: boolean;
+  data: null;
+};
+
+export async function changePassword(
+  input: TChangePasswordInput
+): Promise<TChangePasswordOutput> {
+  const res = await fetch(`${env.BACKEND_URL}/api/auth/change-password`, {
+    method: "POST",
+    credentials: "include",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(input),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to change password");
+  }
+
+  return data;
+}
+

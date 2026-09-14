@@ -8,7 +8,7 @@ import { Logout } from "./auth/logout";
 import { IoBookSharp } from "react-icons/io5";
 import SearchBar from "./searchbar";
 import { FaOpencart } from "react-icons/fa6";
-import { Heart, Compass, BookOpen, ShoppingBag, ShieldCheck } from "lucide-react";
+import { Heart, Compass, BookOpen, ShoppingBag, ShieldCheck, UserCircle } from "lucide-react";
 import { getCart, getWishlist } from "../utils/cartStorage";
 import { useUserDetailsStore } from "../store/useUsersDetails";
 import { ThemeToggle } from "./common/ThemeToggle";
@@ -194,6 +194,12 @@ export function AppShell() {
                       </Link>
                     )}
                     <Link
+                      to="/profile"
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition focus-ring"
+                    >
+                      <UserCircle size={14} className="text-indigo-600 dark:text-indigo-400" /> My Profile
+                    </Link>
+                    <Link
                       to="/orders"
                       className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition focus-ring"
                     >
@@ -285,6 +291,14 @@ export function AppShell() {
                   {item.name}
                 </Link>
               ))}
+
+              <Link
+                to="/profile"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus-ring"
+              >
+                <UserCircle size={16} className="text-indigo-600 dark:text-indigo-400" /> My Profile
+              </Link>
 
               <Link
                 to="/wishlist"

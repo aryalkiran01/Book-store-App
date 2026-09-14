@@ -158,15 +158,18 @@ export async function getBooksService(query?: BookQueryParams) {
   }
 
   if (query?.search) {
-    const searchRegex = new RegExp(query.search, "i");
-    filter.$or = [
-      { title: searchRegex },
-      { author: searchRegex },
-      { genre: searchRegex },
-      { description: searchRegex },
-      { isbn: searchRegex },
-      { publisher: searchRegex },
-    ];
+    const escapedSearch = query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (escapedSearch) {
+      const searchRegex = new RegExp(escapedSearch, "i");
+      filter.$or = [
+        { title: searchRegex },
+        { author: searchRegex },
+        { genre: searchRegex },
+        { description: searchRegex },
+        { isbn: searchRegex },
+        { publisher: searchRegex },
+      ];
+    }
   }
 
   // Determine sort order

@@ -51,6 +51,9 @@ const OrderHistoryPage = lazy(() =>
 const OrderDetailsPage = lazy(() =>
   import("./pages/OrderDetailsPage").then((m) => ({ default: m.OrderDetailsPage }))
 );
+const ProfilePage = lazy(() =>
+  import("./pages/ProfilePage").then((m) => ({ default: m.ProfilePage }))
+);
 const NotFoundPage = lazy(() =>
   import("./pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage }))
 );
@@ -164,6 +167,14 @@ const router = createBrowserRouter([
   {
     path: "/orders/:orderId",
     element: withSuspense(OrderDetailsPage),
+  },
+  {
+    path: "/profile",
+    element: withSuspense(ProfilePage),
+  },
+  {
+    path: "/my-profile",
+    element: withSuspense(ProfilePage),
   },
   {
     path: "*",
