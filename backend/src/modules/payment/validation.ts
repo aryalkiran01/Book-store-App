@@ -19,3 +19,12 @@ export const VerifyPaymentSchema = z.object({
   pidx: z.string().min(1, "Payment ID (pidx) is required"),
   orderId: z.string().optional(),
 });
+
+export const InitiateEsewaSchema = z.object({
+  orderId: z.string().min(1, "Order ID is required"),
+});
+
+export const VerifyEsewaSchema = z.object({
+  data: z.string().min(1, "eSewa base64 encoded data is required"),
+});
+

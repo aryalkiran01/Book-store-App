@@ -39,6 +39,9 @@ const CheckoutPage = lazy(() =>
 const PaymentPage = lazy(() =>
   import("./pages/PaymentPage").then((m) => ({ default: m.PaymentPage }))
 );
+const PaymentCallbackPage = lazy(() =>
+  import("./pages/PaymentCallbackPage").then((m) => ({ default: m.PaymentCallbackPage }))
+);
 const OrderSuccessPage = lazy(() =>
   import("./pages/OrderSuccessPage").then((m) => ({ default: m.OrderSuccessPage }))
 );
@@ -137,6 +140,10 @@ const router = createBrowserRouter([
   {
     path: "/payment",
     element: withSuspense(PaymentPage),
+  },
+  {
+    path: "/payment/callback",
+    element: withSuspense(PaymentCallbackPage),
   },
   {
     path: "/order-success",

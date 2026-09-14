@@ -4,16 +4,16 @@ import {
   ShieldCheck,
   CreditCard,
   Truck,
-  Zap,
   ArrowLeft,
   Lock,
   AlertCircle,
   Loader2,
+  Wallet,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { Footer } from "./Footer";
 import { clearCart } from "../utils/cartStorage";
-import { initiatePayment, verifyPayment } from "../api/payment/fetch";
+import { initiatePayment, initiateEsewaPayment } from "../api/payment/fetch";
 import { useUserDetailsStore } from "../store/useUsersDetails";
 
 export function PaymentPage() {
@@ -22,9 +22,7 @@ export function PaymentPage() {
   const { userDetails } = useUserDetailsStore();
 
   const [orderDetails, setOrderDetails] = useState<any>(null);
-  const [selectedMethod, setSelectedMethod] = useState<
-    "khalti" | "cod" | "demo"
-  >("khalti");
+  const [selectedMethod, setSelectedMethod] = useState<"khalti" | "esewa" | "cod">("khalti");
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -63,14 +61,17 @@ export function PaymentPage() {
   const shippingCost = orderDetails.shippingCost || 0;
   const discount = orderDetails.discount || 0;
   const totalAmount = orderDetails.totalAmount || subtotal + shippingCost - discount;
+  const orderId = orderDetails._id || orderDetails.orderId;
 
   const handleCompletePayment = async () => {
+    if (!orderId) {
+      setErrorMsg("Missing valid order identifier. Please return to checkout.");
+      return;
+    }
+
     try {
       setProcessing(true);
       setErrorMsg(null);
-
-      // If order is already created in backend and has an _id
-      const orderId = orderDetails._id || orderDetails.orderId || `ord_${Date.now()}`;
 
       if (selectedMethod === "cod") {
         // Cash on Delivery
@@ -89,56 +90,45 @@ export function PaymentPage() {
         return;
       }
 
-      if (selectedMethod === "demo") {
-        // Instant Demo Payment
-        const mockPidx = `mock_pidx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        await verifyPayment(mockPidx, orderId);
+      if (selectedMethod === "esewa") {
+        // 1. Initiate eSewa Payment
+        const esewaRes = await initiateEsewaPayment(orderId);
+        if (esewaRes?.data?.payment_url && esewaRes?.data?.formData) {
+          const { payment_url, formData } = esewaRes.data;
 
-        clearCart();
-        navigate("/order-success", {
-          state: {
-            order: {
-              ...orderDetails,
-              _id: orderId,
-              paymentMethod: "demo",
-              paymentStatus: "completed",
-              paymentId: mockPidx,
-              status: "confirmed",
-            },
-          },
-        });
-        return;
+          // Dynamically construct and submit the official eSewa form POST request
+          const form = document.createElement("form");
+          form.method = "POST";
+          form.action = payment_url;
+
+          Object.keys(formData).forEach((key) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = formData[key];
+            form.appendChild(input);
+          });
+
+          document.body.appendChild(form);
+          form.submit();
+          return;
+        } else {
+          throw new Error(esewaRes?.message || "Failed to initiate eSewa payment");
+        }
       }
 
       if (selectedMethod === "khalti") {
-        // Khalti Payment Gateway
+        // 2. Initiate Khalti Payment
         const initRes = await initiatePayment(orderId, totalAmount, {
-          name: userDetails?.username || "Customer",
-          email: userDetails?.email || "customer@example.com",
-          phone: "9800000000",
+          name: userDetails?.username || orderDetails.customerInfo?.fullName || "Customer",
+          email: userDetails?.email || orderDetails.customerInfo?.email || "customer@example.com",
+          phone: orderDetails.customerInfo?.phone || "9800000000",
         });
 
         if (initRes?.data?.payment_url) {
-          // If in sandbox / demo environment with mock redirect
-          if (initRes.data.mock) {
-            await verifyPayment(initRes.data.pidx, orderId);
-            clearCart();
-            navigate("/order-success", {
-              state: {
-                order: {
-                  ...orderDetails,
-                  _id: orderId,
-                  paymentMethod: "khalti",
-                  paymentStatus: "completed",
-                  paymentId: initRes.data.pidx,
-                  status: "confirmed",
-                },
-              },
-            });
-          } else {
-            // Live Khalti redirect
-            window.location.href = initRes.data.payment_url;
-          }
+          // Redirect browser to official Khalti payment gateway URL
+          window.location.href = initRes.data.payment_url;
+          return;
         } else {
           throw new Error(initRes?.message || "Failed to initiate Khalti payment");
         }
@@ -150,7 +140,6 @@ export function PaymentPage() {
           err?.message ||
           "Payment processing failed. Please try another method."
       );
-    } finally {
       setProcessing(false);
     }
   };
@@ -170,11 +159,11 @@ export function PaymentPage() {
               <ArrowLeft size={14} /> Back to Checkout Details
             </Link>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-              <CreditCard className="text-indigo-600 dark:text-indigo-400" size={26} /> Payment Method
+              <CreditCard className="text-indigo-600 dark:text-indigo-400" size={26} /> Select Payment Method
             </h1>
           </div>
           <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-full">
-            <Lock size={14} /> 100% Secure Checkout
+            <Lock size={14} /> Official Sandboxes Enabled
           </div>
         </div>
 
@@ -190,10 +179,10 @@ export function PaymentPage() {
           <div className="lg:col-span-7 space-y-4">
             <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm backdrop-blur-xl">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Select Payment Method
+                Choose Gateway
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-                All transactions are verified server-side with strict encryption.
+                All transactions are verified server-side with HMAC-SHA256 & direct lookup APIs.
               </p>
 
               <div className="space-y-3">
@@ -202,12 +191,12 @@ export function PaymentPage() {
                   onClick={() => setSelectedMethod("khalti")}
                   className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
                     selectedMethod === "khalti"
-                      ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500 shadow-md"
+                      ? "bg-purple-50/60 dark:bg-purple-950/40 border-purple-500 shadow-md ring-1 ring-purple-500/30"
                       : "bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700/60 flex items-center justify-center font-black text-purple-700 dark:text-purple-300 text-sm">
+                    <div className="w-12 h-12 rounded-xl bg-purple-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-purple-600/20">
                       K
                     </div>
                     <div>
@@ -216,18 +205,18 @@ export function PaymentPage() {
                           Khalti Digital Wallet
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                          Recommended
+                          Official Sandbox
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Instant ePayment via Khalti Wallet, eBanking & SCT Cards
+                        Pay via Khalti Wallet (Test Account: 9800000000 / MPIN: 1111)
                       </p>
                     </div>
                   </div>
                   <div
                     className={`w-5 h-5 rounded-full border flex items-center justify-center ${
                       selectedMethod === "khalti"
-                        ? "border-indigo-500 bg-indigo-600"
+                        ? "border-purple-600 bg-purple-600"
                         : "border-slate-300 dark:border-slate-600"
                     }`}
                   >
@@ -237,7 +226,47 @@ export function PaymentPage() {
                   </div>
                 </div>
 
-                {/* Option 2: Cash on Delivery */}
+                {/* Option 2: eSewa ePay */}
+                <div
+                  onClick={() => setSelectedMethod("esewa")}
+                  className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                    selectedMethod === "esewa"
+                      ? "bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
+                      : "bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white font-black text-xl flex items-center justify-center shadow-md shadow-emerald-600/20">
+                      e
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white text-sm">
+                          eSewa ePay
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          Official Sandbox
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Pay via eSewa (Test ID: 9841000000 / Password: Nepal@123 / MPIN: 1122)
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                      selectedMethod === "esewa"
+                        ? "border-emerald-600 bg-emerald-600"
+                        : "border-slate-300 dark:border-slate-600"
+                    }`}
+                  >
+                    {selectedMethod === "esewa" && (
+                      <div className="w-2 h-2 rounded-full bg-white" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Option 3: Cash on Delivery */}
                 <div
                   onClick={() => setSelectedMethod("cod")}
                   className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
@@ -247,15 +276,15 @@ export function PaymentPage() {
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-700/60 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
-                      <Truck size={20} />
+                    <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300">
+                      <Truck size={22} />
                     </div>
                     <div>
                       <span className="font-bold text-slate-900 dark:text-white text-sm">
                         Cash on Delivery (COD)
                       </span>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Pay with cash or Fonepay QR upon receiving your books
+                        Pay in cash upon doorstep delivery of your book package
                       </p>
                     </div>
                   </div>
@@ -271,46 +300,6 @@ export function PaymentPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Option 3: Instant Demo Pay */}
-                <div
-                  onClick={() => setSelectedMethod("demo")}
-                  className={`p-4 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
-                    selectedMethod === "demo"
-                      ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500 shadow-md"
-                      : "bg-slate-50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700/60 flex items-center justify-center text-amber-700 dark:text-amber-300">
-                      <Zap size={20} fill="currentColor" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 dark:text-white text-sm">
-                          Instant Demo Simulation
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                          Sandbox
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Test full payment confirmation instantly without live charge
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                      selectedMethod === "demo"
-                        ? "border-indigo-500 bg-indigo-600"
-                        : "border-slate-300 dark:border-slate-600"
-                    }`}
-                  >
-                    {selectedMethod === "demo" && (
-                      <div className="w-2 h-2 rounded-full bg-white" />
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -318,8 +307,7 @@ export function PaymentPage() {
             <div className="bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/60 rounded-2xl p-4 flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 shadow-sm">
               <ShieldCheck size={24} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>
-                Your order is backed by our 7-day replacement guarantee for any
-                damaged or incorrect items.
+                Your order is backed by KitabGhar's authentic delivery and replacement guarantee.
               </span>
             </div>
           </div>
@@ -370,24 +358,30 @@ export function PaymentPage() {
               <button
                 onClick={handleCompletePayment}
                 disabled={processing}
-                className="w-full mt-4 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-600/30 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                className={`w-full mt-4 py-3.5 text-white font-bold rounded-xl transition shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 ${
+                  selectedMethod === "khalti"
+                    ? "bg-purple-600 hover:bg-purple-500 shadow-purple-600/30"
+                    : selectedMethod === "esewa"
+                    ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30"
+                    : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30"
+                }`}
               >
                 {processing ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    Processing Payment...
+                    Connecting to Gateway...
                   </>
                 ) : selectedMethod === "khalti" ? (
                   <>
-                    <CreditCard size={18} /> Pay NPR {totalAmount.toLocaleString()} via Khalti
+                    <Wallet size={18} /> Pay NPR {totalAmount.toLocaleString()} with Khalti
                   </>
-                ) : selectedMethod === "cod" ? (
+                ) : selectedMethod === "esewa" ? (
                   <>
-                    <Truck size={18} /> Place Cash on Delivery Order
+                    <CreditCard size={18} /> Pay NPR {totalAmount.toLocaleString()} with eSewa
                   </>
                 ) : (
                   <>
-                    <Zap size={18} fill="currentColor" /> Complete Instant Demo Order
+                    <Truck size={18} /> Place Cash on Delivery Order
                   </>
                 )}
               </button>

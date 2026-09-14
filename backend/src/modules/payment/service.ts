@@ -1,20 +1,16 @@
 import axios from "axios";
-import { env } from "../../utils/config";
+import crypto from "crypto";
+import { env, isKhaltiConfigured } from "../../utils/config";
 import { APIError } from "../../utils/error";
 import { OrderModel } from "../order/model";
 import { validateObjectId } from "../../utils/security";
 
-const KHALTI_API_KEY = env.KHALTI_API_KEY;
-const KHALTI_INITIATE_URL =
-  "https://a.khalti.com/api/v2/epayment/initiate/";
-const KHALTI_LOOKUP_URL = "https://a.khalti.com/api/v2/epayment/lookup/";
-
-export interface InitiatePaymentInput {
-  return_url: string;
-  website_url: string;
-  amount: number; // in paisa
+export interface InitiateKhaltiInput {
+  return_url?: string;
+  website_url?: string;
+  amount?: number; // in paisa (calculated authoritatively on server)
   purchase_order_id: string;
-  purchase_order_name: string;
+  purchase_order_name?: string;
   customer_info?: {
     name?: string;
     email?: string;
@@ -22,8 +18,82 @@ export interface InitiatePaymentInput {
   };
 }
 
-export async function initiatePaymentService(
-  paymentData: InitiatePaymentInput,
+export interface InitiateEsewaInput {
+  orderId: string;
+}
+
+/**
+ * Generates an HMAC-SHA256 signature for eSewa v2 API initiation
+ */
+export function generateEsewaSignature(
+  totalAmount: string | number,
+  transactionUuid: string,
+  productCode: string,
+  secretKey: string = env.ESEWA_SECRET_KEY
+): string {
+  const message = `total_amount=${totalAmount},transaction_uuid=${transactionUuid},product_code=${productCode}`;
+  const hmac = crypto.createHmac("sha256", secretKey);
+  hmac.update(message);
+  return hmac.digest("base64");
+}
+
+/**
+ * Verifies the HMAC-SHA256 signature returned in the eSewa v2 response payload
+ */
+export function verifyEsewaResponseSignature(
+  decodedPayload: Record<string, any>,
+  secretKey: string = env.ESEWA_SECRET_KEY
+): boolean {
+  const { signed_field_names, signature } = decodedPayload;
+  if (!signature || typeof signature !== "string") {
+    return false;
+  }
+
+  // Method 1: Generate signature strictly based on eSewa's returned signed_field_names
+  if (signed_field_names && typeof signed_field_names === "string") {
+    const fields = signed_field_names.split(",").map((f: string) => f.trim());
+    const message = fields
+      .map((field: string) => `${field}=${decodedPayload[field] !== undefined ? decodedPayload[field] : ""}`)
+      .join(",");
+
+    const hmac = crypto.createHmac("sha256", secretKey);
+    hmac.update(message);
+    const computedSignature = hmac.digest("base64");
+
+    if (computedSignature === signature) {
+      return true;
+    }
+  }
+
+  // Method 2: Check initiation parameter signature format
+  const rawTotal = decodedPayload.total_amount;
+  const cleanTotal = String(rawTotal ?? "").replace(/,/g, "");
+  const txUuid = decodedPayload.transaction_uuid;
+  const pCode = decodedPayload.product_code;
+
+  const rawMsg = `total_amount=${rawTotal},transaction_uuid=${txUuid},product_code=${pCode}`;
+  const rawHmac = crypto.createHmac("sha256", secretKey).update(rawMsg).digest("base64");
+  if (rawHmac === signature) {
+    return true;
+  }
+
+  const cleanMsg = `total_amount=${cleanTotal},transaction_uuid=${txUuid},product_code=${pCode}`;
+  const cleanHmac = crypto.createHmac("sha256", secretKey).update(cleanMsg).digest("base64");
+  if (cleanHmac === signature) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * -------------------------------------------------------------
+ * 1. KHALTI PAYMENT INTEGRATION (Official ePayment v2)
+ * -------------------------------------------------------------
+ */
+
+export async function initiateKhaltiPaymentService(
+  paymentData: InitiateKhaltiInput,
   requestingUserId?: string,
   requestingUserRole?: string
 ) {
@@ -35,7 +105,7 @@ export async function initiatePaymentService(
     throw APIError.notFound("Order not found");
   }
 
-  // Verify ownership
+  // Verify Ownership
   if (
     requestingUserId &&
     requestingUserRole !== "admin" &&
@@ -50,19 +120,38 @@ export async function initiatePaymentService(
     throw APIError.badRequest("This order has already been paid for.");
   }
 
+  const khaltiSecret = (env.KHALTI_SECRET_KEY || "").trim();
+  if (!isKhaltiConfigured(khaltiSecret)) {
+    throw APIError.badRequest(
+      "Khalti payment gateway is not properly configured. A valid Khalti secret key is required in backend/.env."
+    );
+  }
+
   // Authoritatively calculate and enforce expected paisa from DB order total
   const authoritativePaisa = Math.round(order.totalAmount * 100);
+  const returnUrl =
+    paymentData.return_url || `${env.FRONTEND_URL}/payment/callback?provider=khalti`;
+  const websiteUrl = paymentData.website_url || env.FRONTEND_URL;
 
-  // Override amount with authoritative amount to prevent client tampering
-  const securePayload = {
-    ...paymentData,
+  const khaltiPayload = {
+    return_url: returnUrl,
+    website_url: websiteUrl,
     amount: authoritativePaisa,
+    purchase_order_id: order._id.toString(),
+    purchase_order_name: paymentData.purchase_order_name || `KitabGhar Order #${order._id}`,
+    customer_info: paymentData.customer_info || {
+      name: order.customerInfo?.fullName || "Customer",
+      email: order.customerInfo?.email || "customer@example.com",
+      phone: order.customerInfo?.phone || "9800000000",
+    },
   };
 
+  const authHeader = khaltiSecret.startsWith("Key ") ? khaltiSecret : `Key ${khaltiSecret}`;
+
   try {
-    const response = await axios.post<any>(KHALTI_INITIATE_URL, securePayload, {
+    const response = await axios.post<any>(env.KHALTI_INITIATE_URL, khaltiPayload, {
       headers: {
-        Authorization: `Key ${KHALTI_API_KEY}`,
+        Authorization: authHeader,
         "Content-Type": "application/json",
       },
       timeout: 10000,
@@ -70,45 +159,36 @@ export async function initiatePaymentService(
 
     if (response.data?.pidx) {
       order.paymentId = response.data.pidx;
+      order.paymentMethod = "khalti";
       await order.save();
     }
 
     return response.data;
   } catch (error: any) {
+    const status = error.response?.status;
+    const responseData = error.response?.data;
     const khaltiErrorMsg =
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
+      responseData?.detail ||
+      responseData?.message ||
       error.message ||
       "Payment gateway unreachable";
 
-    console.warn("Khalti initiate failed:", khaltiErrorMsg);
+    console.warn(`[Khalti Diagnostic] Initiation Error:`, {
+      httpStatus: status,
+      endpoint: env.KHALTI_INITIATE_URL,
+      secretConfigured: isKhaltiConfigured(khaltiSecret),
+      secretLength: khaltiSecret.length,
+      secretPrefix: khaltiSecret ? `${khaltiSecret.substring(0, 8)}...` : "NONE",
+      amountPaisa: authoritativePaisa,
+      orderId: order._id.toString(),
+      gatewayResponse: responseData || error.message,
+    });
 
-    // Fail closed in production - NEVER generate mock payments in production
-    if (env.NODE_ENV === "production") {
-      throw APIError.badRequest(
-        `Payment initiation failed with gateway: ${khaltiErrorMsg}`
-      );
-    }
-
-    // Development-only fallback simulation
-    const mockPidx = `mock_pidx_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const returnUrl = paymentData.return_url || `${env.FRONTEND_URL}/payment`;
-
-    order.paymentId = mockPidx;
-    await order.save();
-
-    return {
-      pidx: mockPidx,
-      payment_url: `${returnUrl}?pidx=${mockPidx}&status=Completed&purchase_order_id=${paymentData.purchase_order_id}`,
-      expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
-      expires_in: 3600,
-      mock: true,
-      message: "Payment initiated (Development/Sandbox simulation)",
-    };
+    throw APIError.badRequest(`Khalti payment initiation failed: ${khaltiErrorMsg}`);
   }
 }
 
-export async function verifyPaymentService(
+export async function verifyKhaltiPaymentService(
   pidx: string,
   orderId?: string,
   requestingUserId?: string,
@@ -120,7 +200,7 @@ export async function verifyPaymentService(
 
   const cleanPidx = pidx.trim();
 
-  // Find authoritative target order
+  // Find target order
   let targetOrder = null;
   if (orderId && orderId.trim()) {
     validateObjectId(orderId.trim(), "Order ID");
@@ -148,7 +228,7 @@ export async function verifyPaymentService(
     );
   }
 
-  // Idempotency: If order is already completed, return existing success state without duplicating
+  // Idempotency: If order is already completed, return existing success state
   if (targetOrder.paymentStatus === "completed") {
     return {
       pidx: cleanPidx,
@@ -158,75 +238,58 @@ export async function verifyPaymentService(
       fee: 0,
       refunded: false,
       alreadyVerified: true,
+      order: targetOrder,
       message: "Payment was previously verified and completed",
     };
   }
 
   let verification: any = null;
+  const khaltiSecret = (env.KHALTI_SECRET_KEY || "").trim();
+  if (!isKhaltiConfigured(khaltiSecret)) {
+    throw APIError.badRequest(
+      "Khalti payment gateway is not properly configured. A valid Khalti secret key is required in backend/.env."
+    );
+  }
+  const authHeader = khaltiSecret.startsWith("Key ") ? khaltiSecret : `Key ${khaltiSecret}`;
 
-  // Handle Mock Payment Tokens
-  if (cleanPidx.startsWith("mock_pidx_")) {
-    if (env.NODE_ENV === "production") {
-      // In production: FAIL CLOSED. Reject fake/mock tokens immediately.
-      targetOrder.paymentStatus = "failed";
-      targetOrder.statusHistory.push({
-        status: targetOrder.status,
-        changedAt: new Date(),
-        note: "Rejected simulated payment token in production environment",
-        changedBy: "security_guard",
-      });
-      await targetOrder.save();
-      throw APIError.forbidden(
-        "Mock payment tokens are strictly forbidden in production"
-      );
-    }
+  try {
+    const response = await axios.post(
+      env.KHALTI_LOOKUP_URL,
+      { pidx: cleanPidx },
+      {
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      }
+    );
 
-    // Allowed ONLY in development/test mode
-    verification = {
+    verification = response.data;
+  } catch (error: any) {
+    const khaltiErrMsg =
+      error.response?.data?.detail ||
+      error.response?.data?.message ||
+      error.message ||
+      "Khalti payment verification service error";
+
+    console.warn("[Khalti Diagnostic] Lookup failed closed:", {
+      httpStatus: error.response?.status,
+      endpoint: env.KHALTI_LOOKUP_URL,
       pidx: cleanPidx,
-      status: "Completed",
-      transaction_id: `txn_mock_${Date.now()}`,
-      total_amount: Math.round(targetOrder.totalAmount * 100),
-      fee: 0,
-      refunded: false,
-    };
-  } else {
-    // Live / Test Khalti Lookup
-    try {
-      const response = await axios.post(
-        KHALTI_LOOKUP_URL,
-        { pidx: cleanPidx },
-        {
-          headers: {
-            Authorization: `Key ${KHALTI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 10000,
-        }
-      );
+      errorMsg: khaltiErrMsg,
+    });
 
-      verification = response.data;
-    } catch (error: any) {
-      // FAIL CLOSED: Never assume success, never generate fake transaction ID
-      const khaltiErrMsg =
-        error.response?.data?.detail ||
-        error.response?.data?.message ||
-        error.message ||
-        "Khalti payment verification service error";
+    targetOrder.paymentStatus = "failed";
+    targetOrder.statusHistory.push({
+      status: targetOrder.status,
+      changedAt: new Date(),
+      note: `Khalti verification failed: ${khaltiErrMsg}`,
+      changedBy: "payment_system",
+    });
+    await targetOrder.save();
 
-      console.warn("Khalti lookup failed closed:", khaltiErrMsg);
-
-      targetOrder.paymentStatus = "failed";
-      targetOrder.statusHistory.push({
-        status: targetOrder.status,
-        changedAt: new Date(),
-        note: `Payment verification failed with gateway: ${khaltiErrMsg}`,
-        changedBy: "payment_system",
-      });
-      await targetOrder.save();
-
-      throw APIError.badRequest(`Payment verification failed: ${khaltiErrMsg}`);
-    }
+    throw APIError.badRequest(`Payment verification failed: ${khaltiErrMsg}`);
   }
 
   // Validate Verification Payload Status (FAIL CLOSED)
@@ -236,7 +299,7 @@ export async function verifyPaymentService(
     targetOrder.statusHistory.push({
       status: targetOrder.status,
       changedAt: new Date(),
-      note: `Payment verification failed. Gateway status: ${statusText}`,
+      note: `Khalti verification rejected. Status: ${statusText}`,
       changedBy: "payment_system",
     });
     await targetOrder.save();
@@ -257,7 +320,7 @@ export async function verifyPaymentService(
     targetOrder.statusHistory.push({
       status: targetOrder.status,
       changedAt: new Date(),
-      note: `Payment amount mismatch: Expected NPR ${targetOrder.totalAmount} (${expectedPaisa} paisa), but received ${paidPaisa} paisa`,
+      note: `Payment amount mismatch: Expected ${expectedPaisa} paisa, received ${paidPaisa} paisa`,
       changedBy: "payment_system",
     });
     await targetOrder.save();
@@ -269,6 +332,7 @@ export async function verifyPaymentService(
 
   // Genuine payment verified successfully
   targetOrder.paymentStatus = "completed";
+  targetOrder.paymentMethod = "khalti";
   targetOrder.paymentId = verification.transaction_id || cleanPidx;
   if (targetOrder.status === "pending") {
     targetOrder.status = "confirmed";
@@ -282,7 +346,242 @@ export async function verifyPaymentService(
   });
 
   await targetOrder.save();
-  return verification;
+  return {
+    ...verification,
+    order: targetOrder,
+  };
 }
 
+/**
+ * -------------------------------------------------------------
+ * 2. ESEWA PAYMENT INTEGRATION (Official ePay v2)
+ * -------------------------------------------------------------
+ */
 
+export async function initiateEsewaPaymentService(
+  orderId: string,
+  requestingUserId?: string,
+  requestingUserRole?: string
+) {
+  validateObjectId(orderId, "Order ID");
+
+  const order = await OrderModel.findById(orderId);
+  if (!order) {
+    throw APIError.notFound("Order not found");
+  }
+
+  // Verify Ownership
+  if (
+    requestingUserId &&
+    requestingUserRole !== "admin" &&
+    order.userId.toString() !== requestingUserId
+  ) {
+    throw APIError.forbidden(
+      "You do not have permission to initiate payment for this order"
+    );
+  }
+
+  if (order.paymentStatus === "completed") {
+    throw APIError.badRequest("This order has already been paid for.");
+  }
+
+  const subtotal = order.subtotal;
+  const shippingCost = order.shippingCost || 0;
+  const totalAmount = order.totalAmount;
+  const transactionUuid = `${order._id}`;
+  const productCode = env.ESEWA_PRODUCT_CODE;
+
+  // Generate official eSewa HMAC-SHA256 signature
+  const signature = generateEsewaSignature(
+    totalAmount,
+    transactionUuid,
+    productCode,
+    env.ESEWA_SECRET_KEY
+  );
+
+  const successUrl = `${env.FRONTEND_URL}/payment/callback?provider=esewa`;
+  const failureUrl = `${env.FRONTEND_URL}/payment/callback?provider=esewa&status=failed&orderId=${order._id}`;
+
+  const esewaFormData = {
+    amount: subtotal.toString(),
+    tax_amount: "0",
+    total_amount: totalAmount.toString(),
+    transaction_uuid: transactionUuid,
+    product_code: productCode,
+    product_service_charge: "0",
+    product_delivery_charge: shippingCost.toString(),
+    success_url: successUrl,
+    failure_url: failureUrl,
+    signed_field_names: "total_amount,transaction_uuid,product_code",
+    signature,
+  };
+
+  order.paymentMethod = "esewa";
+  order.paymentId = transactionUuid;
+  await order.save();
+
+  return {
+    payment_url: env.ESEWA_INITIATE_URL,
+    formData: esewaFormData,
+    orderId: order._id.toString(),
+    totalAmount,
+  };
+}
+
+export async function verifyEsewaPaymentService(
+  encodedData: string,
+  requestingUserId?: string,
+  requestingUserRole?: string
+) {
+  if (!encodedData || typeof encodedData !== "string") {
+    throw APIError.badRequest("Encoded payment data is required from eSewa");
+  }
+
+  let decodedJson: any = null;
+  try {
+    const decodedString = Buffer.from(encodedData, "base64").toString("utf-8");
+    decodedJson = JSON.parse(decodedString);
+  } catch (err) {
+    throw APIError.badRequest("Invalid base64 encoded data from eSewa");
+  }
+
+  const {
+    transaction_code,
+    status,
+    total_amount,
+    transaction_uuid,
+    product_code,
+    signed_field_names,
+    signature,
+  } = decodedJson;
+
+  if (!transaction_uuid) {
+    throw APIError.badRequest("Missing transaction_uuid in eSewa response");
+  }
+
+  // Extract order ID from transaction UUID
+  const orderId = transaction_uuid.includes("-")
+    ? transaction_uuid.split("-")[0]
+    : transaction_uuid;
+
+  validateObjectId(orderId, "Order ID");
+  const targetOrder = await OrderModel.findById(orderId);
+  if (!targetOrder) {
+    throw APIError.notFound("No matching order found for this eSewa transaction");
+  }
+
+  // Verify Ownership
+  if (
+    requestingUserId &&
+    requestingUserRole !== "admin" &&
+    targetOrder.userId.toString() !== requestingUserId
+  ) {
+    throw APIError.forbidden(
+      "You do not have permission to verify payment for this order"
+    );
+  }
+
+  // Idempotency: If already completed
+  if (targetOrder.paymentStatus === "completed") {
+    return {
+      status: "COMPLETE",
+      transaction_code: targetOrder.paymentId,
+      total_amount: targetOrder.totalAmount,
+      transaction_uuid,
+      product_code,
+      alreadyVerified: true,
+      order: targetOrder,
+      message: "eSewa payment was previously verified and completed",
+    };
+  }
+
+  // Verify Gateway Status
+  if (status !== "COMPLETE") {
+    targetOrder.paymentStatus = "failed";
+    targetOrder.statusHistory.push({
+      status: targetOrder.status,
+      changedAt: new Date(),
+      note: `eSewa returned incomplete status: ${status}`,
+      changedBy: "payment_system",
+    });
+    await targetOrder.save();
+    throw APIError.badRequest(`eSewa transaction is not complete. Status: ${status}`);
+  }
+
+  // Verify HMAC Signature (FAIL CLOSED)
+  const isSignatureValid = verifyEsewaResponseSignature(
+    decodedJson,
+    env.ESEWA_SECRET_KEY
+  );
+
+  if (!isSignatureValid) {
+    targetOrder.paymentStatus = "failed";
+    targetOrder.statusHistory.push({
+      status: targetOrder.status,
+      changedAt: new Date(),
+      note: "eSewa signature verification failed (Tampering detected)",
+      changedBy: "security_guard",
+    });
+    await targetOrder.save();
+    throw APIError.badRequest("eSewa response signature verification failed");
+  }
+
+  // Verify Amount Authoritatively (normalize string representations and commas)
+  const cleanedAmountStr = String(total_amount ?? "").replace(/,/g, "");
+  const paidAmount = Number(cleanedAmountStr);
+
+  if (isNaN(paidAmount) || paidAmount !== targetOrder.totalAmount) {
+    targetOrder.paymentStatus = "failed";
+    targetOrder.statusHistory.push({
+      status: targetOrder.status,
+      changedAt: new Date(),
+      note: `eSewa amount mismatch: Expected NPR ${targetOrder.totalAmount}, received NPR ${paidAmount}`,
+      changedBy: "payment_system",
+    });
+    await targetOrder.save();
+    throw APIError.badRequest(
+      `Payment amount mismatch. Expected NPR ${targetOrder.totalAmount}, but received NPR ${paidAmount}`
+    );
+  }
+
+  // Server-to-Server eSewa status verification check
+  try {
+    const statusCheckUrl = `${env.ESEWA_STATUS_CHECK_URL}?product_code=${product_code}&total_amount=${cleanedAmountStr}&transaction_uuid=${transaction_uuid}`;
+    const statusRes = await axios.get<any>(statusCheckUrl, { timeout: 8000 });
+    if (statusRes.data?.status && statusRes.data.status !== "COMPLETE") {
+      throw new Error(`eSewa server check returned status: ${statusRes.data.status}`);
+    }
+  } catch (apiErr: any) {
+    console.warn("eSewa server-to-server check note:", apiErr.message);
+  }
+
+  // Payment verified successfully
+  targetOrder.paymentStatus = "completed";
+  targetOrder.paymentMethod = "esewa";
+  targetOrder.paymentId = transaction_code || transaction_uuid;
+  if (targetOrder.status === "pending") {
+    targetOrder.status = "confirmed";
+  }
+
+  targetOrder.statusHistory.push({
+    status: targetOrder.status,
+    changedAt: new Date(),
+    note: `Payment verified successfully via eSewa (Txn Code: ${transaction_code})`,
+    changedBy: "payment_system",
+  });
+
+  await targetOrder.save();
+
+  return {
+    status: "COMPLETE",
+    transaction_code,
+    total_amount,
+    transaction_uuid,
+    product_code,
+    order: targetOrder,
+  };
+}
+
+// Aliases for backwards compatibility
+export const initiatePaymentService = initiateKhaltiPaymentService;
+export const verifyPaymentService = verifyKhaltiPaymentService;

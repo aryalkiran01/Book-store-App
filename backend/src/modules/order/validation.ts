@@ -82,7 +82,7 @@ export const CreateOrderSchema = z
       .optional(),
     orderNote: z.string().max(500).optional(),
     paymentMethod: z
-      .enum(["khalti", "cod", "card", "demo", "cash_on_delivery"])
+      .enum(["khalti", "esewa", "cod", "card", "demo", "cash_on_delivery"])
       .default("cod"),
     paymentId: z.string().optional(),
   })
