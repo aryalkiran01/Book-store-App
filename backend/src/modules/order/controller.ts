@@ -49,7 +49,16 @@ export async function createOrderController(
     const effectiveUserId =
       req.user?.role === "admin" && req.body.userId
         ? req.body.userId
-        : req.user?.id || req.body.userId;
+        : req.user?.id;
+
+    if (!effectiveUserId) {
+      res.status(401).json({
+        message: "Authentication required to place an order",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
 
     const body = {
       ...req.body,

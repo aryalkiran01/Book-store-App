@@ -105,11 +105,15 @@ export async function initiateKhaltiPaymentService(
     throw APIError.notFound("Order not found");
   }
 
-  // Verify Ownership
+  const orderOwnerId =
+    order.userId && typeof order.userId === "object" && "_id" in order.userId
+      ? (order.userId as any)._id.toString()
+      : String(order.userId || "");
+
+  // Strict ownership check (Fail Closed): Caller must be order owner or admin
   if (
-    requestingUserId &&
-    requestingUserRole !== "admin" &&
-    order.userId.toString() !== requestingUserId
+    !requestingUserId ||
+    (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
   ) {
     throw APIError.forbidden(
       "You do not have permission to initiate payment for this order"
@@ -237,11 +241,15 @@ export async function verifyKhaltiPaymentService(
     );
   }
 
-  // Verify Ownership
+  const orderOwnerId =
+    targetOrder.userId && typeof targetOrder.userId === "object" && "_id" in targetOrder.userId
+      ? (targetOrder.userId as any)._id.toString()
+      : String(targetOrder.userId || "");
+
+  // Strict ownership check (Fail Closed): Caller must be order owner or admin
   if (
-    requestingUserId &&
-    requestingUserRole !== "admin" &&
-    targetOrder.userId.toString() !== requestingUserId
+    !requestingUserId ||
+    (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
   ) {
     throw APIError.forbidden(
       "You do not have permission to verify payment for this order"
@@ -459,11 +467,15 @@ export async function initiateEsewaPaymentService(
     throw APIError.notFound("Order not found");
   }
 
-  // Verify Ownership
+  const orderOwnerId =
+    order.userId && typeof order.userId === "object" && "_id" in order.userId
+      ? (order.userId as any)._id.toString()
+      : String(order.userId || "");
+
+  // Strict ownership check (Fail Closed): Caller must be order owner or admin
   if (
-    requestingUserId &&
-    requestingUserRole !== "admin" &&
-    order.userId.toString() !== requestingUserId
+    !requestingUserId ||
+    (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
   ) {
     throw APIError.forbidden(
       "You do not have permission to initiate payment for this order"
@@ -559,11 +571,15 @@ export async function verifyEsewaPaymentService(
     throw APIError.notFound("No matching order found for this eSewa transaction");
   }
 
-  // Verify Ownership
+  const orderOwnerId =
+    targetOrder.userId && typeof targetOrder.userId === "object" && "_id" in targetOrder.userId
+      ? (targetOrder.userId as any)._id.toString()
+      : String(targetOrder.userId || "");
+
+  // Strict ownership check (Fail Closed): Caller must be order owner or admin
   if (
-    requestingUserId &&
-    requestingUserRole !== "admin" &&
-    targetOrder.userId.toString() !== requestingUserId
+    !requestingUserId ||
+    (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
   ) {
     throw APIError.forbidden(
       "You do not have permission to verify payment for this order"

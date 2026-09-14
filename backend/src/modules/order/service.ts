@@ -427,11 +427,15 @@ export async function getOrderByIdService(
     .populate("books.bookId");
   if (!order) throw APIError.notFound("Order not found");
 
-  // Verify ownership if caller is not an admin
+  const orderOwnerId =
+    order.userId && typeof order.userId === "object" && "_id" in order.userId
+      ? (order.userId as any)._id.toString()
+      : String(order.userId || "");
+
+  // Strict ownership check (Fail Closed): Caller must be authenticated owner or admin
   if (
-    requestingUserId &&
-    requestingUserRole !== "admin" &&
-    order.userId._id.toString() !== requestingUserId
+    !requestingUserId ||
+    (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
   ) {
     throw APIError.forbidden("You do not have permission to view this order");
   }
@@ -449,10 +453,15 @@ export async function cancelOrderService(
   const order = await OrderModel.findById(orderId);
   if (!order) throw APIError.notFound("Order not found");
 
-  // Ownership check
+  const orderOwnerId =
+    order.userId && typeof order.userId === "object" && "_id" in order.userId
+      ? (order.userId as any)._id.toString()
+      : String(order.userId || "");
+
+  // Strict ownership check (Fail Closed): Caller must be owner or admin
   if (
-    requestingUserRole !== "admin" &&
-    order.userId.toString() !== requestingUserId
+    !requestingUserId ||
+    (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
   ) {
     throw APIError.forbidden("You are not authorized to cancel this order");
   }
