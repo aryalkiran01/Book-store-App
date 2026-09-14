@@ -66,9 +66,16 @@ export interface TOrderItem {
     title?: string;
     author?: string;
     image?: string;
+    isbn?: string;
+    openLibraryId?: string;
+    coverId?: string | number;
     price?: number;
   } | string;
   title: string;
+  author?: string;
+  isbn?: string;
+  openLibraryId?: string;
+  coverId?: string | number;
   image?: string;
   price: number;
   quantity: number;

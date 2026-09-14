@@ -13,6 +13,8 @@ export type TBook = {
   discountPercentage?: number;
   stock?: number;
   isbn?: string;
+  openLibraryId?: string;
+  coverId?: string | number;
   publisher?: string;
   publicationDate?: string;
   pages?: number;

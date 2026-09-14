@@ -163,11 +163,13 @@ export function WishlistPage() {
                     <AppImage
                       src={item.image}
                       isbn={item.isbn}
+                      coverId={item.coverId}
+                      openLibraryId={item.openLibraryId}
                       author={item.author}
                       genre={item.genre}
                       alt={item.title}
                       fallbackType="book"
-                      fallbackText={item.title}
+                      fallbackTitle={item.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                     />
 
@@ -179,7 +181,8 @@ export function WishlistPage() {
 
                     <button
                       onClick={() => handleRemove(item._id, item.title)}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-slate-950/80 hover:bg-rose-600 text-slate-600 dark:text-slate-400 hover:text-white transition shadow backdrop-blur-md"
+                      aria-label={`Remove ${item.title} from wishlist`}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-slate-950/80 hover:bg-rose-600 text-slate-600 dark:text-slate-400 hover:text-white transition shadow backdrop-blur-md focus-ring btn-press"
                       title="Remove from wishlist"
                     >
                       <Trash2 size={13} />
@@ -196,7 +199,7 @@ export function WishlistPage() {
 
                     <Link
                       to={`/books/${item._id}`}
-                      className="font-bold text-sm text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 transition line-clamp-1 block"
+                      className="font-bold text-sm text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 transition line-clamp-1 block focus-ring rounded"
                     >
                       {item.title}
                     </Link>
@@ -234,9 +237,10 @@ export function WishlistPage() {
                   <button
                     disabled={!inStock}
                     onClick={() => handleMoveToCart(item)}
-                    className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition ${
+                    aria-label={`Move ${item.title} to Cart`}
+                    className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition focus-ring btn-press ${
                       inStock
-                        ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
+                        ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                     }`}
                   >

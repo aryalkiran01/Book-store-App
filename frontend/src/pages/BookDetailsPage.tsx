@@ -73,7 +73,7 @@ export function BookDetailsPage() {
           "offers": {
             "@type": "Offer",
             "price": book.price,
-            "priceCurrency": "USD",
+            "priceCurrency": "NPR",
             "availability":
               (book.stock || 0) > 0
                 ? "https://schema.org/InStock"
@@ -722,9 +722,9 @@ export function BookDetailsPage() {
                 <button
                   disabled={!inStock}
                   onClick={() => handleAddToCart(false)}
-                  className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
+                  className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg focus-ring btn-press ${
                     inStock
-                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30 active:scale-[0.98]"
+                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30"
                       : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                   }`}
                 >
@@ -734,9 +734,9 @@ export function BookDetailsPage() {
                 <button
                   disabled={!inStock}
                   onClick={() => handleAddToCart(true)}
-                  className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg ${
+                  className={`flex-1 w-full py-3 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg focus-ring btn-press ${
                     inStock
-                      ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold active:scale-[0.98]"
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold"
                       : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
                   }`}
                 >
@@ -745,7 +745,8 @@ export function BookDetailsPage() {
 
                 <button
                   onClick={handleToggleWishlist}
-                  className={`p-3 rounded-xl border transition flex items-center justify-center ${
+                  aria-label={wishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                  className={`p-3 rounded-xl border transition flex items-center justify-center focus-ring btn-press ${
                     wishlisted
                       ? "bg-rose-50 dark:bg-rose-600/20 border-rose-300 dark:border-rose-500 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
                       : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"

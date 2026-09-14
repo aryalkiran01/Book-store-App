@@ -13,6 +13,11 @@
     color-scheme: dark;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     font-family: var(--font-sans);
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50 transition-colors duration-150;
@@ -28,8 +33,8 @@
 
 /* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -44,11 +49,11 @@
   @apply bg-slate-400 dark:bg-slate-700;
 }
 
-/* Animations & Utilities */
+/* Animations & Keyframes */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -56,8 +61,114 @@
   }
 }
 
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes popHeart {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes badgeBump {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop-heart {
+  animation: popHeart 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.animate-badge-bump {
+  animation: badgeBump 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.animate-check-pop {
+  animation: checkPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.08) 25%,
+    rgba(148, 163, 184, 0.18) 50%,
+    rgba(148, 163, 184, 0.08) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Accessibility: Focus indicators */
+.focus-ring {
+  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-950;
+}
+
+/* Interactive elements press feedback */
+.btn-press {
+  @apply transition-transform duration-100 active:scale-[0.97];
 }
 
 /* Glassmorphism tokens */
@@ -69,12 +180,30 @@
   @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-none;
 }
 
-/* Book Card Hover Effect */
+/* Book Card Hover Effect: Fast, subtle & intentional */
 .book-card-hover {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 
 .book-card-hover:hover {
-  transform: translateY(-4px);
-  @apply shadow-xl shadow-indigo-500/10 dark:shadow-black/60 border-indigo-500/40;
+  transform: translateY(-3px);
+  @apply shadow-lg shadow-indigo-500/10 dark:shadow-black/60 border-indigo-500/40;
+}
+
+/* Strict prefers-reduced-motion compliance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .book-card-hover:hover {
+    transform: none !important;
+  }
+  .btn-press:active {
+    transform: none !important;
+  }
 }

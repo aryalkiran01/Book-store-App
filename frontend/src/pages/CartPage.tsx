@@ -277,13 +277,18 @@ export function CartPage() {
                     {/* Thumbnail */}
                     <Link
                       to={`/books/${item._id}`}
-                      className="w-20 h-28 sm:w-24 sm:h-32 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 flex-shrink-0 border border-slate-200 dark:border-slate-800 relative group-hover:border-indigo-500/40 transition shadow-inner"
+                      aria-label={`View details for ${item.title}`}
+                      className="w-20 h-28 sm:w-24 sm:h-32 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 flex-shrink-0 border border-slate-200 dark:border-slate-800 relative group-hover:border-indigo-500/40 transition shadow-inner focus-ring"
                     >
                       <AppImage
                         src={item.image}
+                        isbn={item.isbn}
+                        coverId={item.coverId}
+                        openLibraryId={item.openLibraryId}
+                        author={item.author}
                         alt={item.title}
                         fallbackType="book"
-                        fallbackText={item.title}
+                        fallbackTitle={item.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                       />
                     </Link>
@@ -292,7 +297,7 @@ export function CartPage() {
                     <div className="flex-1 min-w-0 text-center sm:text-left">
                       <Link
                         to={`/books/${item._id}`}
-                        className="font-bold text-base sm:text-lg text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 transition line-clamp-1"
+                        className="font-bold text-base sm:text-lg text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 transition line-clamp-1 focus-ring rounded"
                       >
                         {item.title}
                       </Link>
@@ -329,13 +334,13 @@ export function CartPage() {
                       <div className="flex items-center justify-center sm:justify-start gap-4 text-xs font-semibold">
                         <button
                           onClick={() => handleMoveToWishlist(item)}
-                          className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition"
+                          className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition focus-ring btn-press"
                         >
                           <Heart size={13} /> Save to Wishlist
                         </button>
                         <button
                           onClick={() => handleRemove(item._id, item.title)}
-                          className="flex items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition"
+                          className="flex items-center gap-1 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition focus-ring btn-press"
                         >
                           <Trash2 size={13} /> Remove
                         </button>
@@ -349,17 +354,19 @@ export function CartPage() {
                         <button
                           disabled={item.quantity <= 1}
                           onClick={() => handleQtyChange(item._id, -1)}
-                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800"
+                          aria-label={`Decrease quantity of ${item.title}`}
+                          className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition focus-ring btn-press"
                         >
                           <Minus size={13} />
                         </button>
-                        <span className="px-3 font-mono font-bold text-sm text-slate-900 dark:text-white">
+                        <span className="w-8 text-center text-xs font-bold text-slate-900 dark:text-white font-mono">
                           {item.quantity}
                         </span>
                         <button
-                          disabled={!inStock || item.quantity >= itemStock}
+                          disabled={item.quantity >= itemStock}
                           onClick={() => handleQtyChange(item._id, 1)}
-                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800"
+                          aria-label={`Increase quantity of ${item.title}`}
+                          className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition focus-ring btn-press"
                         >
                           <Plus size={13} />
                         </button>

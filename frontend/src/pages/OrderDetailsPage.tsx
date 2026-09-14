@@ -360,9 +360,13 @@ export function OrderDetailsPage() {
                         <div className="w-14 h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden shrink-0">
                           <AppImage
                             src={image}
+                            isbn={item.isbn || bookObj?.isbn}
+                            coverId={bookObj?.coverId}
+                            openLibraryId={bookObj?.openLibraryId}
+                            author={item.author || bookObj?.author}
                             alt={title}
                             fallbackType="book"
-                            fallbackText={title}
+                            fallbackTitle={title}
                             className="w-full h-full object-cover"
                           />
                         </div>
