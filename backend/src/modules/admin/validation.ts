@@ -39,12 +39,13 @@ export const ModerateReviewSchema = z.object({
 
 export type TModerateReviewInput = z.infer<typeof ModerateReviewSchema>;
 
-export const ImportOpenLibraryBookSchema = z.object({
+export const ImportExternalBookSchema = z.object({
   title: z.string().min(1, "Title is required").trim(),
   author: z.string().min(1, "Author is required").trim(),
   genre: z.string().default("Fiction"),
   description: z.string().default(""),
   isbn: z.string().default(""),
+  googleBooksId: z.string().default(""),
   openLibraryId: z.string().default(""),
   coverId: z.string().default(""),
   image: z.string().default(""),
@@ -57,8 +58,14 @@ export const ImportOpenLibraryBookSchema = z.object({
   stock: z.number().int().min(0, "Stock must be non-negative").default(20),
   featured: z.boolean().default(false),
   isNewArrival: z.boolean().default(true),
+  source: z.enum(["google_books", "openlibrary", "manual", "seeded"]).default("google_books"),
 });
 
-export type TImportOpenLibraryBookInput = z.infer<
-  typeof ImportOpenLibraryBookSchema
+export type TImportExternalBookInput = z.infer<
+  typeof ImportExternalBookSchema
 >;
+
+// Backwards compatibility alias
+export const ImportOpenLibraryBookSchema = ImportExternalBookSchema;
+export type TImportOpenLibraryBookInput = TImportExternalBookInput;
+

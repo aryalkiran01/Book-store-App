@@ -35,7 +35,7 @@ const CURATED_SEARCH_QUERIES = [
 
 async function run() {
   console.log("🚀 Connecting to MongoDB...");
-  await mongoose.connect(env.DATABASE_URL);
+  await mongoose.connect(env.MONGO_URI);
   console.log("✅ Connected to MongoDB.");
 
   let importedCount = 0;

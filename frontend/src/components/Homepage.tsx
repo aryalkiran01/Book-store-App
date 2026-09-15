@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   BookOpen,
@@ -21,10 +21,10 @@ import {
 } from "lucide-react";
 import { AppShell } from "./AppShell";
 import { Footer } from "../pages/Footer";
-import { getFeaturedBooks, getNewArrivalsBooks, TBook } from "../api/book/fetch";
+import { getHomepageFeeds, TBook } from "../api/book/fetch";
 import { addToCart, toggleWishlist, getWishlist } from "../utils/cartStorage";
 import { useSEO } from "../utils/useSEO";
-import { AppImage } from "./common/AppImage";
+import { BookCoverImage } from "./common/BookCoverImage";
 
 const POPULAR_GENRES = [
   { name: "Fiction", icon: BookMarked, count: "1,200+ Books", color: "from-blue-600 to-indigo-600" },
@@ -35,14 +35,141 @@ const POPULAR_GENRES = [
   { name: "Technology", icon: Compass, count: "740+ Books", color: "from-cyan-600 to-blue-600" },
 ];
 
+interface BookCardProps {
+  book: TBook;
+  wishlistIds: string[];
+  activeHeartPopId: string | null;
+  onAddToCart: (book: TBook) => void;
+  onToggleWishlist: (book: TBook) => void;
+}
+
+const BookCard: React.FC<BookCardProps> = ({
+  book,
+  wishlistIds,
+  activeHeartPopId,
+  onAddToCart,
+  onToggleWishlist,
+}) => {
+  const inWishlist = wishlistIds.includes(book._id);
+  const isHeartPopping = activeHeartPopId === book._id;
+
+  return (
+    <div className="book-card-hover group flex flex-col justify-between rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-sm hover:shadow-xl dark:shadow-none relative overflow-hidden transition-all duration-200">
+      {/* Wishlist Button */}
+      <button
+        onClick={() => onToggleWishlist(book)}
+        aria-label={inWishlist ? `Remove ${book.title} from wishlist` : `Add ${book.title} to wishlist`}
+        className={`absolute top-4 sm:top-6 right-4 sm:right-6 z-20 p-2 rounded-xl backdrop-blur-md transition-colors focus-ring btn-press ${
+          inWishlist
+            ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+            : "bg-white/80 dark:bg-slate-950/70 text-slate-700 dark:text-slate-300 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-950 border border-slate-200/80 dark:border-slate-800"
+        }`}
+        title={inWishlist ? "In Wishlist" : "Add to Wishlist"}
+      >
+        <Heart
+          className={`w-4 h-4 ${inWishlist ? "fill-white" : ""} ${
+            isHeartPopping ? "animate-pop-heart" : ""
+          }`}
+        />
+      </button>
+
+      {/* Discount Badge */}
+      {book.discountPercentage && book.discountPercentage > 0 ? (
+        <span className="absolute top-4 sm:top-6 left-4 sm:left-6 z-20 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-md">
+          {book.discountPercentage}% OFF
+        </span>
+      ) : null}
+
+      <div>
+        {/* Book Cover Container with Multi-Tier Fallback */}
+        <Link
+          to={`/books/${book._id}`}
+          aria-label={`View details for ${book.title}`}
+          className="block rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 mb-3 sm:mb-4 relative focus-ring"
+        >
+          <BookCoverImage
+            src={book.image}
+            isbn={book.isbn}
+            googleBooksId={book.googleBooksId}
+            coverId={book.coverId}
+            openLibraryId={book.openLibraryId}
+            title={book.title}
+            author={book.author}
+            genre={book.genre}
+            aspectRatioClass="aspect-[3/4]"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        </Link>
+
+        {/* Genre & Rating */}
+        <div className="flex items-center justify-between gap-1.5 mb-1 text-[11px] sm:text-xs">
+          <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
+            {book.genre || "Fiction"}
+          </span>
+          <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-bold flex-shrink-0">
+            <Star className="w-3 h-3 fill-amber-400" />
+            <span>{(book.averageRating || book.rating || 4.8).toFixed(1)}</span>
+          </div>
+        </div>
+
+        {/* Title & Author */}
+        <Link
+          to={`/books/${book._id}`}
+          className="block font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 mb-0.5 focus-ring rounded"
+          title={book.title}
+        >
+          {book.title}
+        </Link>
+        <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mb-2 sm:mb-3 truncate">
+          by {book.author}
+        </div>
+      </div>
+
+      {/* Price & Add to Cart */}
+      <div className="pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+        <div>
+          <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+            NPR {book.price.toLocaleString()}
+          </div>
+          {book.stock !== undefined && (
+            <div
+              className={`text-[9px] sm:text-[10px] font-semibold ${
+                book.stock <= 0
+                  ? "text-rose-500"
+                  : book.stock <= 5
+                  ? "text-amber-500"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              {book.stock <= 0 ? "Out of stock" : `${book.stock} in stock`}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={() => onAddToCart(book)}
+          disabled={(book.stock ?? 1) <= 0}
+          aria-label={`Add ${book.title} to Cart`}
+          className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/20 transition-all focus-ring btn-press disabled:opacity-40 disabled:pointer-events-none"
+          title="Add to Cart"
+        >
+          <ShoppingBag className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export function HomePage() {
   useSEO({
-    title: "Explore, Review & Buy Books",
-    description: "Discover bestsellers, authentic reader reviews, top fiction, and non-fiction titles with express doorstep delivery.",
+    title: "KitabGhar — Explore, Review & Buy Books in Nepal",
+    description: "Discover bestsellers, authentic reader reviews, top fiction, and non-fiction titles with express doorstep delivery across Nepal.",
   });
 
   const [featuredBooks, setFeaturedBooks] = useState<TBook[]>([]);
   const [newArrivals, setNewArrivals] = useState<TBook[]>([]);
+  const [trendingBooks, setTrendingBooks] = useState<TBook[]>([]);
+  const [editorsPicks, setEditorsPicks] = useState<TBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -84,12 +211,11 @@ export function HomePage() {
     try {
       setLoading(true);
       setError(null);
-      const [featRes, newRes] = await Promise.all([
-        getFeaturedBooks().catch(() => []),
-        getNewArrivalsBooks().catch(() => []),
-      ]);
-      setFeaturedBooks(Array.isArray(featRes) ? featRes : []);
-      setNewArrivals(Array.isArray(newRes) ? newRes : []);
+      const feeds = await getHomepageFeeds();
+      setFeaturedBooks(feeds.featured || []);
+      setNewArrivals(feeds.newArrivals || []);
+      setTrendingBooks(feeds.trending || feeds.popular || []);
+      setEditorsPicks(feeds.editorsPicks || []);
     } catch (err: any) {
       console.error("Error loading homepage books:", err);
       setError(err?.message || "Unable to load latest books. Please check your connection.");
@@ -108,6 +234,7 @@ export function HomePage() {
       image: book.image,
       stock: book.stock,
       isbn: book.isbn,
+      googleBooksId: book.googleBooksId,
       openLibraryId: book.openLibraryId,
       coverId: book.coverId,
     });
@@ -128,6 +255,7 @@ export function HomePage() {
       image: book.image,
       genre: book.genre,
       isbn: book.isbn,
+      googleBooksId: book.googleBooksId,
       openLibraryId: book.openLibraryId,
       coverId: book.coverId,
     });
@@ -166,12 +294,12 @@ export function HomePage() {
                 {heroBook ? (
                   <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/90 dark:border-indigo-800/80 text-indigo-700 dark:text-indigo-300 text-[11px] sm:text-xs font-semibold tracking-wide shadow-xs">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
-                    <span className="truncate">Featured Selection: {heroBook.title} — NPR {heroBook.price.toLocaleString()}</span>
+                    <span className="truncate">Featured Discovery: {heroBook.title}</span>
                   </div>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/90 dark:border-indigo-800/80 text-indigo-700 dark:text-indigo-300 text-[11px] sm:text-xs font-semibold tracking-wide shadow-xs">
                     <Flame className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 flex-shrink-0" />
-                    <span className="truncate">Nepal's Premier Bookstore & Literary Community</span>
+                    <span className="truncate">Nepal's Premier Bookstore & Real Book Discovery</span>
                   </div>
                 )}
 
@@ -187,7 +315,7 @@ export function HomePage() {
                   {heroBook?.description ? (
                     <span className="line-clamp-2 sm:line-clamp-3">{heroBook.description}</span>
                   ) : (
-                    "Explore thousands of curated titles across fiction, business, psychology, and technology. Read genuine reviews from avid readers and enjoy express doorstep delivery across Nepal."
+                    "Explore thousands of real, authenticated titles across fiction, business, psychology, and science. Read genuine reviews from readers and enjoy fast doorstep delivery across Nepal."
                   )}
                 </p>
 
@@ -198,7 +326,7 @@ export function HomePage() {
                       to={`/books/${heroBook._id}`}
                       className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-md shadow-indigo-600/20 transition-all focus-ring btn-press flex items-center justify-center gap-2"
                     >
-                      <BookOpen className="w-4 h-4" /> View Featured Book
+                      <BookOpen className="w-4 h-4" /> View Book Details
                     </Link>
                   ) : (
                     <Link
@@ -208,23 +336,23 @@ export function HomePage() {
                       <BookOpen className="w-4 h-4" /> Browse Catalog
                     </Link>
                   )}
-                  <a
-                    href="#featured"
+                  <Link
+                    to="/books"
                     className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold text-sm border border-slate-200 dark:border-slate-800 shadow-xs transition-all focus-ring btn-press flex items-center justify-center gap-2"
                   >
                     All Bestsellers <ArrowRight className="w-4 h-4" />
-                  </a>
+                  </Link>
                 </div>
 
                 {/* Metric Counters */}
                 <div className="grid grid-cols-3 gap-3 sm:gap-6 pt-4 sm:pt-6 border-t border-slate-200/80 dark:border-slate-800/80 max-w-md mx-auto lg:mx-0">
                   <div>
                     <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">10,000+</div>
-                    <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Titles in Stock</div>
+                    <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Real Titles</div>
                   </div>
                   <div>
                     <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">99.4%</div>
-                    <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Positive Reviews</div>
+                    <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">Authentic Reviews</div>
                   </div>
                   <div>
                     <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">24-48h</div>
@@ -252,16 +380,15 @@ export function HomePage() {
                           title={`${heroLeftBook.title} by ${heroLeftBook.author}`}
                           className="absolute left-2 sm:left-8 top-6 sm:top-10 w-36 sm:w-56 h-48 sm:h-72 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden -rotate-6 transform hover:rotate-0 hover:scale-105 transition-all duration-200 z-10 block focus-ring"
                         >
-                          <AppImage
+                          <BookCoverImage
                             src={heroLeftBook.image}
                             isbn={heroLeftBook.isbn}
+                            googleBooksId={heroLeftBook.googleBooksId}
                             author={heroLeftBook.author}
                             genre={heroLeftBook.genre}
-                            alt={heroLeftBook.title}
-                            fallbackType="book"
-                            fallbackTitle={heroLeftBook.title}
+                            title={heroLeftBook.title}
+                            aspectRatioClass="aspect-[3/4]"
                             className="w-full h-full object-cover"
-                            containerClassName="w-full h-full"
                           />
                         </Link>
                       )}
@@ -273,16 +400,15 @@ export function HomePage() {
                         title={`${heroBook.title} by ${heroBook.author} - NPR ${heroBook.price}`}
                         className="absolute w-44 sm:w-60 h-60 sm:h-80 rounded-2xl bg-white dark:bg-slate-900 border-2 border-indigo-500/50 shadow-2xl shadow-indigo-500/25 overflow-hidden z-20 hover:scale-105 transition-all duration-200 block focus-ring text-left"
                       >
-                        <AppImage
+                        <BookCoverImage
                           src={heroBook.image}
                           isbn={heroBook.isbn}
+                          googleBooksId={heroBook.googleBooksId}
                           author={heroBook.author}
                           genre={heroBook.genre}
-                          alt={heroBook.title}
-                          fallbackType="book"
-                          fallbackTitle={heroBook.title}
+                          title={heroBook.title}
+                          aspectRatioClass="aspect-[3/4]"
                           className="w-full h-full object-cover"
-                          containerClassName="w-full h-full"
                         />
                         <div className="absolute bottom-0 inset-x-0 p-3 sm:p-4 bg-gradient-to-t from-slate-950 via-slate-950/85 to-transparent">
                           <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold text-amber-400 mb-0.5">
@@ -290,11 +416,10 @@ export function HomePage() {
                               <Star className="w-3 sm:w-3.5 h-3 sm:h-3.5 fill-amber-400" />
                               <span>
                                 {(heroBook.averageRating || heroBook.rating || 5.0).toFixed(1)}
-                                {heroBook.totalReviews ? ` (${heroBook.totalReviews} Reviews)` : " (Verified)"}
                               </span>
                             </div>
                             <span className="text-white font-black text-xs sm:text-sm">
-                              NPR {heroBook.price}
+                              NPR {heroBook.price.toLocaleString()}
                             </span>
                           </div>
                           <div className="text-xs sm:text-sm font-bold text-white truncate">
@@ -314,16 +439,15 @@ export function HomePage() {
                           title={`${heroRightBook.title} by ${heroRightBook.author}`}
                           className="absolute right-2 sm:right-8 top-8 sm:top-12 w-36 sm:w-56 h-48 sm:h-72 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden rotate-6 transform hover:rotate-0 hover:scale-105 transition-all duration-200 z-10 block focus-ring"
                         >
-                          <AppImage
+                          <BookCoverImage
                             src={heroRightBook.image}
                             isbn={heroRightBook.isbn}
+                            googleBooksId={heroRightBook.googleBooksId}
                             author={heroRightBook.author}
                             genre={heroRightBook.genre}
-                            alt={heroRightBook.title}
-                            fallbackType="book"
-                            fallbackTitle={heroRightBook.title}
+                            title={heroRightBook.title}
+                            aspectRatioClass="aspect-[3/4]"
                             className="w-full h-full object-cover"
-                            containerClassName="w-full h-full"
                           />
                         </Link>
                       )}
@@ -335,7 +459,7 @@ export function HomePage() {
                         Explore Our Catalog
                       </div>
                       <p className="text-xs text-slate-500 mt-1">
-                        Thousands of curated titles available for express delivery.
+                        Thousands of authentic titles ready for instant discovery.
                       </p>
                     </div>
                   )}
@@ -437,120 +561,20 @@ export function HomePage() {
               <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 max-w-md mx-auto">
                 <BookOpen className="w-10 h-10 text-slate-400 mx-auto mb-3" />
                 <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No featured books found</h3>
-                <p className="text-xs text-slate-500 mt-1">Check back soon as we restock our top collections.</p>
+                <p className="text-xs text-slate-500 mt-1">Check back soon as we discover new additions.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-                {featuredBooks.map((book) => {
-                  const inWishlist = wishlistIds.includes(book._id);
-                  const isHeartPopping = activeHeartPopId === book._id;
-                  return (
-                    <div
-                      key={book._id}
-                      className="book-card-hover group flex flex-col justify-between rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-sm hover:shadow-xl dark:shadow-none relative overflow-hidden transition-colors"
-                    >
-                      {/* Wishlist Button */}
-                      <button
-                        onClick={() => handleToggleWishlist(book)}
-                        aria-label={inWishlist ? `Remove ${book.title} from wishlist` : `Add ${book.title} to wishlist`}
-                        className={`absolute top-4 sm:top-6 right-4 sm:right-6 z-20 p-2 rounded-xl backdrop-blur-md transition-colors focus-ring btn-press ${
-                          inWishlist
-                            ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
-                            : "bg-white/80 dark:bg-slate-950/70 text-slate-700 dark:text-slate-300 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-950 border border-slate-200/80 dark:border-slate-800"
-                        }`}
-                        title={inWishlist ? "In Wishlist" : "Add to Wishlist"}
-                      >
-                        <Heart
-                          className={`w-4 h-4 ${inWishlist ? "fill-white" : ""} ${
-                            isHeartPopping ? "animate-pop-heart" : ""
-                          }`}
-                        />
-                      </button>
-
-                      {/* Discount Badge */}
-                      {book.discountPercentage && book.discountPercentage > 0 && (
-                        <span className="absolute top-4 sm:top-6 left-4 sm:left-6 z-20 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-md">
-                          {book.discountPercentage}% OFF
-                        </span>
-                      )}
-
-                      <div>
-                        {/* Thumbnail Container */}
-                        <Link
-                          to={`/books/${book._id}`}
-                          aria-label={`View details for ${book.title}`}
-                          className="block aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 mb-3 sm:mb-4 relative focus-ring"
-                        >
-                          <AppImage
-                            src={book.image}
-                            isbn={book.isbn}
-                            author={book.author}
-                            genre={book.genre}
-                            alt={book.title}
-                            fallbackType="book"
-                            fallbackTitle={book.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            containerClassName="w-full h-full"
-                          />
-                        </Link>
-
-                        {/* Genre & Rating */}
-                        <div className="flex items-center justify-between gap-1.5 mb-1 text-[11px] sm:text-xs">
-                          <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
-                            {book.genre || "Fiction"}
-                          </span>
-                          <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-bold flex-shrink-0">
-                            <Star className="w-3 h-3 fill-amber-400" />
-                            <span>{book.rating?.toFixed(1) || "5.0"}</span>
-                          </div>
-                        </div>
-
-                        {/* Title & Author */}
-                        <Link
-                          to={`/books/${book._id}`}
-                          className="block font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 mb-0.5 focus-ring rounded"
-                        >
-                          {book.title}
-                        </Link>
-                        <div className="text-[11px] sm:text-xs text-slate-500 mb-2 sm:mb-3 truncate">
-                          by {book.author}
-                        </div>
-                      </div>
-
-                      {/* Price & Add to Cart */}
-                      <div className="pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                        <div>
-                          <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                            NPR {book.price.toLocaleString()}
-                          </div>
-                          {book.stock !== undefined && (
-                            <div
-                              className={`text-[9px] sm:text-[10px] font-semibold ${
-                                book.stock <= 0
-                                  ? "text-rose-500"
-                                  : book.stock <= 5
-                                  ? "text-amber-500"
-                                  : "text-emerald-600 dark:text-emerald-400"
-                              }`}
-                            >
-                              {book.stock <= 0 ? "Out of stock" : `${book.stock} in stock`}
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={() => handleAddToCart(book)}
-                          disabled={(book.stock ?? 1) <= 0}
-                          aria-label={`Add ${book.title} to Cart`}
-                          className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/20 transition-all focus-ring btn-press disabled:opacity-40 disabled:pointer-events-none"
-                          title="Add to Cart"
-                        >
-                          <ShoppingBag className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                {featuredBooks.map((book) => (
+                  <BookCard
+                    key={book._id}
+                    book={book}
+                    wishlistIds={wishlistIds}
+                    activeHeartPopId={activeHeartPopId}
+                    onAddToCart={handleAddToCart}
+                    onToggleWishlist={handleToggleWishlist}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -565,7 +589,7 @@ export function HomePage() {
                   <Sparkles className="w-4 h-4" /> Fresh off the press
                 </span>
                 <h2 className="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight mt-1">
-                  New Arrivals & Recent Publications
+                  New Arrivals & Notable Releases
                 </h2>
               </div>
               <Link
@@ -576,90 +600,105 @@ export function HomePage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-              {newArrivals.map((book) => {
-                const inWishlist = wishlistIds.includes(book._id);
-                const isHeartPopping = activeHeartPopId === book._id;
-                return (
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
                   <div
+                    key={i}
+                    className="h-80 sm:h-96 rounded-2xl bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 skeleton-shimmer"
+                  ></div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                {newArrivals.map((book) => (
+                  <BookCard
                     key={book._id}
-                    className="book-card-hover group flex flex-col justify-between rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-sm hover:shadow-xl dark:shadow-none relative overflow-hidden transition-colors"
-                  >
-                    <button
-                      onClick={() => handleToggleWishlist(book)}
-                      aria-label={inWishlist ? `Remove ${book.title} from wishlist` : `Add ${book.title} to wishlist`}
-                      className={`absolute top-4 sm:top-6 right-4 sm:right-6 z-20 p-2 rounded-xl backdrop-blur-md transition-colors focus-ring btn-press ${
-                        inWishlist
-                          ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
-                          : "bg-white/80 dark:bg-slate-950/70 text-slate-700 dark:text-slate-300 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-950 border border-slate-200/80 dark:border-slate-800"
-                      }`}
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${inWishlist ? "fill-white" : ""} ${
-                          isHeartPopping ? "animate-pop-heart" : ""
-                        }`}
-                      />
-                    </button>
-
-                    <div>
-                      <Link
-                        to={`/books/${book._id}`}
-                        aria-label={`View details for ${book.title}`}
-                        className="block aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 mb-3 sm:mb-4 relative focus-ring"
-                      >
-                        <AppImage
-                          src={book.image}
-                          isbn={book.isbn}
-                          author={book.author}
-                          genre={book.genre}
-                          alt={book.title}
-                          fallbackType="book"
-                          fallbackTitle={book.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          containerClassName="w-full h-full"
-                        />
-                      </Link>
-
-                      <div className="flex items-center justify-between gap-1.5 mb-1 text-[11px] sm:text-xs">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
-                          {book.genre || "Fiction"}
-                        </span>
-                        <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-bold flex-shrink-0">
-                          <Star className="w-3 h-3 fill-amber-400" />
-                          <span>{book.rating?.toFixed(1) || "5.0"}</span>
-                        </div>
-                      </div>
-
-                      <Link
-                        to={`/books/${book._id}`}
-                        className="block font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors line-clamp-1 mb-0.5 focus-ring rounded"
-                      >
-                        {book.title}
-                      </Link>
-                      <div className="text-[11px] sm:text-xs text-slate-500 mb-2 sm:mb-3 truncate">
-                        by {book.author}
-                      </div>
-                    </div>
-
-                    <div className="pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                      <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
-                        NPR {book.price.toLocaleString()}
-                      </div>
-                      <button
-                        onClick={() => handleAddToCart(book)}
-                        disabled={(book.stock ?? 1) <= 0}
-                        aria-label={`Add ${book.title} to Cart`}
-                        className="p-2 sm:p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-600/20 transition-all focus-ring btn-press disabled:opacity-40"
-                      >
-                        <ShoppingBag className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    book={book}
+                    wishlistIds={wishlistIds}
+                    activeHeartPopId={activeHeartPopId}
+                    onAddToCart={handleAddToCart}
+                    onToggleWishlist={handleToggleWishlist}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
+
+        {/* ===================== TRENDING & POPULAR ===================== */}
+        {trendingBooks.length > 0 && (
+          <section className="py-14 sm:py-20 border-b border-slate-200 dark:border-slate-900">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 sm:gap-4 mb-8 sm:mb-10">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4" /> Trending Across Book Clubs
+                  </span>
+                  <h2 className="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight mt-1">
+                    Reader Favorites & High Engagement
+                  </h2>
+                </div>
+                <Link
+                  to="/books"
+                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 focus-ring rounded"
+                >
+                  View Catalog <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                {trendingBooks.map((book) => (
+                  <BookCard
+                    key={book._id}
+                    book={book}
+                    wishlistIds={wishlistIds}
+                    activeHeartPopId={activeHeartPopId}
+                    onAddToCart={handleAddToCart}
+                    onToggleWishlist={handleToggleWishlist}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ===================== EDITOR'S PICKS ===================== */}
+        {editorsPicks.length > 0 && (
+          <section className="py-14 sm:py-20 bg-slate-100/60 dark:bg-slate-900/30 border-b border-slate-200 dark:border-slate-900 transition-colors">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 sm:gap-4 mb-8 sm:mb-10">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                    <Award className="w-4 h-4" /> Literary Masterpieces
+                  </span>
+                  <h2 className="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight mt-1">
+                    Editor&apos;s Curated Selections
+                  </h2>
+                </div>
+                <Link
+                  to="/books"
+                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 focus-ring rounded"
+                >
+                  See All Collections <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+                {editorsPicks.map((book) => (
+                  <BookCard
+                    key={book._id}
+                    book={book}
+                    wishlistIds={wishlistIds}
+                    activeHeartPopId={activeHeartPopId}
+                    onAddToCart={handleAddToCart}
+                    onToggleWishlist={handleToggleWishlist}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ===================== READER TESTIMONIALS ===================== */}
         <section className="py-14 sm:py-20 border-b border-slate-200 dark:border-slate-900">
@@ -686,7 +725,7 @@ export function HomePage() {
                     ))}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                    "KitabGhar made it so easy to get original psychology and finance books delivered right to Pokhara within 24 hours. The review community is genuinely insightful!"
+                    &ldquo;KitabGhar made it so easy to get original psychology and finance books delivered right to Pokhara within 24 hours. The review community is genuinely insightful!&rdquo;
                   </p>
                 </div>
                 <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
@@ -709,7 +748,7 @@ export function HomePage() {
                     ))}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                    "The verified purchase badges give so much credibility to the reviews. I always check ratings here before picking my next weekend novel."
+                    &ldquo;The verified purchase badges give so much credibility to the reviews. I always check ratings here before picking my next weekend novel.&rdquo;
                   </p>
                 </div>
                 <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
@@ -732,7 +771,7 @@ export function HomePage() {
                     ))}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
-                    "Smooth Khalti payment, live inventory counts, and reliable packaging. Hands down the best bookstore experience in Nepal!"
+                    &ldquo;Smooth Khalti payment, live inventory counts, and reliable packaging. Hands down the best bookstore experience in Nepal!&rdquo;
                   </p>
                 </div>
                 <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-3">

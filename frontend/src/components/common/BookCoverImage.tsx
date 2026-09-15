@@ -6,6 +6,7 @@ export interface BookCoverImageProps
   extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> {
   src?: string | null;
   isbn?: string | null;
+  googleBooksId?: string | null;
   coverId?: string | number | null;
   openLibraryId?: string | null;
   title?: string;
@@ -39,6 +40,7 @@ function getPaletteForTitle(title: string = "") {
 export const BookCoverImage: React.FC<BookCoverImageProps> = ({
   src,
   isbn,
+  googleBooksId,
   coverId,
   openLibraryId,
   title = "Book",
@@ -51,7 +53,7 @@ export const BookCoverImage: React.FC<BookCoverImageProps> = ({
   alt,
   ...rest
 }) => {
-  // Build fallback candidate queue
+  // Build fallback candidate queue with priority
   const candidateUrls = useMemo(() => {
     const urls: string[] = [];
     const normalizedPrimary = normalizeImageUrl(src);
@@ -77,8 +79,14 @@ export const BookCoverImage: React.FC<BookCoverImageProps> = ({
       if (!urls.includes(olidUrl)) urls.push(olidUrl);
     }
 
+    const cleanGid = (googleBooksId || "").trim();
+    if (cleanGid) {
+      const gbUrl = `https://books.google.com/books/content?id=${cleanGid}&printsec=frontcover&img=1&zoom=1`;
+      if (!urls.includes(gbUrl)) urls.push(gbUrl);
+    }
+
     return urls;
-  }, [src, isbn, coverId, openLibraryId]);
+  }, [src, isbn, googleBooksId, coverId, openLibraryId]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(candidateUrls.length > 0);

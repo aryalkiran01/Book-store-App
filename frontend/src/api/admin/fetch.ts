@@ -251,18 +251,20 @@ export async function fetchAdminOrders(params?: {
 }
 
 export interface OpenLibraryBook {
+  googleBooksId?: string;
   openLibraryId: string;
   title: string;
   author: string;
   isbn: string;
   coverId: string;
   coverUrl: string;
-  firstPublishYear?: number;
+  firstPublishYear?: number | string;
   genre: string;
   pages: number;
   publisher: string;
   language: string;
   suggestedPriceNPR?: number;
+  source?: string;
   isAlreadyImported?: boolean;
   existingBookId?: string;
 }
@@ -273,6 +275,7 @@ export interface ImportOpenLibraryBookPayload {
   genre?: string;
   description?: string;
   isbn?: string;
+  googleBooksId?: string;
   openLibraryId?: string;
   coverId?: string;
   image?: string;
@@ -285,7 +288,9 @@ export interface ImportOpenLibraryBookPayload {
   stock?: number;
   featured?: boolean;
   isNewArrival?: boolean;
+  source?: string;
 }
+
 
 // 13. Search Open Library
 export async function searchOpenLibraryBooks(

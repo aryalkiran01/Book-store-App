@@ -443,6 +443,7 @@ export function CatalogPage() {
                           <AppImage
                             src={book.image}
                             isbn={book.isbn}
+                            googleBooksId={book.googleBooksId}
                             coverId={(book as any).coverId}
                             openLibraryId={(book as any).openLibraryId}
                             author={book.author}
@@ -453,6 +454,7 @@ export function CatalogPage() {
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             containerClassName="w-full h-full"
                           />
+
                           {book.discountPercentage ? (
                             <span className="absolute top-2 left-2 bg-gradient-to-r from-rose-500 to-orange-500 text-white text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md z-20">
                               {book.discountPercentage}% OFF

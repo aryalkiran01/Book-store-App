@@ -12,6 +12,7 @@ export interface AppImageProps extends React.ImgHTMLAttributes<HTMLImageElement>
   fallbackTitle?: string;
   fallbackText?: string;
   isbn?: string | null;
+  googleBooksId?: string | null;
   coverId?: string | number | null;
   openLibraryId?: string | null;
   author?: string;
@@ -42,12 +43,17 @@ export function normalizeImageUrl(input: any): string | null {
     return null;
   }
 
+  // Convert Google Books http to secure https
+  if (rawUrl.includes("books.google.com") || rawUrl.includes("googleapis.com/books")) {
+    return rawUrl.replace(/^http:\/\//i, "https://").replace(/&edge=curl/gi, "");
+  }
+
   // Replace known broken/deleted unsplash ID
   if (rawUrl.includes("photo-1532012164546-f432f2e3edd3")) {
     return "https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=600&q=80";
   }
 
-  // If it is a relative upload path like "/uploads/..." or "uploads/...", prefix with backend URL if applicable
+  // If it is a relative upload path like "/uploads/..." or "uploads/...", prefix with backend URL
   if (rawUrl.startsWith("/uploads/") || rawUrl.startsWith("uploads/")) {
     const backendUrl = env.BACKEND_URL || "http://localhost:4000";
     const cleanPath = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
@@ -70,6 +76,7 @@ export const AppImage: React.FC<AppImageProps> = ({
   fallbackTitle,
   fallbackText,
   isbn,
+  googleBooksId,
   coverId,
   openLibraryId,
   author,
@@ -90,19 +97,27 @@ export const AppImage: React.FC<AppImageProps> = ({
     if (fallbackType === "book") {
       const cleanIsbn = (isbn || "").replace(/[^0-9X]/gi, "").trim();
       if (cleanIsbn) {
-        urls.push(`https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg?default=false`);
+        const isbnUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg?default=false`;
+        if (!urls.includes(isbnUrl)) urls.push(isbnUrl);
       }
       const cleanCoverId = String(coverId || "").trim();
       if (cleanCoverId && cleanCoverId !== "0" && cleanCoverId !== "null") {
-        urls.push(`https://covers.openlibrary.org/b/id/${cleanCoverId}-L.jpg?default=false`);
+        const coverIdUrl = `https://covers.openlibrary.org/b/id/${cleanCoverId}-L.jpg?default=false`;
+        if (!urls.includes(coverIdUrl)) urls.push(coverIdUrl);
       }
       const cleanOlid = (openLibraryId || "").trim();
       if (cleanOlid) {
-        urls.push(`https://covers.openlibrary.org/b/olid/${cleanOlid}-L.jpg?default=false`);
+        const olidUrl = `https://covers.openlibrary.org/b/olid/${cleanOlid}-L.jpg?default=false`;
+        if (!urls.includes(olidUrl)) urls.push(olidUrl);
+      }
+      const cleanGid = (googleBooksId || "").trim();
+      if (cleanGid) {
+        const gbUrl = `https://books.google.com/books/content?id=${cleanGid}&printsec=frontcover&img=1&zoom=1`;
+        if (!urls.includes(gbUrl)) urls.push(gbUrl);
       }
     }
     return urls;
-  }, [src, isbn, coverId, openLibraryId, fallbackType]);
+  }, [src, isbn, googleBooksId, coverId, openLibraryId, fallbackType]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasError, setHasError] = useState(candidateUrls.length === 0);
@@ -138,7 +153,6 @@ export const AppImage: React.FC<AppImageProps> = ({
     if (onLoad) onLoad(e);
   };
 
-  // Helper for title initials
   const initials = displayTitle
     .split(" ")
     .filter(Boolean)

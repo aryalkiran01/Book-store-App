@@ -46,6 +46,16 @@ if (NODE_ENV === "production" && JWT_SECRET === "supersecretjwtkey_bookreviewapp
   );
 }
 
+const GOOGLE_BOOKS_API_KEY = (process.env.GOOGLE_BOOKS_API_KEY || "").trim();
+const GOOGLE_BOOKS_TIMEOUT_MS = Math.max(
+  1000,
+  Number(process.env.GOOGLE_BOOKS_TIMEOUT_MS) || 7000
+);
+const OPEN_LIBRARY_TIMEOUT_MS = Math.max(
+  1000,
+  Number(process.env.OPEN_LIBRARY_TIMEOUT_MS) || 7000
+);
+
 export function isKhaltiConfigured(secret: string = KHALTI_SECRET_KEY): boolean {
   if (!secret) return false;
   const s = secret.trim().toLowerCase();
@@ -70,6 +80,9 @@ export const env = {
   JWT_SECRET,
   FRONTEND_URL,
   ALLOWED_ORIGINS,
+  GOOGLE_BOOKS_API_KEY,
+  GOOGLE_BOOKS_TIMEOUT_MS,
+  OPEN_LIBRARY_TIMEOUT_MS,
   KHALTI_API_KEY: KHALTI_SECRET_KEY,
   KHALTI_SECRET_KEY,
   KHALTI_TEST_MODE,
@@ -86,5 +99,6 @@ export const env = {
   INITIAL_ADMIN_PASSWORD,
   INITIAL_ADMIN_USERNAME,
 } as const;
+
 
 

@@ -6,6 +6,7 @@ import {
   getBooksController,
   getFeaturedBooksController,
   getGenresController,
+  getHomepageFeedsController,
   getNewArrivalsController,
   getSearchSuggestionsController,
   updateBookController,
@@ -19,6 +20,7 @@ function createBookRouter() {
   router.get("/genres", getGenresController);
   router.get("/featured", getFeaturedBooksController);
   router.get("/new-arrivals", getNewArrivalsController);
+  router.get("/homepage-feeds", getHomepageFeedsController);
   router.get("/:bookId", getBookByIdController);
 
   router.post("/", checkAuth, checkAdmin, addBookController);

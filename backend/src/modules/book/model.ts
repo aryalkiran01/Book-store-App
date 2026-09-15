@@ -15,6 +15,7 @@ const bookSchema = new mongoose.Schema(
     discountPercentage: { type: Number, default: 0, min: 0, max: 100 },
     stock: { type: Number, default: 20, min: 0, index: true },
     isbn: { type: String, default: "", trim: true },
+    googleBooksId: { type: String, default: "", trim: true },
     openLibraryId: { type: String, default: "", trim: true },
     coverId: { type: String, default: "", trim: true },
     publisher: { type: String, default: "", trim: true },
@@ -25,9 +26,10 @@ const bookSchema = new mongoose.Schema(
     totalReviews: { type: Number, default: 0, min: 0 },
     featured: { type: Boolean, default: false, index: true },
     isNewArrival: { type: Boolean, default: false, index: true },
+    isAvailableInStore: { type: Boolean, default: true, index: true },
     source: {
       type: String,
-      enum: ["openlibrary", "manual", "seeded"],
+      enum: ["google_books", "openlibrary", "manual", "seeded"],
       default: "manual",
       index: true,
     },
@@ -51,7 +53,16 @@ bookSchema.index(
   }
 );
 
-// 3. Partial unique index for Open Library ID (only applies when openLibraryId is non-empty string)
+// 3. Partial unique index for Google Books ID (only applies when googleBooksId is non-empty string)
+bookSchema.index(
+  { googleBooksId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { googleBooksId: { $type: "string", $gt: "" } },
+  }
+);
+
+// 4. Partial unique index for Open Library ID (only applies when openLibraryId is non-empty string)
 bookSchema.index(
   { openLibraryId: 1 },
   {

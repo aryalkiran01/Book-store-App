@@ -8,11 +8,12 @@ import {
   deleteBookService,
   getBookByIdService,
   getBooksService,
+  getHomepageFeedsService,
   getSearchSuggestionsService,
   updateBookService,
 } from "./service";
 import { getReviewsByBookIdService } from "../review/service";
-import { BookProviderService } from "./provider";
+import { BookDiscoveryService } from "./provider";
 
 export async function addBookController(
   req: Request,
@@ -183,23 +184,18 @@ export async function getFeaturedBooksController(
       .limit(8)
       .lean();
 
-    // Resilient fallback: if no books are marked featured, provide highest-rated catalog books
-    if (books.length === 0) {
-      books = await BookModel.find()
-        .sort({ averageRating: -1, totalReviews: -1, createdAt: -1 })
-        .limit(8)
-        .lean();
-    }
-
-    // If still 0, discover real books from Open Library
-    if (books.length === 0) {
-      const discovered = await BookProviderService.discoverBooksBySubject("bestsellers", 8);
+    // Resilient discovery: if fewer than 4 featured books, discover bestsellers
+    if (books.length < 4) {
+      const discovered = await BookDiscoveryService.discoverBooksBySubject("bestsellers", 8);
       if (discovered.length > 0) {
-        await BookProviderService.persistExternalBooksBatch(discovered);
-        books = await BookModel.find()
-          .sort({ averageRating: -1, totalReviews: -1, createdAt: -1 })
-          .limit(8)
-          .lean();
+        const persisted = await BookDiscoveryService.persistAndHydrateBatch(discovered);
+        const existingIds = new Set(books.map((b: any) => b._id.toString()));
+        for (const p of persisted) {
+          if (p._id && !existingIds.has(p._id.toString())) {
+            books.push(p);
+            if (books.length >= 8) break;
+          }
+        }
       }
     }
 
@@ -224,23 +220,18 @@ export async function getNewArrivalsController(
       .limit(8)
       .lean();
 
-    // Resilient fallback: if no books are marked new arrivals, provide newest catalog books
-    if (books.length === 0) {
-      books = await BookModel.find()
-        .sort({ createdAt: -1 })
-        .limit(8)
-        .lean();
-    }
-
-    // If still 0, discover real books from Open Library
-    if (books.length === 0) {
-      const discovered = await BookProviderService.discoverBooksBySubject("science_fiction", 8);
+    // Resilient discovery: if fewer than 4 new arrivals, discover psychology/fiction
+    if (books.length < 4) {
+      const discovered = await BookDiscoveryService.discoverBooksBySubject("psychology", 8);
       if (discovered.length > 0) {
-        await BookProviderService.persistExternalBooksBatch(discovered);
-        books = await BookModel.find()
-          .sort({ createdAt: -1 })
-          .limit(8)
-          .lean();
+        const persisted = await BookDiscoveryService.persistAndHydrateBatch(discovered);
+        const existingIds = new Set(books.map((b: any) => b._id.toString()));
+        for (const p of persisted) {
+          if (p._id && !existingIds.has(p._id.toString())) {
+            books.push(p);
+            if (books.length >= 8) break;
+          }
+        }
       }
     }
 
@@ -248,6 +239,23 @@ export async function getNewArrivalsController(
       message: "New arrivals retrieved successfully",
       isSuccess: true,
       data: books,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getHomepageFeedsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const feeds = await getHomepageFeedsService();
+    res.status(200).json({
+      message: "Homepage feeds retrieved successfully",
+      isSuccess: true,
+      data: feeds,
     });
   } catch (error) {
     next(error);

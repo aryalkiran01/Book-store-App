@@ -214,6 +214,8 @@ export function AdminDashboardPage() {
         stock: Number(setting.stock) || 25,
         isbn: b.isbn || "",
         openLibraryId: b.openLibraryId || "",
+        googleBooksId: b.googleBooksId || "",
+        source: (b.source as any) || (b.googleBooksId ? "google_books" : "openlibrary"),
         coverId: b.coverId || "",
         image: b.coverUrl || "",
         publisher: b.publisher || "",
@@ -2106,10 +2108,10 @@ export function AdminDashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                    Import Books from Open Library
+                    Discover & Import Books (Google Books & Open Library)
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Search Open Library's public catalog, preview covers, and import to your local MongoDB
+                    Search real books from Google Books API & Open Library, preview high-res covers, and import directly into MongoDB
                   </p>
                 </div>
               </div>
@@ -2183,16 +2185,16 @@ export function AdminDashboardPage() {
               {olSearching ? (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-400 space-y-3">
                   <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-                  <p className="text-sm font-medium">Fetching verified metadata & covers from Open Library...</p>
+                  <p className="text-sm font-medium">Fetching verified books from Google Books & Open Library...</p>
                 </div>
               ) : olResults.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center">
                   <BookOpen className="w-12 h-12 mb-3 opacity-40 text-purple-500" />
                   <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    No Open Library search results yet
+                    No external search results yet
                   </p>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm">
-                    Enter a title, author name, or 10/13-digit ISBN above and press Search to discover public domain and published books.
+                    Enter a title, author name, or 10/13-digit ISBN above and press Search to discover books across Google Books & Open Library.
                   </p>
                 </div>
               ) : (
@@ -2207,7 +2209,7 @@ export function AdminDashboardPage() {
 
                     return (
                       <div
-                        key={b.openLibraryId}
+                        key={b.openLibraryId || b.googleBooksId || b.isbn || b.title}
                         className={`flex gap-4 p-4 rounded-2xl border transition shadow-sm ${
                           b.isAlreadyImported
                             ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/60 dark:border-emerald-800/40"
@@ -2221,11 +2223,12 @@ export function AdminDashboardPage() {
                             isbn={b.isbn}
                             coverId={b.coverId}
                             openLibraryId={b.openLibraryId}
+                            googleBooksId={b.googleBooksId}
                             author={b.author}
                             genre={b.genre}
                             alt={b.title}
                             fallbackType="book"
-                            fallbackText={b.title}
+                            fallbackTitle={b.title}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -2237,11 +2240,20 @@ export function AdminDashboardPage() {
                               <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 truncate">
                                 {b.genre || "General"}
                               </span>
-                              {b.isAlreadyImported && (
-                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-                                  <CheckCircle2 className="w-2.5 h-2.5" /> In Store
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                  b.source === "google_books"
+                                    ? "bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                                    : "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                }`}>
+                                  {b.source === "google_books" ? "Google Books" : "Open Library"}
                                 </span>
-                              )}
+                                {b.isAlreadyImported && (
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                                    <CheckCircle2 className="w-2.5 h-2.5" /> In Store
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <h4 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2 leading-snug">
                               {b.title}

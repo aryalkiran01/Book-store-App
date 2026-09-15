@@ -13,6 +13,7 @@ export type TBook = {
   discountPercentage?: number;
   stock?: number;
   isbn?: string;
+  googleBooksId?: string;
   openLibraryId?: string;
   coverId?: string | number;
   publisher?: string;
@@ -23,12 +24,15 @@ export type TBook = {
   totalReviews?: number;
   featured?: boolean;
   isNewArrival?: boolean;
+  isAvailableInStore?: boolean;
+  source?: "google_books" | "openlibrary" | "manual" | "seeded";
   createdAt?: string;
   updatedAt?: string;
   created_at?: string;
   rating?: number;
   reviews?: any[];
 };
+
 
 export type PaginationMeta = {
   total: number;
@@ -220,6 +224,32 @@ export async function getNewArrivalsBooks(): Promise<TBook[]> {
   const data = await res.json();
   return data.data || [];
 }
+
+export type THomepageFeeds = {
+  featured: TBook[];
+  newArrivals: TBook[];
+  popular: TBook[];
+  trending: TBook[];
+  editorsPicks: TBook[];
+};
+
+export async function getHomepageFeeds(): Promise<THomepageFeeds> {
+  const res = await fetch(`${env.BACKEND_URL}/api/books/homepage-feeds`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  return (
+    data.data || {
+      featured: [],
+      newArrivals: [],
+      popular: [],
+      trending: [],
+      editorsPicks: [],
+    }
+  );
+}
+
 
 export type TGetBookByIdInput = {
   bookId: string;

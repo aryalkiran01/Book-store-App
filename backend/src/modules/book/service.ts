@@ -2,7 +2,8 @@ import { APIError } from "../../utils/error";
 import { BookModel } from "./model";
 import { TAddBookControllerInput } from "./validation";
 import { validateObjectId } from "../../utils/security";
-import { BookProviderService } from "./provider";
+import { BookDiscoveryService, BookProviderService } from "./provider";
+import mongoose from "mongoose";
 
 export async function createBookService(input: TAddBookControllerInput) {
   const {
@@ -51,7 +52,7 @@ export async function createBookService(input: TAddBookControllerInput) {
     description: description || "",
     image:
       image ||
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80",
+      "",
     price,
     discountPercentage: discountPercentage ?? 0,
     stock: stock ?? 20,
@@ -62,6 +63,8 @@ export async function createBookService(input: TAddBookControllerInput) {
     language: language || "English",
     featured: featured ?? false,
     isNewArrival: isNewArrival ?? false,
+    source: "manual",
+    isAvailableInStore: true,
   });
 
   await newBook.save();
@@ -231,13 +234,13 @@ export async function getBooksService(query?: BookQueryParams) {
       .lean(),
   ]);
 
-  // Automatic External Discovery: If MongoDB has insufficient results, discover from Open Library & cache
+  // Automatic External Discovery: If MongoDB has 0 books or active search with few results on page 1
   if (books.length === 0 || (query?.search && books.length < limit && page === 1)) {
     try {
       if (query?.search && query.search.trim()) {
-        const external = await BookProviderService.searchExternalBooks(query.search.trim(), 1, 15);
+        const external = await BookDiscoveryService.searchBooks(query.search.trim(), 1, 15);
         if (external.books.length > 0) {
-          await BookProviderService.persistExternalBooksBatch(external.books);
+          await BookDiscoveryService.persistExternalBooksBatch(external.books);
           [total, books] = await Promise.all([
             BookModel.countDocuments(filter),
             BookModel.find(filter)
@@ -248,9 +251,9 @@ export async function getBooksService(query?: BookQueryParams) {
           ]);
         }
       } else if (query?.genre && query.genre !== "All" && books.length === 0) {
-        const external = await BookProviderService.discoverBooksBySubject(query.genre, 15);
+        const external = await BookDiscoveryService.discoverBooksBySubject(query.genre, 15);
         if (external.length > 0) {
-          await BookProviderService.persistExternalBooksBatch(external);
+          await BookDiscoveryService.persistExternalBooksBatch(external);
           [total, books] = await Promise.all([
             BookModel.countDocuments(filter),
             BookModel.find(filter)
@@ -261,14 +264,14 @@ export async function getBooksService(query?: BookQueryParams) {
           ]);
         }
       } else if (!query?.search && (!query?.genre || query.genre === "All") && total === 0) {
-        // Broad initial empty catalog discovery
-        const subjects = ["fiction", "business", "science_fiction", "self-help", "history", "technology"];
+        // Broad initial empty catalog discovery across bestsellers
+        const subjects = ["bestsellers", "fiction", "business", "science_fiction", "self-help", "technology"];
         const discoveries = await Promise.all(
-          subjects.map((s) => BookProviderService.discoverBooksBySubject(s, 5))
+          subjects.map((s) => BookDiscoveryService.discoverBooksBySubject(s, 5))
         );
         const flattened = discoveries.flat();
         if (flattened.length > 0) {
-          await BookProviderService.persistExternalBooksBatch(flattened);
+          await BookDiscoveryService.persistExternalBooksBatch(flattened);
           [total, books] = await Promise.all([
             BookModel.countDocuments(filter),
             BookModel.find(filter)
@@ -280,7 +283,7 @@ export async function getBooksService(query?: BookQueryParams) {
         }
       }
     } catch (err: any) {
-      console.warn("Automatic external discovery non-fatal warning:", err.message);
+      console.warn("Automatic external discovery warning:", err.message);
     }
   }
 
@@ -300,15 +303,48 @@ export async function getBooksService(query?: BookQueryParams) {
 }
 
 export async function getBookByIdService(id: string) {
-  validateObjectId(id, "Book ID");
-  const book = await BookModel.findById(id);
-  if (!book) {
-    throw APIError.notFound("Book not found");
+  if (!id || !id.trim()) {
+    throw APIError.badRequest("Book ID is required");
   }
 
-  return book;
+  const cleanId = id.trim();
+
+  // 1. If valid Mongo ObjectId, query by _id
+  if (mongoose.Types.ObjectId.isValid(cleanId)) {
+    const book = await BookModel.findById(cleanId);
+    if (book) return book;
+  }
+
+  // 2. Query by googleBooksId, openLibraryId, or isbn
+  const existingByAlt = await BookModel.findOne({
+    $or: [
+      { googleBooksId: cleanId },
+      { openLibraryId: cleanId },
+      { isbn: cleanId },
+    ],
+  });
+
+  if (existingByAlt) {
+    return existingByAlt;
+  }
+
+  // 3. If still not in MongoDB, search via external discovery and cache
+  try {
+    const searchRes = await BookDiscoveryService.searchBooks(cleanId, 1, 1);
+    if (searchRes.books.length > 0) {
+      const persisted = await BookDiscoveryService.persistExternalBookToMongo(searchRes.books[0]);
+      if (persisted) return persisted;
+    }
+  } catch (err: any) {
+    console.warn("External lookup for book ID failed:", err.message);
+  }
+
+  throw APIError.notFound("Book not found");
 }
 
+export async function getHomepageFeedsService() {
+  return BookDiscoveryService.getHomepageFeeds();
+}
 
 export async function getSearchSuggestionsService(query: string) {
   if (!query || !query.trim()) {
@@ -316,9 +352,9 @@ export async function getSearchSuggestionsService(query: string) {
   }
 
   const s = query.trim();
-  const searchRegex = new RegExp(s, "i");
+  const searchRegex = new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 
-  const suggestions = await BookModel.find({
+  let suggestions = await BookModel.find({
     $or: [
       { title: searchRegex },
       { author: searchRegex },
@@ -326,9 +362,28 @@ export async function getSearchSuggestionsService(query: string) {
       { isbn: searchRegex },
     ],
   })
-    .select("title author genre price discountPercentage image rating stock")
+    .select("title author genre price discountPercentage image rating averageRating stock")
     .limit(6)
     .lean();
 
+  if (suggestions.length < 3 && s.length >= 2) {
+    try {
+      const external = await BookDiscoveryService.searchBooks(s, 1, 5);
+      if (external.books.length > 0) {
+        const persisted = await BookDiscoveryService.persistAndHydrateBatch(external.books);
+        const existingIds = new Set(suggestions.map((item: any) => item._id.toString()));
+        for (const p of persisted) {
+          if (p._id && !existingIds.has(p._id.toString())) {
+            suggestions.push(p);
+            if (suggestions.length >= 6) break;
+          }
+        }
+      }
+    } catch {
+      // Graceful fallback to existing suggestions
+    }
+  }
+
   return suggestions;
 }
+

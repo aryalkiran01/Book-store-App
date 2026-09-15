@@ -1,32 +1,27 @@
-import axios from "axios";
 import { BookModel } from "./model";
+import { NormalizedBookData, ProviderSearchResult } from "./providers/types";
+import { GoogleBooksProvider, calculateStorePriceNPR, normalizeGoogleBook, normalizeGoogleBooksCover } from "./providers/googleBooksProvider";
+import { OpenLibraryProvider, normalizeOpenLibraryBook } from "./providers/openlibraryProvider";
+import { MongoBookProvider } from "./providers/mongoBookProvider";
 
-export interface NormalizedBookData {
-  openLibraryId: string;
-  title: string;
-  author: string;
-  isbn: string;
-  coverId: string;
-  image: string;
-  firstPublishYear?: number | string;
-  genre: string;
-  pages: number;
-  publisher: string;
-  language: string;
-  description?: string;
-  price: number;
-  discountPercentage: number;
-  stock: number;
-  source: "openlibrary" | "manual" | "seeded";
-}
+export {
+  NormalizedBookData,
+  ProviderSearchResult,
+  calculateStorePriceNPR,
+  normalizeGoogleBook,
+  normalizeGoogleBooksCover,
+  normalizeOpenLibraryBook,
+};
 
-// Bounded in-memory cache for Open Library responses
+// Backwards compatibility alias
+export const normalizeExternalBook = normalizeOpenLibraryBook;
+
+// Bounded in-memory cache
 export const PROVIDER_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-export const MAX_PROVIDER_CACHE_ENTRIES = 300;
+export const MAX_PROVIDER_CACHE_ENTRIES = 500;
 
 interface CachedProviderEntry {
-  books: NormalizedBookData[];
-  total: number;
+  data: any;
   cachedAt: number;
 }
 
@@ -52,204 +47,148 @@ export function normalizeProviderQuery(query: string): string {
 }
 
 /**
- * Calculates a realistic, deterministic NPR price based on pages, genre, and store pricing policy.
+ * Generates a unique deduplication key for a book.
  */
-export function calculateStorePriceNPR(
-  pages?: number,
-  genre?: string,
-  baseOverride?: number
-): number {
-  if (baseOverride && baseOverride >= 100) {
-    return baseOverride;
+export function getBookDedupeKeys(book: Partial<NormalizedBookData>): string[] {
+  const keys: string[] = [];
+
+  const isbn = (book.isbn || "").replace(/[^0-9X]/gi, "").trim();
+  if (isbn) {
+    keys.push(`isbn:${isbn}`);
   }
 
-  const p = Math.max(120, Math.min(1200, pages || 300));
-  let price = p * 1.8 + 200;
-
-  // Minor genre adjustments
-  const g = (genre || "").toLowerCase();
-  if (g.includes("technology") || g.includes("computer") || g.includes("business") || g.includes("investing")) {
-    price += 150;
-  } else if (g.includes("manga") || g.includes("comic") || g.includes("poetry")) {
-    price -= 50;
+  const gid = (book.googleBooksId || "").trim();
+  if (gid) {
+    keys.push(`gid:${gid}`);
   }
 
-  // Bound between NPR 449 and NPR 1,899, rounded to nearest 50 minus 1 (e.g. 499, 549, 699, 799, 899)
-  const clamped = Math.max(449, Math.min(1899, price));
-  const rounded = Math.round(clamped / 50) * 50 - 1;
-  return Math.max(449, rounded);
+  const olid = (book.openLibraryId || "").trim();
+  if (olid) {
+    keys.push(`olid:${olid}`);
+  }
+
+  const title = (book.title || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+  const author = (book.author || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+
+  if (title && author) {
+    keys.push(`title_author:${title}:::${author}`);
+  }
+
+  return keys;
 }
 
 /**
- * Normalizes raw Open Library document into a standardized bookstore book object.
+ * Deduplicates a list of books based on ISBN, Google Books ID, OLID, and Title+Author.
  */
-export function normalizeExternalBook(doc: any): NormalizedBookData | null {
-  if (!doc) return null;
+export function deduplicateBooks(books: NormalizedBookData[]): NormalizedBookData[] {
+  const seenKeys = new Set<string>();
+  const uniqueBooks: NormalizedBookData[] = [];
 
-  const rawTitle = typeof doc.title === "string" ? doc.title.trim() : "";
-  if (!rawTitle) return null;
-
-  // Clean author
-  let author = "Unknown Author";
-  if (Array.isArray(doc.author_name) && doc.author_name.length > 0) {
-    author = doc.author_name.slice(0, 3).join(", ").trim();
-  } else if (typeof doc.author_name === "string" && doc.author_name.trim()) {
-    author = doc.author_name.trim();
-  } else if (Array.isArray(doc.authors) && doc.authors.length > 0) {
-    const names = doc.authors.map((a: any) => (typeof a === "string" ? a : a.name)).filter(Boolean);
-    if (names.length > 0) author = names.slice(0, 3).join(", ");
+  for (const book of books) {
+    const keys = getBookDedupeKeys(book);
+    const hasBeenSeen = keys.some((k) => seenKeys.has(k));
+    if (!hasBeenSeen) {
+      keys.forEach((k) => seenKeys.add(k));
+      uniqueBooks.push(book);
+    }
   }
 
-  const openLibraryId = (doc.key || "").replace("/works/", "").replace("/books/", "").trim();
-
-  // Extract best ISBN (prefer ISBN-13)
-  let isbn = "";
-  if (Array.isArray(doc.isbn) && doc.isbn.length > 0) {
-    const isbn13 = doc.isbn.find(
-      (i: string) =>
-        String(i).trim().length === 13 ||
-        String(i).startsWith("978") ||
-        String(i).startsWith("979")
-    );
-    isbn = isbn13 ? String(isbn13).trim() : String(doc.isbn[0]).trim();
-  } else if (typeof doc.isbn === "string") {
-    isbn = doc.isbn.trim();
-  }
-
-  const coverId = doc.cover_i ? String(doc.cover_i) : (doc.cover_id ? String(doc.cover_id) : "");
-
-  // Build clean, high-resolution Open Library HTTPS cover URL
-  let coverUrl = "";
-  if (isbn) {
-    coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
-  } else if (coverId) {
-    coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
-  } else if (openLibraryId) {
-    coverUrl = `https://covers.openlibrary.org/b/olid/${openLibraryId}-L.jpg`;
-  }
-
-  // Genre / Subject mapping
-  let genre = "Fiction";
-  if (Array.isArray(doc.subject) && doc.subject.length > 0) {
-    const rawGenre = doc.subject[0];
-    genre = typeof rawGenre === "string" ? rawGenre.slice(0, 50).trim() : "Fiction";
-  } else if (typeof doc.subject === "string" && doc.subject.trim()) {
-    genre = doc.subject.slice(0, 50).trim();
-  }
-
-  // Publisher
-  let publisher = "";
-  if (Array.isArray(doc.publisher) && doc.publisher.length > 0) {
-    publisher = typeof doc.publisher[0] === "string" ? doc.publisher[0].trim() : "";
-  } else if (typeof doc.publisher === "string") {
-    publisher = doc.publisher.trim();
-  }
-
-  // Language
-  let language = "English";
-  if (Array.isArray(doc.language) && doc.language.length > 0) {
-    language = typeof doc.language[0] === "string" ? doc.language[0].toUpperCase().trim() : "English";
-    if (language === "ENG") language = "English";
-    if (language === "NEP") language = "Nepali";
-  }
-
-  const pages = doc.number_of_pages_median || doc.number_of_pages || 0;
-  const price = calculateStorePriceNPR(pages, genre);
-
-  let description = "";
-  if (typeof doc.description === "string") {
-    description = doc.description.trim();
-  } else if (doc.description && typeof doc.description.value === "string") {
-    description = doc.description.value.trim();
-  }
-
-  return {
-    openLibraryId,
-    title: rawTitle,
-    author,
-    isbn,
-    coverId,
-    image: coverUrl || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=600&q=80",
-    firstPublishYear: doc.first_publish_year,
-    genre,
-    pages,
-    publisher,
-    language,
-    description,
-    price,
-    discountPercentage: pages > 400 ? 10 : 0,
-    stock: 25,
-    source: "openlibrary",
-  };
+  return uniqueBooks;
 }
 
-export class BookProviderService {
+export class BookDiscoveryService {
+  private static googleProvider = new GoogleBooksProvider();
+  private static openLibraryProvider = new OpenLibraryProvider();
+  private static mongoProvider = new MongoBookProvider();
+
   /**
-   * Search external books on Open Library with 10-minute caching.
+   * Search books across the fallback chain:
+   * 1. Google Books API
+   * 2. Open Library API
+   * 3. MongoDB Local Catalog
    */
-  static async searchExternalBooks(
+  static async searchBooks(
     query: string,
     page: number = 1,
     limit: number = 20
-  ): Promise<{ books: NormalizedBookData[]; total: number }> {
+  ): Promise<ProviderSearchResult> {
     if (!query || !query.trim()) {
-      return { books: [], total: 0 };
+      return { books: [], total: 0, provider: "mongo" };
     }
 
     const cleanQuery = query.trim();
     const normalized = normalizeProviderQuery(cleanQuery);
     const targetPage = Math.max(1, page);
-    const targetLimit = Math.min(50, Math.max(1, limit));
+    const targetLimit = Math.min(40, Math.max(1, limit));
     const cacheKey = `search:${normalized}:p${targetPage}:l${targetLimit}`;
 
     const now = Date.now();
     const cached = providerCache.get(cacheKey);
-
     if (cached && now - cached.cachedAt < PROVIDER_CACHE_TTL_MS) {
-      return { books: cached.books, total: cached.total };
+      return cached.data;
     }
 
+    let result: ProviderSearchResult = { books: [], total: 0, provider: "google_books" };
+
+    // Step 1: Try Google Books
     try {
-      const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(
-        cleanQuery
-      )}&page=${targetPage}&limit=${targetLimit}&fields=key,title,author_name,first_publish_year,isbn,cover_i,subject,number_of_pages_median,publisher,language`;
-
-      const response = await axios.get(searchUrl, {
-        timeout: 8000,
-        headers: {
-          "User-Agent": "KitabGhar-Bookstore-App/1.0 (catalog-discovery)",
-        },
-      });
-
-      const data = response.data as { docs?: any[]; numFound?: number } | undefined;
-      const docs = Array.isArray(data?.docs) ? data.docs : [];
-      const total = data?.numFound || docs.length;
-
-      const books = docs
-        .map(normalizeExternalBook)
-        .filter((b): b is NormalizedBookData => b !== null);
-
-      // Bounded cache maintenance
-      if (providerCache.size >= MAX_PROVIDER_CACHE_ENTRIES) {
-        const oldestKey = providerCache.keys().next().value;
-        if (oldestKey) providerCache.delete(oldestKey);
+      const gbResult = await this.googleProvider.search(cleanQuery, targetPage, targetLimit);
+      if (gbResult.books.length > 0) {
+        result = gbResult;
       }
-
-      providerCache.set(cacheKey, {
-        books,
-        total,
-        cachedAt: now,
-      });
-
-      return { books, total };
-    } catch (error: any) {
-      console.warn("External book provider search warning:", error.message);
-      return { books: [], total: 0 };
+    } catch (err: any) {
+      console.warn("Google Books search error, falling back to Open Library:", err.message);
     }
+
+    // Step 2: Fallback to Open Library if Google Books yielded no results
+    if (result.books.length === 0) {
+      try {
+        const olResult = await this.openLibraryProvider.search(cleanQuery, targetPage, targetLimit);
+        if (olResult.books.length > 0) {
+          result = olResult;
+        }
+      } catch (err: any) {
+        console.warn("Open Library search error, falling back to MongoDB:", err.message);
+      }
+    }
+
+    // Step 3: Fallback to MongoDB if both external providers fail or yield no results
+    if (result.books.length === 0) {
+      try {
+        const mongoResult = await this.mongoProvider.search(cleanQuery, targetPage, targetLimit);
+        result = mongoResult;
+      } catch (err: any) {
+        console.warn("MongoDB search error:", err.message);
+      }
+    }
+
+    // Deduplicate and safely cache discovered external books to MongoDB
+    result.books = deduplicateBooks(result.books);
+    if (result.provider !== "mongo" && result.books.length > 0) {
+      this.persistExternalBooksBatch(result.books).catch((err) =>
+        console.warn("Async persist warning:", err.message)
+      );
+    }
+
+    // Update in-memory cache
+    if (providerCache.size >= MAX_PROVIDER_CACHE_ENTRIES) {
+      const oldestKey = providerCache.keys().next().value;
+      if (oldestKey) providerCache.delete(oldestKey);
+    }
+    providerCache.set(cacheKey, { data: result, cachedAt: now });
+
+    return result;
   }
 
   /**
-   * Discovers books by subject/genre on Open Library.
+   * Discover books by subject/category across the fallback chain:
+   * 1. Google Books -> 2. Open Library -> 3. MongoDB
    */
   static async discoverBooksBySubject(
     subject: string,
@@ -257,55 +196,130 @@ export class BookProviderService {
   ): Promise<NormalizedBookData[]> {
     if (!subject || !subject.trim()) return [];
 
-    const cleanSubject = subject.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const cleanSubject = subject.trim();
     const targetLimit = Math.min(30, Math.max(1, limit));
-    const cacheKey = `subject:${cleanSubject}:l${targetLimit}`;
+    const cacheKey = `subject:${cleanSubject.toLowerCase()}:l${targetLimit}`;
 
     const now = Date.now();
     const cached = providerCache.get(cacheKey);
     if (cached && now - cached.cachedAt < PROVIDER_CACHE_TTL_MS) {
-      return cached.books;
+      return cached.data;
     }
 
+    let books: NormalizedBookData[] = [];
+
+    // Step 1: Google Books
     try {
-      const subjectUrl = `https://openlibrary.org/subjects/${encodeURIComponent(
-        cleanSubject
-      )}.json?limit=${targetLimit}`;
-
-      const response = await axios.get(subjectUrl, {
-        timeout: 8000,
-        headers: {
-          "User-Agent": "KitabGhar-Bookstore-App/1.0 (subject-discovery)",
-        },
-      });
-
-      const data = response.data as { works?: any[] } | undefined;
-      const works = Array.isArray(data?.works) ? data.works : [];
-      const books = works
-        .map((w: any) => normalizeExternalBook(w))
-        .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null);
-
-      if (providerCache.size >= MAX_PROVIDER_CACHE_ENTRIES) {
-        const oldestKey = providerCache.keys().next().value;
-        if (oldestKey) providerCache.delete(oldestKey);
-      }
-
-      providerCache.set(cacheKey, {
-        books,
-        total: books.length,
-        cachedAt: now,
-      });
-
-      return books;
-    } catch (error: any) {
-      console.warn(`External subject discovery warning for '${subject}':`, error.message);
-      return [];
+      books = await this.googleProvider.discoverBySubject(cleanSubject, targetLimit);
+    } catch (err: any) {
+      console.warn(`Google Books discoverBySubject error for '${subject}':`, err.message);
     }
+
+    // Step 2: Open Library
+    if (books.length === 0) {
+      try {
+        books = await this.openLibraryProvider.discoverBySubject(cleanSubject, targetLimit);
+      } catch (err: any) {
+        console.warn(`Open Library discoverBySubject error for '${subject}':`, err.message);
+      }
+    }
+
+    // Step 3: MongoDB
+    if (books.length === 0) {
+      try {
+        books = await this.mongoProvider.discoverBySubject(cleanSubject, targetLimit);
+      } catch (err: any) {
+        console.warn(`MongoDB discoverBySubject error for '${subject}':`, err.message);
+      }
+    }
+
+    books = deduplicateBooks(books);
+    if (books.length > 0) {
+      this.persistExternalBooksBatch(books).catch(() => {});
+    }
+
+    if (providerCache.size >= MAX_PROVIDER_CACHE_ENTRIES) {
+      const oldestKey = providerCache.keys().next().value;
+      if (oldestKey) providerCache.delete(oldestKey);
+    }
+    providerCache.set(cacheKey, { data: books, cachedAt: now });
+
+    return books;
   }
 
   /**
-   * Persists or finds a normalized external book in MongoDB with strict duplicate protection.
-   * Never overwrites manual admin pricing.
+   * Generates all homepage discovery sections with guaranteed global deduplication.
+   */
+  static async getHomepageFeeds(): Promise<{
+    featured: any[];
+    newArrivals: any[];
+    popular: any[];
+    trending: any[];
+    editorsPicks: any[];
+  }> {
+    const cacheKey = "homepage:feeds:v2";
+    const now = Date.now();
+    const cached = providerCache.get(cacheKey);
+    if (cached && now - cached.cachedAt < PROVIDER_CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    // Query diverse subjects across categories in parallel
+    const [bestsellers, newReleases, scifi, business, fiction] = await Promise.all([
+      this.discoverBooksBySubject("bestsellers", 10),
+      this.discoverBooksBySubject("psychology", 10),
+      this.discoverBooksBySubject("science_fiction", 10),
+      this.discoverBooksBySubject("business", 10),
+      this.discoverBooksBySubject("fiction", 10),
+    ]);
+
+    // Track globally seen book dedupe keys to prevent repeating any book across sections
+    const globalSeenKeys = new Set<string>();
+
+    const filterUnique = (candidateBooks: NormalizedBookData[], targetCount: number = 8) => {
+      const section: NormalizedBookData[] = [];
+      for (const b of candidateBooks) {
+        const keys = getBookDedupeKeys(b);
+        const alreadySeen = keys.some((k) => globalSeenKeys.has(k));
+        if (!alreadySeen) {
+          keys.forEach((k) => globalSeenKeys.add(k));
+          section.push(b);
+          if (section.length >= targetCount) break;
+        }
+      }
+      return section;
+    };
+
+    const rawFeatured = filterUnique(bestsellers, 8);
+    const rawNewArrivals = filterUnique(newReleases, 8);
+    const rawPopular = filterUnique(scifi, 8);
+    const rawTrending = filterUnique(business, 8);
+    const rawEditorsPicks = filterUnique(fiction, 8);
+
+    // Persist and enrich with MongoDB IDs
+    const [featured, newArrivals, popular, trending, editorsPicks] = await Promise.all([
+      this.persistAndHydrateBatch(rawFeatured),
+      this.persistAndHydrateBatch(rawNewArrivals),
+      this.persistAndHydrateBatch(rawPopular),
+      this.persistAndHydrateBatch(rawTrending),
+      this.persistAndHydrateBatch(rawEditorsPicks),
+    ]);
+
+    const result = {
+      featured,
+      newArrivals,
+      popular,
+      trending,
+      editorsPicks,
+    };
+
+    providerCache.set(cacheKey, { data: result, cachedAt: now });
+    return result;
+  }
+
+  /**
+   * Persists or finds a normalized external book in MongoDB.
+   * Preserves any existing store prices and stock.
    */
   static async persistExternalBookToMongo(
     bookData: NormalizedBookData
@@ -313,53 +327,112 @@ export class BookProviderService {
     const cleanTitle = bookData.title.trim();
     const cleanAuthor = bookData.author.trim();
     const cleanIsbn = bookData.isbn ? bookData.isbn.trim() : "";
+    const cleanGid = bookData.googleBooksId ? bookData.googleBooksId.trim() : "";
     const cleanOlid = bookData.openLibraryId ? bookData.openLibraryId.trim() : "";
 
     // 1. Check existing by ISBN
     if (cleanIsbn) {
       const existingByIsbn = await BookModel.findOne({ isbn: cleanIsbn });
       if (existingByIsbn) {
+        let needsSave = false;
+        if (!existingByIsbn.googleBooksId && cleanGid) {
+          existingByIsbn.googleBooksId = cleanGid;
+          needsSave = true;
+        }
+        if (!existingByIsbn.openLibraryId && cleanOlid) {
+          existingByIsbn.openLibraryId = cleanOlid;
+          needsSave = true;
+        }
+        if ((!existingByIsbn.image || existingByIsbn.image.includes("unsplash")) && bookData.image) {
+          existingByIsbn.image = bookData.image;
+          needsSave = true;
+        }
+        if (needsSave) await existingByIsbn.save();
         return existingByIsbn;
       }
     }
 
-    // 2. Check existing by Open Library ID
+    // 2. Check existing by Google Books ID
+    if (cleanGid) {
+      const existingByGid = await BookModel.findOne({ googleBooksId: cleanGid });
+      if (existingByGid) {
+        let needsSave = false;
+        if (!existingByGid.isbn && cleanIsbn) {
+          existingByGid.isbn = cleanIsbn;
+          needsSave = true;
+        }
+        if ((!existingByGid.image || existingByGid.image.includes("unsplash")) && bookData.image) {
+          existingByGid.image = bookData.image;
+          needsSave = true;
+        }
+        if (needsSave) await existingByGid.save();
+        return existingByGid;
+      }
+    }
+
+    // 3. Check existing by Open Library ID
     if (cleanOlid) {
       const existingByOlid = await BookModel.findOne({ openLibraryId: cleanOlid });
       if (existingByOlid) {
+        let needsSave = false;
+        if (!existingByOlid.googleBooksId && cleanGid) {
+          existingByOlid.googleBooksId = cleanGid;
+          needsSave = true;
+        }
+        if (!existingByOlid.isbn && cleanIsbn) {
+          existingByOlid.isbn = cleanIsbn;
+          needsSave = true;
+        }
+        if (needsSave) await existingByOlid.save();
         return existingByOlid;
       }
     }
 
-    // 3. Check existing by (Title + Author)
+    // 4. Check existing by (Title + Author)
     const existingByTitleAuthor = await BookModel.findOne({
       title: cleanTitle,
       author: cleanAuthor,
     });
     if (existingByTitleAuthor) {
+      let needsSave = false;
+      if (!existingByTitleAuthor.googleBooksId && cleanGid) {
+        existingByTitleAuthor.googleBooksId = cleanGid;
+        needsSave = true;
+      }
+      if (!existingByTitleAuthor.openLibraryId && cleanOlid) {
+        existingByTitleAuthor.openLibraryId = cleanOlid;
+        needsSave = true;
+      }
+      if (!existingByTitleAuthor.isbn && cleanIsbn) {
+        existingByTitleAuthor.isbn = cleanIsbn;
+        needsSave = true;
+      }
+      if (needsSave) await existingByTitleAuthor.save();
       return existingByTitleAuthor;
     }
 
-    // 4. Create new document
+    // 5. Create new document
     const newBook = new BookModel({
       title: cleanTitle,
       author: cleanAuthor,
       genre: bookData.genre || "Fiction",
       description: bookData.description || "",
-      image: bookData.image,
+      image: bookData.image || "",
       price: bookData.price,
       discountPercentage: bookData.discountPercentage ?? 0,
       stock: bookData.stock ?? 25,
       isbn: cleanIsbn,
+      googleBooksId: cleanGid,
       openLibraryId: cleanOlid,
       coverId: bookData.coverId || "",
       publisher: bookData.publisher || "",
       publicationDate: bookData.firstPublishYear ? String(bookData.firstPublishYear) : "",
       pages: bookData.pages || 0,
       language: bookData.language || "English",
-      source: "openlibrary",
+      source: bookData.source || "google_books",
       featured: false,
-      isNewArrival: true,
+      isNewArrival: false,
+      isAvailableInStore: true,
     });
 
     await newBook.save();
@@ -378,10 +451,31 @@ export class BookProviderService {
         const doc = await this.persistExternalBookToMongo(b);
         if (doc) results.push(doc);
       } catch (err: any) {
-        // Continue on individual uniqueness collisions
-        console.warn("Batch persist non-fatal conflict:", err.message);
+        // Continue on individual duplicate index collisions
       }
     }
     return results;
   }
+
+  /**
+   * Persists and returns lean JSON objects including MongoDB _id for frontend components.
+   */
+  static async persistAndHydrateBatch(
+    books: NormalizedBookData[]
+  ): Promise<any[]> {
+    const docs = await this.persistExternalBooksBatch(books);
+    return docs.map((d) => (typeof d.toObject === "function" ? d.toObject() : d));
+  }
 }
+
+// Backwards compatibility alias
+export const BookProviderService = {
+  searchExternalBooks: (query: string, page: number = 1, limit: number = 20) =>
+    BookDiscoveryService.searchBooks(query, page, limit),
+  discoverBooksBySubject: (subject: string, limit: number = 15) =>
+    BookDiscoveryService.discoverBooksBySubject(subject, limit),
+  persistExternalBookToMongo: (bookData: NormalizedBookData) =>
+    BookDiscoveryService.persistExternalBookToMongo(bookData),
+  persistExternalBooksBatch: (books: NormalizedBookData[]) =>
+    BookDiscoveryService.persistExternalBooksBatch(books),
+};

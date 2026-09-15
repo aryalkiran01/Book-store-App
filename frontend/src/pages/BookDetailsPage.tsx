@@ -243,6 +243,10 @@ export function BookDetailsPage() {
         discountPercentage: book.discountPercentage,
         image: book.image,
         stock: book.stock,
+        isbn: book.isbn,
+        googleBooksId: book.googleBooksId,
+        openLibraryId: book.openLibraryId,
+        coverId: book.coverId,
       },
       quantity
     );
@@ -266,10 +270,15 @@ export function BookDetailsPage() {
       image: book.image,
       stock: book.stock,
       genre: book.genre,
+      isbn: book.isbn,
+      googleBooksId: book.googleBooksId,
+      openLibraryId: book.openLibraryId,
+      coverId: book.coverId,
       rating: book.averageRating,
     });
     setWishlisted(isNowInWishlist);
   };
+
 
   const handleOpenReviewForm = (existingRev?: TReview) => {
     if (!isAuthenticated) {
@@ -522,6 +531,7 @@ export function BookDetailsPage() {
                 isbn={book.isbn}
                 coverId={(book as any).coverId}
                 openLibraryId={(book as any).openLibraryId}
+                googleBooksId={book.googleBooksId}
                 author={book.author}
                 genre={book.genre}
                 alt={book.title}
