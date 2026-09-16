@@ -4,6 +4,9 @@ import {
   verifyKhaltiPaymentService,
   initiateEsewaPaymentService,
   verifyEsewaPaymentService,
+  processDemoPaymentService,
+  getRefundsService,
+  processRefundService,
 } from "./service";
 import {
   InitiatePaymentSchema,
@@ -161,6 +164,108 @@ export async function verifyEsewaController(
       message: "eSewa payment verified successfully",
       isSuccess: true,
       data: verificationResponse,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * -------------------------------------------------------------
+ * Demo & Refund Controllers
+ * -------------------------------------------------------------
+ */
+
+export async function processDemoPaymentController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const orderId = req.body?.orderId || req.params?.orderId;
+    if (!orderId) {
+      res.status(400).json({
+        message: "orderId is required",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const requestingUserId = req.user?.id;
+    const requestingUserRole = req.user?.role;
+
+    const result = await processDemoPaymentService(
+      orderId,
+      requestingUserId,
+      requestingUserRole
+    );
+
+    res.status(200).json({
+      message: "Demo payment completed successfully",
+      isSuccess: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getRefundsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const status = req.query.status ? String(req.query.status) : undefined;
+
+    const result = await getRefundsService({ page, limit, status });
+
+    res.status(200).json({
+      message: "Refunds retrieved successfully",
+      isSuccess: true,
+      data: result.refunds,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function processRefundController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const refundId = req.params.refundId || req.body.refundId;
+    const action = req.body.action as "approve" | "reject";
+    const note = req.body.note || req.body.reason;
+    const restockItems = req.body.restockItems !== false;
+
+    if (!action || !["approve", "reject"].includes(action)) {
+      res.status(400).json({
+        message: "action must be either 'approve' or 'reject'",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const result = await processRefundService(
+      refundId,
+      action,
+      req.user?.id || "admin",
+      note,
+      restockItems
+    );
+
+    res.status(200).json({
+      message: result.message,
+      isSuccess: true,
+      data: result,
     });
   } catch (error) {
     next(error);

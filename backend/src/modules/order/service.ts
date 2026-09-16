@@ -4,6 +4,14 @@ import { UserModel } from "../auth/model";
 import { APIError } from "../../utils/error";
 import { TCreateOrderInput, TUpdateOrderStatusInput } from "./validation";
 import { validateObjectId } from "../../utils/security";
+import {
+  commitOrderReservation,
+  recordInventoryTransaction,
+  releaseOrderReservation,
+  reserveStockForOrder,
+} from "../inventory/service";
+import { RefundModel } from "../payment/refund.model";
+import { generateCryptoToken } from "../../utils/auth";
 
 export interface PaginationParams {
   page?: number;
@@ -39,14 +47,19 @@ export async function validateCartService(items: CartValidationItem[]) {
 
   for (const item of items) {
     validateObjectId(item.bookId, "Book ID");
-    const book = await BookModel.findById(item.bookId).lean();
+    const book = await BookModel.findOne({
+      _id: item.bookId,
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
+    }).lean();
+
     if (!book) {
       warnings.push(`A requested book item is no longer available in the catalog.`);
       isValid = false;
       continue;
     }
 
-    const availableStock = book.stock ?? 0;
+    const availableStock = Math.max(0, (book.stock ?? 0) - (book.reservedStock ?? 0));
     const inStock = availableStock > 0;
     const requestedQty = Math.max(1, Math.floor(item.quantity));
     const effectiveQty = inStock ? Math.min(requestedQty, availableStock) : 0;
@@ -56,7 +69,7 @@ export async function validateCartService(items: CartValidationItem[]) {
       isValid = false;
     } else if (requestedQty > availableStock) {
       warnings.push(
-        `"${book.title}" only has ${availableStock} in stock. Quantity adjusted.`
+        `"${book.title}" only has ${availableStock} available copies. Quantity adjusted.`
       );
     }
 
@@ -118,8 +131,11 @@ export const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   confirmed: ["processing", "cancelled"],
   processing: ["shipped", "cancelled"],
   shipped: ["delivered"],
-  delivered: ["refunded"],
-  cancelled: ["refunded"],
+  delivered: ["return_requested"],
+  return_requested: ["returned", "delivered"],
+  returned: ["refund_pending"],
+  refund_pending: ["refunded"],
+  cancelled: [],
   refunded: [],
 };
 
@@ -140,7 +156,7 @@ export async function createOrderService(input: TCreateOrderInput) {
     throw APIError.badRequest("Order must contain at least one book item");
   }
 
-  // Validate quantities, sanitize list, and merge duplicate book IDs into consolidated requests
+  // Validate quantities, sanitize list, and merge duplicate book IDs
   const itemMap = new Map<string, number>();
   for (const item of rawBooks) {
     validateObjectId(item.bookId, "Book ID");
@@ -160,185 +176,191 @@ export async function createOrderService(input: TCreateOrderInput) {
     quantity,
   }));
 
-  // Track successfully decremented items for compensating rollback if any subsequent update fails
-  const decrementedItems: { bookId: string; quantity: number }[] = [];
   const processedItems = [];
   let authoritativeSubtotal = 0;
   let rawSubtotal = 0;
 
-  try {
-    for (const item of sanitizedItems) {
-      // Atomic guarded update: ONLY decrement if stock >= requested quantity
-      const updatedBook = await BookModel.findOneAndUpdate(
-        {
-          _id: item.bookId,
-          stock: { $gte: item.quantity },
-        },
-        {
-          $inc: { stock: -item.quantity },
-        },
-        {
-          new: true,
-        }
+  // 1. Authoritatively fetch books and calculate prices
+  for (const item of sanitizedItems) {
+    const book = await BookModel.findOne({
+      _id: item.bookId,
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
+    }).lean();
+
+    if (!book) {
+      throw APIError.notFound(`Book with ID ${item.bookId} is not available in the catalog.`);
+    }
+
+    const available = (book.stock ?? 0) - (book.reservedStock ?? 0);
+    if (available < item.quantity) {
+      throw APIError.badRequest(
+        `Insufficient available stock for "${book.title}". Available: ${Math.max(0, available)}, Requested: ${item.quantity}`
       );
-
-      if (!updatedBook) {
-        // Find out why: Book not found or insufficient stock
-        const existingBook = await BookModel.findById(item.bookId).lean();
-        if (!existingBook) {
-          throw APIError.notFound(`Book with ID ${item.bookId} not found`);
-        } else {
-          throw APIError.badRequest(
-            `Insufficient stock for "${existingBook.title}". Available: ${existingBook.stock}, Requested: ${item.quantity}`
-          );
-        }
-      }
-
-      // Record successful atomic decrement
-      decrementedItems.push({
-        bookId: item.bookId,
-        quantity: item.quantity,
-      });
-
-      // Calculate authoritative prices directly from the fresh database record
-      const originalPrice = updatedBook.price;
-      const discountPercentage = updatedBook.discountPercentage || 0;
-      const unitPrice =
-        discountPercentage > 0
-          ? Number((originalPrice * (1 - discountPercentage / 100)).toFixed(2))
-          : originalPrice;
-
-      const itemTotal = Number((unitPrice * item.quantity).toFixed(2));
-      const itemRawTotal = Number((originalPrice * item.quantity).toFixed(2));
-
-      rawSubtotal += itemRawTotal;
-      authoritativeSubtotal += itemTotal;
-
-      processedItems.push({
-        bookId: updatedBook._id,
-        title: updatedBook.title,
-        image: updatedBook.image || "",
-        price: unitPrice,
-        quantity: item.quantity,
-        subtotal: itemTotal,
-      });
     }
 
-    const subtotal = Number(authoritativeSubtotal.toFixed(2));
-    const discount = Number((rawSubtotal - subtotal).toFixed(2));
-    const shippingCost = subtotal >= 1000 ? 0 : 100;
-    const finalTotalAmount = Number((subtotal + shippingCost).toFixed(2));
+    const originalPrice = book.price;
+    const discountPercentage = book.discountPercentage || 0;
+    const unitPrice =
+      discountPercentage > 0
+        ? Number((originalPrice * (1 - discountPercentage / 100)).toFixed(2))
+        : originalPrice;
 
-    // 1. Resolve contact information from request or user profile fallback
-    let inputFullName =
-      input.customerInfo?.fullName ||
-      input.fullName ||
-      (typeof input.shippingAddress === "object"
-        ? input.shippingAddress?.fullName
-        : "") ||
-      "";
-    let inputEmail =
-      input.customerInfo?.email ||
-      input.email ||
-      (typeof input.shippingAddress === "object"
-        ? input.shippingAddress?.email
-        : "") ||
-      "";
-    let inputPhone =
-      input.customerInfo?.phone ||
-      input.phone ||
-      (typeof input.shippingAddress === "object"
-        ? (input.shippingAddress as any)?.phone ||
-          (input.shippingAddress as any)?.phoneNumber
-        : "") ||
-      "";
+    const itemTotal = Number((unitPrice * item.quantity).toFixed(2));
+    const itemRawTotal = Number((originalPrice * item.quantity).toFixed(2));
 
-    // If missing from payload, fallback to user account info
-    if (!inputFullName || !inputEmail) {
-      const userDoc = await UserModel.findById(input.userId).lean();
-      if (userDoc) {
-        if (!inputFullName) inputFullName = userDoc.username || "Customer";
-        if (!inputEmail) inputEmail = userDoc.email || "";
-      }
-    }
+    rawSubtotal += itemRawTotal;
+    authoritativeSubtotal += itemTotal;
 
-    const customerInfo = {
-      fullName: inputFullName.trim(),
-      email: inputEmail.trim().toLowerCase(),
-      phone: inputPhone.trim(),
-    };
-
-    const normalizedAddress =
-      typeof input.shippingAddress === "string"
-        ? {
-            street: input.shippingAddress,
-            fullName: customerInfo.fullName,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-          }
-        : {
-            fullName: customerInfo.fullName,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-            street:
-              input.shippingAddress?.street ||
-              (input.shippingAddress as any)?.address ||
-              "",
-            city: input.shippingAddress?.city || "",
-            state: input.shippingAddress?.state || "",
-            postalCode: input.shippingAddress?.postalCode || "",
-          };
-
-    // Security: NEVER trust client-supplied paymentId to complete payment upon creation.
-    // All orders must start as pending payment and undergo server-side payment verification.
-    const initialStatus = "pending";
-    const initialPaymentStatus = "pending";
-
-    const newOrder = new OrderModel({
-      userId: input.userId,
-      customerInfo,
-      books: processedItems,
-      subtotal,
-      shippingCost,
-      discount,
-      totalAmount: finalTotalAmount,
-      shippingAddress: normalizedAddress,
-      orderNote: input.orderNote || "",
-      paymentMethod: input.paymentMethod || "khalti",
-      paymentStatus: initialPaymentStatus,
-      paymentId: "",
-      status: initialStatus,
-      statusHistory: [
-        {
-          status: initialStatus,
-          changedAt: new Date(),
-          note: "Order placed by customer (Awaiting payment verification)",
-          changedBy: "customer",
-        },
-      ],
+    // Full immutable snapshot of item at time of purchase
+    processedItems.push({
+      bookId: book._id,
+      title: book.title,
+      author: book.author || "",
+      image: book.image || "",
+      price: unitPrice,
+      originalPrice,
+      discountPercentage,
+      quantity: item.quantity,
+      subtotal: itemTotal,
     });
-
-    await newOrder.save();
-
-    return {
-      orderId: newOrder._id,
-      ...newOrder.toObject(),
-    };
-  } catch (error) {
-    // Compensating rollback: Revert all decrements performed before the failure
-    if (decrementedItems.length > 0) {
-      for (const dec of decrementedItems) {
-        try {
-          await BookModel.findByIdAndUpdate(dec.bookId, {
-            $inc: { stock: dec.quantity },
-          });
-        } catch (rollbackErr) {
-          console.error("Critical error rolling back inventory decrement:", rollbackErr);
-        }
-      }
-    }
-    throw error;
   }
+
+  const subtotal = Number(authoritativeSubtotal.toFixed(2));
+  const discount = Number((rawSubtotal - subtotal).toFixed(2));
+  const shippingCost = subtotal >= 1000 ? 0 : 100;
+  const finalTotalAmount = Number((subtotal + shippingCost).toFixed(2));
+
+  // 2. Resolve contact information from request or user account fallback
+  let inputFullName =
+    input.customerInfo?.fullName ||
+    input.fullName ||
+    (typeof input.shippingAddress === "object"
+      ? input.shippingAddress?.fullName
+      : "") ||
+    "";
+  let inputEmail =
+    input.customerInfo?.email ||
+    input.email ||
+    (typeof input.shippingAddress === "object"
+      ? input.shippingAddress?.email
+      : "") ||
+    "";
+  let inputPhone =
+    input.customerInfo?.phone ||
+    input.phone ||
+    (typeof input.shippingAddress === "object"
+      ? (input.shippingAddress as any)?.phone ||
+        (input.shippingAddress as any)?.phoneNumber
+      : "") ||
+    "";
+
+  if (!inputFullName || !inputEmail) {
+    const userDoc = await UserModel.findById(input.userId).lean();
+    if (userDoc) {
+      if (!inputFullName) inputFullName = userDoc.username || "Customer";
+      if (!inputEmail) inputEmail = userDoc.email || "";
+    }
+  }
+
+  const customerInfo = {
+    fullName: inputFullName.trim(),
+    email: inputEmail.trim().toLowerCase(),
+    phone: inputPhone.trim(),
+  };
+
+  const normalizedAddress =
+    typeof input.shippingAddress === "string"
+      ? {
+          street: input.shippingAddress,
+          fullName: customerInfo.fullName,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+        }
+      : {
+          fullName: customerInfo.fullName,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+          street:
+            input.shippingAddress?.street ||
+            (input.shippingAddress as any)?.address ||
+            "",
+          city: input.shippingAddress?.city || "",
+          state: input.shippingAddress?.state || "",
+          postalCode: input.shippingAddress?.postalCode || "",
+        };
+
+  const paymentMethod = input.paymentMethod || "khalti";
+  const isCOD = paymentMethod === "cod" || paymentMethod === "cash_on_delivery";
+
+  // Online orders get 15-minute reservation window; COD confirmed directly
+  const reservationExpiresAt = isCOD ? undefined : new Date(Date.now() + 15 * 60 * 1000);
+  const initialStatus = isCOD ? "confirmed" : "pending";
+  const initialPaymentStatus = isCOD ? "pending" : "pending";
+
+  const newOrder = new OrderModel({
+    userId: input.userId,
+    customerInfo,
+    books: processedItems,
+    subtotal,
+    shippingCost,
+    discount,
+    totalAmount: finalTotalAmount,
+    shippingAddress: normalizedAddress,
+    orderNote: input.orderNote || "",
+    paymentMethod,
+    paymentStatus: initialPaymentStatus,
+    paymentId: "",
+    status: initialStatus,
+    reservationExpiresAt,
+    deliveryStatus: "pending",
+    statusHistory: [
+      {
+        status: initialStatus,
+        changedAt: new Date(),
+        note: isCOD
+          ? "Order placed with Cash on Delivery (Confirmed)"
+          : "Order placed by customer (Awaiting payment verification, stock reserved for 15 minutes)",
+        changedBy: "customer",
+      },
+    ],
+  });
+
+  await newOrder.save();
+
+  // 3. Perform atomic stock reservation in inventory
+  try {
+    if (isCOD) {
+      // For COD, commit deduction immediately
+      for (const item of sanitizedItems) {
+        await BookModel.findOneAndUpdate(
+          { _id: item.bookId, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } }
+        );
+        await recordInventoryTransaction({
+          bookId: item.bookId,
+          quantity: -item.quantity,
+          type: "SALE",
+          previousStock: 0,
+          newStock: 0,
+          referenceId: newOrder._id.toString(),
+          reason: `Cash On Delivery Order #${newOrder._id}`,
+          performedBy: input.userId,
+        });
+      }
+    } else {
+      // For online checkout, place in reservedStock pool
+      await reserveStockForOrder(sanitizedItems, newOrder._id.toString(), input.userId);
+    }
+  } catch (invErr) {
+    await OrderModel.findByIdAndDelete(newOrder._id);
+    throw invErr;
+  }
+
+  return {
+    orderId: newOrder._id,
+    ...newOrder.toObject(),
+  };
 }
 
 export async function getAllOrdersService(params?: {
@@ -350,7 +372,7 @@ export async function getAllOrdersService(params?: {
   const limit = Math.min(50, Math.max(1, Number(params?.limit) || 20));
   const skip = (page - 1) * limit;
 
-  const query: any = {};
+  const query: any = { isDeleted: { $ne: true } };
   if (params?.status && params.status !== "all") {
     query.status = params.status;
   }
@@ -390,7 +412,7 @@ export async function getOrdersByUserIdService(
   const limit = Math.min(50, Math.max(1, Number(params?.limit) || 20));
   const skip = (page - 1) * limit;
 
-  const query: any = { userId };
+  const query: any = { userId, isDeleted: { $ne: true } };
   if (params?.status && params.status !== "all") {
     query.status = params.status;
   }
@@ -426,7 +448,7 @@ export async function getOrderByIdService(
   requestingUserRole?: string
 ) {
   validateObjectId(orderId, "Order ID");
-  const order = await OrderModel.findById(orderId)
+  const order = await OrderModel.findOne({ _id: orderId, isDeleted: { $ne: true } })
     .populate("userId", "username email")
     .populate("books.bookId");
   if (!order) throw APIError.notFound("Order not found");
@@ -454,7 +476,7 @@ export async function cancelOrderService(
   reason?: string
 ) {
   validateObjectId(orderId, "Order ID");
-  const order = await OrderModel.findById(orderId);
+  const order = await OrderModel.findOne({ _id: orderId, isDeleted: { $ne: true } });
   if (!order) throw APIError.notFound("Order not found");
 
   const orderOwnerId =
@@ -462,7 +484,6 @@ export async function cancelOrderService(
       ? (order.userId as any)._id.toString()
       : String(order.userId || "");
 
-  // Strict ownership check (Fail Closed): Caller must be owner or admin
   if (
     !requestingUserId ||
     (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
@@ -470,7 +491,6 @@ export async function cancelOrderService(
     throw APIError.forbidden("You are not authorized to cancel this order");
   }
 
-  // Can only cancel before shipping
   const cancellableStates = ["pending", "confirmed", "processing"];
   if (!cancellableStates.includes(order.status)) {
     throw APIError.badRequest(
@@ -478,16 +498,31 @@ export async function cancelOrderService(
     );
   }
 
-  // Restore inventory
-  for (const item of order.books) {
-    await BookModel.findByIdAndUpdate(item.bookId, {
-      $inc: { stock: item.quantity },
-    });
+  // Release inventory reservation / restore physical stock
+  const items = order.books.map((b) => ({
+    bookId: b.bookId.toString(),
+    quantity: b.quantity,
+  }));
+
+  if (order.paymentStatus === "completed" || order.paymentMethod === "cod") {
+    // Restore physical stock
+    for (const item of items) {
+      await BookModel.findByIdAndUpdate(item.bookId, { $inc: { stock: item.quantity } });
+    }
+  } else {
+    // Release reserved stock pool
+    await releaseOrderReservation(
+      items,
+      order._id.toString(),
+      reason || "Cancelled by customer",
+      requestingUserRole === "admin" ? "admin" : "customer"
+    );
   }
 
   order.status = "cancelled";
   order.cancellationReason = reason || "Cancelled by user";
   order.cancelledAt = new Date();
+  order.reservationExpiresAt = undefined as any;
   order.statusHistory.push({
     status: "cancelled",
     changedAt: new Date(),
@@ -505,62 +540,31 @@ export async function updateOrderStatusService(
   adminUsername?: string
 ) {
   validateObjectId(orderId, "Order ID");
-  const order = await OrderModel.findById(orderId);
+  const order = await OrderModel.findOne({ _id: orderId, isDeleted: { $ne: true } });
   if (!order) throw APIError.notFound("Order not found");
 
   const previousStatus = order.status;
   const newStatus = input.status;
 
-  // Validate state transition
   if (!isValidStatusTransition(previousStatus, newStatus)) {
     throw APIError.badRequest(
       `Invalid order status transition from '${previousStatus}' to '${newStatus}'.`
     );
   }
 
-  // Restore inventory if an order is cancelled
+  const items = order.books.map((b) => ({
+    bookId: b.bookId.toString(),
+    quantity: b.quantity,
+  }));
+
+  // Reconcile stock when transitioning to cancelled
   if (previousStatus !== "cancelled" && newStatus === "cancelled") {
-    for (const item of order.books) {
-      await BookModel.findByIdAndUpdate(item.bookId, {
-        $inc: { stock: item.quantity },
-      });
-    }
-  }
-
-  // Deduct inventory again if previously cancelled order is reinstated
-  if (previousStatus === "cancelled" && newStatus !== "cancelled") {
-    const decrementedItems: { bookId: any; quantity: number }[] = [];
-    try {
-      for (const item of order.books) {
-        const updatedBook = await BookModel.findOneAndUpdate(
-          {
-            _id: item.bookId,
-            stock: { $gte: item.quantity },
-          },
-          {
-            $inc: { stock: -item.quantity },
-          },
-          { new: true }
-        );
-
-        if (!updatedBook) {
-          throw APIError.badRequest(
-            `Cannot reinstate order: Insufficient stock for book ID ${item.bookId}`
-          );
-        }
-
-        decrementedItems.push({
-          bookId: item.bookId,
-          quantity: item.quantity,
-        });
+    if (order.paymentStatus === "completed" || order.paymentMethod === "cod") {
+      for (const item of items) {
+        await BookModel.findByIdAndUpdate(item.bookId, { $inc: { stock: item.quantity } });
       }
-    } catch (err) {
-      for (const dec of decrementedItems) {
-        await BookModel.findByIdAndUpdate(dec.bookId, {
-          $inc: { stock: dec.quantity },
-        });
-      }
-      throw err;
+    } else {
+      await releaseOrderReservation(items, order._id.toString(), "Admin cancelled order", adminUsername || "admin");
     }
   }
 
@@ -580,21 +584,112 @@ export async function updateOrderStatusService(
   return order;
 }
 
-export async function deleteOrderService(orderId: string) {
+export async function updateOrderShippingService(
+  orderId: string,
+  shippingData: {
+    shippingProvider?: string;
+    trackingNumber?: string;
+    shippedAt?: string | Date;
+    estimatedDeliveryAt?: string | Date;
+    deliveredAt?: string | Date;
+    deliveryStatus?: string;
+  },
+  adminUsername = "admin"
+) {
   validateObjectId(orderId, "Order ID");
-  const order = await OrderModel.findById(orderId);
+  const order = await OrderModel.findOne({ _id: orderId, isDeleted: { $ne: true } });
   if (!order) throw APIError.notFound("Order not found");
 
-  // Restore stock if active order is deleted
-  if (order.status !== "cancelled") {
-    for (const item of order.books) {
-      await BookModel.findByIdAndUpdate(item.bookId, {
-        $inc: { stock: item.quantity },
-      });
+  if (shippingData.shippingProvider !== undefined) order.shippingProvider = shippingData.shippingProvider;
+  if (shippingData.trackingNumber !== undefined) order.trackingNumber = shippingData.trackingNumber;
+  if (shippingData.shippedAt) order.shippedAt = new Date(shippingData.shippedAt);
+  if (shippingData.estimatedDeliveryAt) order.estimatedDeliveryAt = new Date(shippingData.estimatedDeliveryAt);
+  if (shippingData.deliveredAt) order.deliveredAt = new Date(shippingData.deliveredAt);
+
+  if (shippingData.deliveryStatus) {
+    order.deliveryStatus = shippingData.deliveryStatus as any;
+    if (shippingData.deliveryStatus === "shipped" && order.status === "processing") {
+      order.status = "shipped";
+      order.shippedAt = order.shippedAt || new Date();
+    } else if (shippingData.deliveryStatus === "delivered" && order.status === "shipped") {
+      order.status = "delivered";
+      order.deliveredAt = order.deliveredAt || new Date();
     }
   }
 
-  await OrderModel.findByIdAndDelete(orderId);
+  order.statusHistory.push({
+    status: order.status,
+    changedAt: new Date(),
+    note: `Shipping updated: ${shippingData.shippingProvider || ""} (Tracking: ${shippingData.trackingNumber || "N/A"}) - Status: ${shippingData.deliveryStatus || order.deliveryStatus}`,
+    changedBy: adminUsername,
+  });
+
+  await order.save();
   return order;
 }
+
+export async function deleteOrderService(orderId: string, adminUserId = "") {
+  validateObjectId(orderId, "Order ID");
+  const order = await OrderModel.findOne({ _id: orderId, isDeleted: { $ne: true } });
+  if (!order) throw APIError.notFound("Order not found");
+
+  // Non-destructive soft delete preserving financial history
+  order.isDeleted = true;
+  order.deletedAt = new Date();
+  if (adminUserId) {
+    order.deletedBy = adminUserId as any;
+  }
+
+  await order.save();
+  return order;
+}
+
+export async function createRefundRequestService(
+  orderId: string,
+  userId: string,
+  reason: string,
+  amount?: number
+) {
+  validateObjectId(orderId, "Order ID");
+  validateObjectId(userId, "User ID");
+
+  const order = await OrderModel.findOne({ _id: orderId, isDeleted: { $ne: true } });
+  if (!order) throw APIError.notFound("Order not found");
+
+  if (order.userId.toString() !== userId) {
+    throw APIError.forbidden("You can only request refunds for your own orders.");
+  }
+
+  if (order.status !== "delivered" && order.paymentStatus !== "completed") {
+    throw APIError.badRequest("Refund can only be requested for paid or delivered orders.");
+  }
+
+  const refundAmount = amount && amount > 0 ? Math.min(amount, order.totalAmount) : order.totalAmount;
+  const refundId = `REF_${Date.now()}_${generateCryptoToken(6)}`;
+
+  const refund = new RefundModel({
+    refundId,
+    orderId: order._id,
+    userId,
+    amount: refundAmount,
+    reason,
+    status: "requested",
+    provider: order.paymentMethod,
+    requestedBy: userId,
+  });
+
+  await refund.save();
+
+  order.status = "return_requested";
+  order.statusHistory.push({
+    status: "return_requested",
+    changedAt: new Date(),
+    note: `Customer requested refund (${refundId}): ${reason}`,
+    changedBy: "customer",
+  });
+  await order.save();
+
+  return refund;
+}
+
 

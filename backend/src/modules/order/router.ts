@@ -7,6 +7,8 @@ import {
   getMyOrdersController,
   getOrderByIdController,
   getOrdersByUserController,
+  requestRefundController,
+  updateOrderShippingController,
   updateOrderStatusController,
   validateCartController,
 } from "./controller";
@@ -28,6 +30,8 @@ function createOrderRouter() {
   router.get("/user/:userId", checkAuth, getOrdersByUserController);
   router.get("/:orderId", checkAuth, getOrderByIdController);
   router.post("/:orderId/cancel", checkAuth, cancelOrderController);
+  router.post("/:orderId/refund", checkAuth, requestRefundController);
+  router.patch("/:orderId/shipping", checkAuth, checkAdmin, updateOrderShippingController);
   router.patch("/:orderId/status", checkAuth, checkAdmin, updateOrderStatusController);
   router.patch("/:orderId", checkAuth, checkAdmin, updateOrderStatusController);
   router.put("/:orderId", checkAuth, checkAdmin, updateOrderStatusController);

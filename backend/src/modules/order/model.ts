@@ -8,8 +8,11 @@ const orderItemSchema = new mongoose.Schema(
       required: true,
     },
     title: { type: String, required: true },
+    author: { type: String, default: "" },
     image: { type: String, default: "" },
     price: { type: Number, required: true, min: 0 },
+    originalPrice: { type: Number, default: 0 },
+    discountPercentage: { type: Number, default: 0 },
     quantity: { type: Number, required: true, min: 1 },
     subtotal: { type: Number, required: true, min: 0 },
   },
@@ -50,6 +53,9 @@ const statusHistorySchema = new mongoose.Schema(
         "shipped",
         "delivered",
         "cancelled",
+        "return_requested",
+        "returned",
+        "refund_pending",
         "refunded",
       ],
     },
@@ -83,10 +89,19 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["khalti", "cod", "card", "demo", "cash_on_delivery", "esewa"],
       default: "cod",
+      index: true,
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "completed", "failed", "refunded"],
+      enum: [
+        "pending",
+        "processing",
+        "paid",
+        "completed",
+        "failed",
+        "partially_refunded",
+        "refunded",
+      ],
       default: "pending",
       index: true,
     },
@@ -100,6 +115,9 @@ const orderSchema = new mongoose.Schema(
         "shipped",
         "delivered",
         "cancelled",
+        "return_requested",
+        "returned",
+        "refund_pending",
         "refunded",
       ],
       default: "pending",
@@ -108,6 +126,31 @@ const orderSchema = new mongoose.Schema(
     statusHistory: [statusHistorySchema],
     cancellationReason: { type: String, default: "" },
     cancelledAt: { type: Date },
+    reservationExpiresAt: { type: Date, index: true },
+    // Shipping and Delivery Tracking
+    shippingProvider: { type: String, default: "" },
+    trackingNumber: { type: String, default: "", index: true },
+    shippedAt: { type: Date },
+    estimatedDeliveryAt: { type: Date },
+    deliveredAt: { type: Date },
+    deliveryStatus: {
+      type: String,
+      enum: [
+        "pending",
+        "processing",
+        "packed",
+        "shipped",
+        "out_for_delivery",
+        "delivered",
+        "failed",
+      ],
+      default: "pending",
+      index: true,
+    },
+    // Soft Deletion
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   {
     timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
@@ -139,6 +182,8 @@ const orderSchema = new mongoose.Schema(
 
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+orderSchema.index({ isDeleted: 1, createdAt: -1 });
 
 export const OrderModel = mongoose.model("Order", orderSchema);
 

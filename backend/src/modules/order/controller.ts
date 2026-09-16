@@ -4,10 +4,12 @@ import { CreateOrderSchema, UpdateOrderStatusSchema, ValidateCartSchema } from "
 import {
   cancelOrderService,
   createOrderService,
+  createRefundRequestService,
   deleteOrderService,
   getAllOrdersService,
   getOrderByIdService,
   getOrdersByUserIdService,
+  updateOrderShippingService,
   updateOrderStatusService,
   validateCartService,
 } from "./service";
@@ -266,11 +268,71 @@ export async function deleteOrderController(
 ) {
   try {
     const orderId = req.params.orderId;
-    await deleteOrderService(orderId);
+    await deleteOrderService(orderId, req.user?.id);
     res.status(200).json({
       message: "Order deleted successfully",
       isSuccess: true,
       data: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateOrderShippingController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const orderId = req.params.orderId;
+    const shippingData = req.body;
+
+    const updatedOrder = await updateOrderShippingService(
+      orderId,
+      shippingData,
+      req.user?.username || "admin"
+    );
+
+    res.status(200).json({
+      message: "Order shipping details updated successfully",
+      isSuccess: true,
+      data: updatedOrder,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function requestRefundController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const orderId = req.params.orderId;
+    const { reason, amount } = req.body;
+
+    if (!reason || typeof reason !== "string" || !reason.trim()) {
+      res.status(400).json({
+        message: "A valid reason is required to request a refund",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const refund = await createRefundRequestService(
+      orderId,
+      req.user.id,
+      reason.trim(),
+      amount ? Number(amount) : undefined
+    );
+
+    res.status(201).json({
+      message: "Refund request submitted successfully",
+      isSuccess: true,
+      data: refund,
     });
   } catch (error) {
     next(error);

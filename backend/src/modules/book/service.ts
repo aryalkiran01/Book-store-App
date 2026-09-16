@@ -138,10 +138,14 @@ export async function updateBookService(
 
 export async function deleteBookService(id: string) {
   validateObjectId(id, "Book ID");
-  const book = await BookModel.findByIdAndDelete(id);
-  if (!book) {
+  const book = await BookModel.findById(id);
+  if (!book || book.isDeleted) {
     throw APIError.notFound("Book not found");
   }
+  book.isDeleted = true;
+  book.deletedAt = new Date();
+  book.isActive = false;
+  await book.save();
   return book;
 }
 
@@ -164,7 +168,10 @@ export async function getBooksService(query?: BookQueryParams) {
   const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
   const skip = (page - 1) * limit;
 
-  const filter: Record<string, any> = {};
+  const filter: Record<string, any> = {
+    isDeleted: { $ne: true },
+    isActive: { $ne: false },
+  };
 
   if (query?.genre && query.genre !== "All") {
     filter.genre = { $regex: new RegExp(query.genre, "i") };
@@ -311,12 +318,13 @@ export async function getBookByIdService(id: string) {
 
   // 1. If valid Mongo ObjectId, query by _id
   if (mongoose.Types.ObjectId.isValid(cleanId)) {
-    const book = await BookModel.findById(cleanId);
+    const book = await BookModel.findOne({ _id: cleanId, isDeleted: { $ne: true } });
     if (book) return book;
   }
 
   // 2. Query by googleBooksId, openLibraryId, or isbn
   const existingByAlt = await BookModel.findOne({
+    isDeleted: { $ne: true },
     $or: [
       { googleBooksId: cleanId },
       { openLibraryId: cleanId },
@@ -333,7 +341,7 @@ export async function getBookByIdService(id: string) {
     const searchRes = await BookDiscoveryService.searchBooks(cleanId, 1, 1);
     if (searchRes.books.length > 0) {
       const persisted = await BookDiscoveryService.persistExternalBookToMongo(searchRes.books[0]);
-      if (persisted) return persisted;
+      if (persisted && !persisted.isDeleted) return persisted;
     }
   } catch (err: any) {
     console.warn("External lookup for book ID failed:", err.message);
@@ -355,6 +363,8 @@ export async function getSearchSuggestionsService(query: string) {
   const searchRegex = new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
 
   let suggestions = await BookModel.find({
+    isDeleted: { $ne: true },
+    isActive: { $ne: false },
     $or: [
       { title: searchRegex },
       { author: searchRegex },

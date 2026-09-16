@@ -24,6 +24,7 @@ import { multerErrorHandler } from "./modules/auth/middleware";
 dotenv.config();
 
 import { seedDatabase, initializeProductionAdmin } from "./utils/seed";
+import { startReservationCleanupWorker } from "./modules/order/worker";
 
 // Connect to MongoDB
 createDBConnection()
@@ -34,6 +35,9 @@ createDBConnection()
     } else if (env.NODE_ENV === "production") {
       await initializeProductionAdmin();
     }
+
+    // Start background worker for stock reservation expiration cleanup
+    startReservationCleanupWorker(60 * 1000); // Check every 60 seconds
   })
   .catch((error) => console.error("Database connection error:", error));
 

@@ -3,6 +3,10 @@ import crypto from "crypto";
 import { env, isKhaltiConfigured } from "../../utils/config";
 import { APIError } from "../../utils/error";
 import { OrderModel } from "../order/model";
+import { PaymentModel } from "./model";
+import { RefundModel } from "./refund.model";
+import { BookModel } from "../book/model";
+import { commitOrderReservation, recordInventoryTransaction } from "../inventory/service";
 import { validateObjectId } from "../../utils/security";
 
 export interface InitiateKhaltiInput {
@@ -436,9 +440,45 @@ export async function verifyKhaltiPaymentService(
   }
 
   // Genuine payment verified successfully
+  const transactionId = verification.transaction_id || cleanPidx;
+
+  // Commit stock reservation (decrements physical stock and clears reservation)
+  try {
+    const items = targetOrder.books.map((b) => ({
+      bookId: b.bookId.toString(),
+      quantity: b.quantity,
+    }));
+    await commitOrderReservation(items, targetOrder._id.toString(), "khalti_gateway");
+  } catch (invErr: any) {
+    console.warn("Commit inventory reservation note:", invErr.message);
+  }
+
+  // Record payment in Payment ledger
+  try {
+    await PaymentModel.findOneAndUpdate(
+      { provider: "khalti", transactionId },
+      {
+        orderId: targetOrder._id,
+        userId: targetOrder.userId,
+        provider: "khalti",
+        transactionId,
+        paymentReference: cleanPidx,
+        amount: targetOrder.totalAmount,
+        amountPaisa: expectedPaisa,
+        currency: "NPR",
+        status: "completed",
+        verifiedAt: new Date(),
+        rawResponse: verification,
+      },
+      { upsert: true, new: true }
+    );
+  } catch (payErr: any) {
+    console.warn("PaymentModel record note:", payErr.message);
+  }
+
   targetOrder.paymentStatus = "completed";
   targetOrder.paymentMethod = "khalti";
-  targetOrder.paymentId = verification.transaction_id || cleanPidx;
+  targetOrder.paymentId = transactionId;
   if (targetOrder.status === "pending") {
     targetOrder.status = "confirmed";
   }
@@ -446,7 +486,7 @@ export async function verifyKhaltiPaymentService(
   targetOrder.statusHistory.push({
     status: targetOrder.status,
     changedAt: new Date(),
-    note: `Payment verified successfully via Khalti (Txn: ${verification.transaction_id || cleanPidx})`,
+    note: `Payment verified successfully via Khalti (Txn: ${transactionId})`,
     changedBy: "payment_system",
   });
 
@@ -677,9 +717,45 @@ export async function verifyEsewaPaymentService(
   }
 
   // Payment verified successfully
+  const transactionId = String(transaction_code || transaction_uuid);
+
+  // Commit stock reservation
+  try {
+    const items = targetOrder.books.map((b) => ({
+      bookId: b.bookId.toString(),
+      quantity: b.quantity,
+    }));
+    await commitOrderReservation(items, targetOrder._id.toString(), "esewa_gateway");
+  } catch (invErr: any) {
+    console.warn("Commit inventory reservation note:", invErr.message);
+  }
+
+  // Record payment in Payment ledger
+  try {
+    await PaymentModel.findOneAndUpdate(
+      { provider: "esewa", transactionId },
+      {
+        orderId: targetOrder._id,
+        userId: targetOrder.userId,
+        provider: "esewa",
+        transactionId,
+        paymentReference: transaction_uuid,
+        amount: targetOrder.totalAmount,
+        amountPaisa: Math.round(targetOrder.totalAmount * 100),
+        currency: "NPR",
+        status: "completed",
+        verifiedAt: new Date(),
+        rawResponse: decodedJson,
+      },
+      { upsert: true, new: true }
+    );
+  } catch (payErr: any) {
+    console.warn("PaymentModel record note:", payErr.message);
+  }
+
   targetOrder.paymentStatus = "completed";
   targetOrder.paymentMethod = "esewa";
-  targetOrder.paymentId = transaction_code || transaction_uuid;
+  targetOrder.paymentId = transactionId;
   if (targetOrder.status === "pending") {
     targetOrder.status = "confirmed";
   }
@@ -700,6 +776,249 @@ export async function verifyEsewaPaymentService(
     transaction_uuid,
     product_code,
     order: targetOrder,
+  };
+}
+
+/**
+ * -------------------------------------------------------------
+ * 3. DEMO / SIMULATED PAYMENT (Strictly blocked in production)
+ * -------------------------------------------------------------
+ */
+
+export async function processDemoPaymentService(
+  orderId: string,
+  requestingUserId?: string,
+  requestingUserRole?: string
+) {
+  validateObjectId(orderId, "Order ID");
+
+  const isProduction = env.NODE_ENV === "production" || process.env.NODE_ENV === "production";
+  if (isProduction) {
+    throw APIError.forbidden("Demo payments are strictly forbidden in production.");
+  }
+
+  const order = await OrderModel.findOne({ _id: orderId, isDeleted: { $ne: true } });
+  if (!order) {
+    throw APIError.notFound("Order not found");
+  }
+
+  const orderOwnerId =
+    order.userId && typeof order.userId === "object" && "_id" in order.userId
+      ? (order.userId as any)._id.toString()
+      : String(order.userId || "");
+
+  if (
+    !requestingUserId ||
+    (requestingUserRole !== "admin" && orderOwnerId !== requestingUserId)
+  ) {
+    throw APIError.forbidden("You do not have permission to process payment for this order");
+  }
+
+  if (order.paymentStatus === "completed") {
+    return {
+      success: true,
+      message: "Order is already paid",
+      order,
+    };
+  }
+
+  if (order.status === "cancelled") {
+    throw APIError.badRequest("Cannot pay for a cancelled order.");
+  }
+
+  const demoTxnId = `DEMO_${Date.now()}_${Math.random().toString(36).substring(7).toUpperCase()}`;
+
+  // Commit reservation
+  try {
+    const items = order.books.map((b) => ({
+      bookId: b.bookId.toString(),
+      quantity: b.quantity,
+    }));
+    await commitOrderReservation(items, order._id.toString(), "demo_gateway");
+  } catch (invErr: any) {
+    console.warn("Demo payment commit reservation note:", invErr.message);
+  }
+
+  // Record payment in Payment ledger
+  try {
+    await PaymentModel.create({
+      orderId: order._id,
+      userId: order.userId,
+      provider: "demo",
+      transactionId: demoTxnId,
+      paymentReference: "simulated_local_demo",
+      amount: order.totalAmount,
+      amountPaisa: Math.round(order.totalAmount * 100),
+      currency: "NPR",
+      status: "completed",
+      verifiedAt: new Date(),
+      rawResponse: { simulated: true, environment: env.NODE_ENV },
+    });
+  } catch (err: any) {
+    console.warn("Demo payment ledger record note:", err.message);
+  }
+
+  order.paymentStatus = "completed";
+  order.paymentMethod = "demo";
+  order.paymentId = demoTxnId;
+  if (order.status === "pending") {
+    order.status = "confirmed";
+  }
+
+  order.statusHistory.push({
+    status: order.status,
+    changedAt: new Date(),
+    note: `Simulated demo payment completed (Txn: ${demoTxnId})`,
+    changedBy: requestingUserRole === "admin" ? "admin" : "customer",
+  });
+
+  await order.save();
+
+  return {
+    success: true,
+    transactionId: demoTxnId,
+    order,
+    message: "Demo payment completed successfully",
+  };
+}
+
+/**
+ * -------------------------------------------------------------
+ * 4. REFUND PROCESSING SERVICES (Phase 12)
+ * -------------------------------------------------------------
+ */
+
+export async function processRefundService(
+  refundId: string,
+  action: "approve" | "reject",
+  adminUserId: string,
+  note?: string,
+  restockItems = true
+) {
+  if (!refundId || !refundId.trim()) {
+    throw APIError.badRequest("Refund ID is required");
+  }
+
+  const refund = await RefundModel.findOne({
+    $or: [{ refundId: refundId.trim() }, { _id: refundId.trim() }],
+  });
+
+  if (!refund) {
+    throw APIError.notFound("Refund request not found");
+  }
+
+  if (refund.status === "completed" || refund.status === "rejected") {
+    throw APIError.badRequest(`Refund has already been ${refund.status}.`);
+  }
+
+  const order = await OrderModel.findOne({ _id: refund.orderId, isDeleted: { $ne: true } });
+  if (!order) {
+    throw APIError.notFound("Associated order not found");
+  }
+
+  if (action === "approve") {
+    refund.status = "completed";
+    refund.approvedBy = adminUserId as any;
+    refund.completedAt = new Date();
+
+    order.paymentStatus = "refunded";
+    order.status = "refunded";
+
+    // Restock items if requested and record inventory transactions
+    if (restockItems && order.books && order.books.length > 0) {
+      for (const item of order.books) {
+        const book = await BookModel.findById(item.bookId);
+        if (book) {
+          const prevStock = book.stock;
+          book.stock += item.quantity;
+          await book.save();
+
+          await recordInventoryTransaction({
+            bookId: item.bookId.toString(),
+            quantity: item.quantity,
+            type: "RESTOCK",
+            previousStock: prevStock,
+            newStock: book.stock,
+            previousReservedStock: book.reservedStock ?? 0,
+            newReservedStock: book.reservedStock ?? 0,
+            referenceId: order._id.toString(),
+            reason: `Restocked after approved refund ${refund.refundId}`,
+            performedBy: adminUserId || "admin",
+          });
+        }
+      }
+    }
+
+    // Update payment record status
+    await PaymentModel.updateMany(
+      { orderId: order._id },
+      { $set: { status: "refunded" } }
+    );
+
+    order.statusHistory.push({
+      status: "refunded",
+      changedAt: new Date(),
+      note: `Refund approved & processed (${refund.refundId}). NPR ${refund.amount} refunded.${restockItems ? " Inventory restocked." : ""}`,
+      changedBy: "admin",
+    });
+  } else {
+    refund.status = "rejected";
+    refund.rejectionReason = note || "Refund request rejected by admin";
+
+    order.statusHistory.push({
+      status: order.status,
+      changedAt: new Date(),
+      note: `Refund rejected (${refund.refundId}): ${refund.rejectionReason}`,
+      changedBy: "admin",
+    });
+  }
+
+  await Promise.all([refund.save(), order.save()]);
+
+  return {
+    refund,
+    order,
+    message: action === "approve" ? "Refund processed successfully" : "Refund rejected",
+  };
+}
+
+export async function getRefundsService(query?: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const page = Math.max(1, Number(query?.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
+  const skip = (page - 1) * limit;
+
+  const filter: Record<string, any> = {};
+  if (query?.status) {
+    filter.status = query.status;
+  }
+
+  const [total, refunds] = await Promise.all([
+    RefundModel.countDocuments(filter),
+    RefundModel.find(filter)
+      .populate("orderId")
+      .populate("userId", "username email fullName")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return {
+    refunds,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
   };
 }
 

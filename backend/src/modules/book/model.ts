@@ -14,6 +14,7 @@ const bookSchema = new mongoose.Schema(
     price: { type: Number, required: true, min: 0, index: true },
     discountPercentage: { type: Number, default: 0, min: 0, max: 100 },
     stock: { type: Number, default: 20, min: 0, index: true },
+    reservedStock: { type: Number, default: 0, min: 0 },
     isbn: { type: String, default: "", trim: true },
     googleBooksId: { type: String, default: "", trim: true },
     openLibraryId: { type: String, default: "", trim: true },
@@ -27,6 +28,10 @@ const bookSchema = new mongoose.Schema(
     featured: { type: Boolean, default: false, index: true },
     isNewArrival: { type: Boolean, default: false, index: true },
     isAvailableInStore: { type: Boolean, default: true, index: true },
+    isActive: { type: Boolean, default: true, index: true },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     source: {
       type: String,
       enum: ["google_books", "openlibrary", "manual", "seeded"],
@@ -40,6 +45,10 @@ const bookSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+bookSchema.virtual("availableStock").get(function () {
+  return Math.max(0, (this.stock || 0) - (this.reservedStock || 0));
+});
 
 // 1. Compound uniqueness: (Title + Author) allows same title for different authors
 bookSchema.index({ title: 1, author: 1 }, { unique: true });
