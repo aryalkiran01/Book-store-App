@@ -13,6 +13,10 @@ import {
   updateOrderStatusService,
   validateCartService,
 } from "./service";
+import {
+  getOrderInvoiceService,
+  getOrderInvoiceHtmlService,
+} from "./invoice.service";
 
 export async function validateCartController(
   req: Request,
@@ -338,5 +342,43 @@ export async function requestRefundController(
     next(error);
   }
 }
+
+export async function getOrderInvoiceController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const orderId = req.params.orderId;
+    const isAdmin = req.user?.role === "admin";
+    const invoice = await getOrderInvoiceService(orderId, req.user.id, isAdmin);
+
+    res.status(200).json({
+      message: "Invoice generated successfully",
+      isSuccess: true,
+      data: invoice,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getOrderInvoiceHtmlController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const orderId = req.params.orderId;
+    const isAdmin = req.user?.role === "admin";
+    const html = await getOrderInvoiceHtmlService(orderId, req.user.id, isAdmin);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+  } catch (error) {
+    next(error);
+  }
+}
+
 
 

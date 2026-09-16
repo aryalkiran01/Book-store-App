@@ -14,6 +14,7 @@ import {
   searchOpenLibraryBooksController,
   importOpenLibraryBookController,
   updateAdminUserRoleController,
+  getAdminAuditLogsController,
 } from "./controller";
 import {
   getAllOrdersController,
@@ -30,6 +31,7 @@ function createAdminRouter() {
   // 1. Statistics & Dashboard Analytics
   router.get("/stats", getAdminStatsController);
   router.get("/dashboard", getAdminStatsController);
+  router.get("/audit-logs", getAdminAuditLogsController);
 
   // 2. User Management
   router.get("/users", getAdminUsersController);

@@ -11,6 +11,8 @@ import {
   updateOrderShippingController,
   updateOrderStatusController,
   validateCartController,
+  getOrderInvoiceController,
+  getOrderInvoiceHtmlController,
 } from "./controller";
 import { checkAdmin, checkAuth } from "../auth/middleware";
 
@@ -28,6 +30,8 @@ function createOrderRouter() {
   router.post("/", checkAuth, createOrderController);
   router.get("/my-orders", checkAuth, getMyOrdersController);
   router.get("/user/:userId", checkAuth, getOrdersByUserController);
+  router.get("/:orderId/invoice/html", checkAuth, getOrderInvoiceHtmlController);
+  router.get("/:orderId/invoice", checkAuth, getOrderInvoiceController);
   router.get("/:orderId", checkAuth, getOrderByIdController);
   router.post("/:orderId/cancel", checkAuth, cancelOrderController);
   router.post("/:orderId/refund", checkAuth, requestRefundController);

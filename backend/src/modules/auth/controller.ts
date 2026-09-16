@@ -1,22 +1,31 @@
 import { Request, Response, NextFunction } from "express";
 import {
   ChangePasswordSchema,
+  DeleteAccountSchema,
   ForgotPasswordSchema,
   LoginControllerSchema,
   RegisterControllerSchema,
+  RequestEmailChangeSchema,
   ResetPasswordSchema,
   updateRoleControllerSchema,
+  UpdateProfileSchema,
+  VerifyEmailChangeSchema,
   VerifyEmailSchema,
 } from "./validation";
 import {
   changePasswordService,
   createUserService,
+  deleteAccountService,
   forgotPasswordService,
   getUserById,
   loginService,
+  logoutAllSessionsService,
+  requestEmailChangeService,
   resetPasswordService,
   sendEmailVerificationService,
   updateroleservice,
+  updateUserProfileService,
+  verifyEmailChangeService,
   verifyEmailService,
 } from "./service";
 import { APIError } from "../../utils/error";
@@ -354,4 +363,152 @@ export async function updateRoleController(
     next(error);
   }
 }
+
+export async function updateProfileController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = UpdateProfileSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid profile data",
+        isSuccess: false,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const updatedUser = await updateUserProfileService(req.user.id, data);
+    res.status(200).json({
+      message: "Profile updated successfully",
+      isSuccess: true,
+      data: updatedUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function requestEmailChangeController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = RequestEmailChangeSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid email format",
+        isSuccess: false,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const result = await requestEmailChangeService(req.user.id, data.newEmail);
+    res.status(200).json({
+      message: result.message,
+      isSuccess: true,
+      ...(result.verificationToken ? { verificationToken: result.verificationToken } : {}),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function verifyEmailChangeController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = VerifyEmailChangeSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid verification token",
+        isSuccess: false,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const result = await verifyEmailChangeService(req.user.id, data.token);
+
+    // Update session cookie if present
+    res.cookie("token", result.token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      message: result.message,
+      isSuccess: true,
+      data: result.user,
+      token: result.token,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function logoutAllSessionsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await logoutAllSessionsService(req.user.id);
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    });
+
+    res.status(200).json({
+      message: result.message,
+      isSuccess: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteAccountController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = DeleteAccountSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Password is required to delete account",
+        isSuccess: false,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const result = await deleteAccountService(req.user.id, data.password);
+
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    });
+
+    res.status(200).json({
+      message: result.message,
+      isSuccess: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 

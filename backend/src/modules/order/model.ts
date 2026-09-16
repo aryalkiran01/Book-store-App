@@ -84,6 +84,8 @@ const orderSchema = new mongoose.Schema(
     discount: { type: Number, required: true, min: 0, default: 0 },
     couponCode: { type: String, default: "", trim: true },
     couponDiscount: { type: Number, default: 0, min: 0 },
+    taxAmount: { type: Number, default: 0, min: 0 },
+    invoiceNumber: { type: String, default: "", index: true },
     totalAmount: { type: Number, required: true, min: 0 },
     shippingAddress: { type: shippingAddressSchema, default: () => ({}) },
     orderNote: { type: String, default: "" },

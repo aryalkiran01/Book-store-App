@@ -20,5 +20,7 @@ uploads/
 
 # Test & Scratch Scripts
 *.mjs
+!backend/tests/*.mjs
+!backend/scripts/*.mjs
 scratch/
 backend/scratch/

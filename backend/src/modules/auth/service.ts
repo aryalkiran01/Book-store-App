@@ -249,3 +249,171 @@ export async function updateroleservice(input: TUpdateRolecontrollerInput) {
   return user;
 }
 
+export async function updateUserProfileService(
+  userId: string,
+  input: {
+    username?: string;
+    phone?: string;
+    address?: string;
+    avatar?: string;
+  }
+) {
+  validateObjectId(userId, "User ID");
+  const user = await UserModel.findById(userId);
+  if (!user || user.isDeleted) {
+    throw APIError.notFound("User not found");
+  }
+
+  if (input.username && input.username !== user.username) {
+    const existing = await UserModel.findOne({
+      username: input.username,
+      _id: { $ne: user._id },
+    });
+    if (existing) {
+      throw APIError.conflict("Username is already taken by another account");
+    }
+    user.username = input.username;
+  }
+
+  if (input.phone !== undefined) user.phone = input.phone;
+  if (input.address !== undefined) user.address = input.address;
+  if (input.avatar !== undefined) user.avatar = input.avatar;
+
+  await user.save();
+
+  return {
+    id: user._id.toString(),
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+    address: user.address,
+    avatar: user.avatar,
+    isEmailVerified: user.isEmailVerified,
+  };
+}
+
+export async function requestEmailChangeService(userId: string, newEmail: string) {
+  validateObjectId(userId, "User ID");
+  const user = await UserModel.findById(userId);
+  if (!user || user.isDeleted) {
+    throw APIError.notFound("User not found");
+  }
+
+  const normalizedEmail = newEmail.toLowerCase().trim();
+  if (normalizedEmail === user.email.toLowerCase()) {
+    throw APIError.badRequest("New email must be different from your current email");
+  }
+
+  const existing = await UserModel.findOne({
+    email: normalizedEmail,
+    _id: { $ne: user._id },
+  });
+  if (existing) {
+    throw APIError.conflict("Email address is already in use by another account");
+  }
+
+  const rawToken = generateCryptoToken(32);
+  user.pendingEmail = normalizedEmail;
+  user.pendingEmailVerificationTokenHash = hashCryptoToken(rawToken);
+  user.pendingEmailExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  await user.save();
+
+  return {
+    message: "A verification code has been sent to your new email address.",
+    ...(env.NODE_ENV !== "production" ? { verificationToken: rawToken } : {}),
+  };
+}
+
+export async function verifyEmailChangeService(userId: string, token: string) {
+  validateObjectId(userId, "User ID");
+  const tokenHash = hashCryptoToken(token.trim());
+
+  const user = await UserModel.findOne({
+    _id: userId,
+    pendingEmailVerificationTokenHash: tokenHash,
+    pendingEmailExpiresAt: { $gt: new Date() },
+    isDeleted: { $ne: true },
+  });
+
+  if (!user || !user.pendingEmail) {
+    throw APIError.badRequest("Invalid or expired email change verification token.");
+  }
+
+  // Double check if pendingEmail was taken in the meantime
+  const conflict = await UserModel.findOne({
+    email: user.pendingEmail,
+    _id: { $ne: user._id },
+  });
+  if (conflict) {
+    throw APIError.conflict("Email address is now taken by another account");
+  }
+
+  user.email = user.pendingEmail;
+  user.pendingEmail = "";
+  user.pendingEmailVerificationTokenHash = "";
+  user.pendingEmailExpiresAt = undefined as any;
+  user.isEmailVerified = true;
+  user.sessionVersion = (user.sessionVersion || 1) + 1; // Invalidate previous session tokens for safety
+  await user.save();
+
+  const newToken = generateToken({
+    id: user._id.toString(),
+    sub: user._id.toString(),
+    username: user.username,
+    email: user.email,
+    role: user.role as "admin" | "user",
+    sessionVersion: user.sessionVersion,
+  });
+
+  return {
+    message: "Email address successfully updated and verified.",
+    user: {
+      id: user._id.toString(),
+      email: user.email,
+      username: user.username,
+      isEmailVerified: true,
+    },
+    token: newToken,
+  };
+}
+
+export async function logoutAllSessionsService(userId: string) {
+  validateObjectId(userId, "User ID");
+  const user = await UserModel.findById(userId);
+  if (!user || user.isDeleted) {
+    throw APIError.notFound("User not found");
+  }
+
+  user.sessionVersion = (user.sessionVersion || 1) + 1;
+  await user.save();
+
+  return {
+    message: "All active sessions have been invalidated. Please log in again.",
+  };
+}
+
+export async function deleteAccountService(userId: string, passwordConfirmation: string) {
+  validateObjectId(userId, "User ID");
+  const user = await UserModel.findById(userId);
+  if (!user || user.isDeleted) {
+    throw APIError.notFound("User not found");
+  }
+
+  const isMatch = await comparePassword(passwordConfirmation, user.password);
+  if (!isMatch) {
+    throw APIError.badRequest("Invalid password. Account deletion cancelled.");
+  }
+
+  user.isDeleted = true;
+  user.isActive = false;
+  user.deletedAt = new Date();
+  user.sessionVersion = (user.sessionVersion || 1) + 1; // Immediately invalidate all tokens
+  await user.save();
+
+  return {
+    message: "Account has been successfully deleted.",
+  };
+}
+
+

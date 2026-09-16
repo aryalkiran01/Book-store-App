@@ -80,6 +80,13 @@ const OPEN_LIBRARY_TIMEOUT_MS = Math.max(
   Number(process.env.OPEN_LIBRARY_TIMEOUT_MS) || 7000
 );
 
+const EMAIL_FROM = process.env.EMAIL_FROM || "no-reply@bookreviewapp.com";
+const SMTP_HOST = process.env.SMTP_HOST || "";
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
+const SMTP_USER = process.env.SMTP_USER || "";
+const SMTP_PASS = process.env.SMTP_PASS || "";
+const SENDGRID_API_KEY = (process.env.SENDGRID_API_KEY || "").trim();
+
 export function isKhaltiConfigured(secret: string = KHALTI_SECRET_KEY): boolean {
   if (!secret) return false;
   const s = secret.trim().toLowerCase();
@@ -137,6 +144,12 @@ export const env = {
   INITIAL_ADMIN_EMAIL,
   INITIAL_ADMIN_PASSWORD,
   INITIAL_ADMIN_USERNAME,
+  EMAIL_FROM,
+  SMTP_HOST,
+  SMTP_PORT,
+  SMTP_USER,
+  SMTP_PASS,
+  SENDGRID_API_KEY,
 } as const;
 
 

@@ -4,6 +4,43 @@ All notable changes and security fixes to this project are documented in this fi
 
 ---
 
+## [Phase 21–25 Release] — Admin Audit Trail, Email Engine, Invoices, Tax Engine & Profile Security — 2026-09-16
+
+### Added
+- **Admin Audit Trail & Accountability (Phase 21):**
+  - Created `AdminAuditLogModel` tracking all administrative actions (`UPDATE_USER_ROLE`, `DELETE_USER`, `UPDATE_STOCK`, `MODERATE_REVIEW`, `DELETE_REVIEW`, `IMPORT_BOOK`) with actor ID, IP address, user agent, timestamps, and mutation metadata.
+  - Implemented `recordAdminAuditLog()` and `getAdminAuditLogsService()`.
+  - Added admin endpoint `GET /api/admin/audit-logs` with pagination and action/target filtering, secured by RBAC (`checkAdmin`).
+- **Email Notification Engine (Phase 22):**
+  - Created `backend/src/utils/email.ts` with SendGrid support and fail-soft development/testing mock dispatchers.
+  - Built responsive HTML email templates for:
+    - Welcome email (`sendWelcomeEmail`)
+    - Email verification (`sendVerificationEmail`)
+    - Password reset (`sendPasswordResetEmail`)
+    - Order confirmation (`sendOrderConfirmationEmail`)
+    - Payment received (`sendPaymentCompletedEmail`)
+    - Order shipped (`sendOrderShippedEmail`)
+    - Refund approved (`sendRefundApprovedEmail`)
+- **Invoice Generation Engine (Phase 23):**
+  - Created `backend/src/modules/order/invoice.service.ts` generating unique sequential invoice numbers (`INV-YYYY-XXXXXX`).
+  - Added `GET /api/orders/:orderId/invoice` returning structured JSON invoice metadata.
+  - Added `GET /api/orders/:orderId/invoice/html` returning print-ready styled HTML invoices with bill-to details, line items, VAT calculation, and payment status badges.
+  - Protected with strict authorization checks (users can only access their own invoices, admins can access any).
+- **Configurable Tax Engine (Phase 24):**
+  - Created `backend/src/modules/order/tax.service.ts` supporting configurable VAT rates (defaulting to Nepal's 13% standard VAT).
+  - Calculates subtotal, taxable amount, tax-exempt items, tax amount, and grand total.
+  - Integrated into invoice generation and order calculations.
+- **Account Profile & Security Settings (Phase 25):**
+  - Added user profile updating `PUT /api/auth/profile` (username uniqueness enforcement, phone, address, avatar).
+  - Added secure two-step email change flow `POST /api/auth/change-email` and `POST /api/auth/verify-new-email` with crypto tokens.
+  - Added global session termination `POST /api/auth/logout-all` invalidating all active JWT tokens across devices by incrementing `sessionVersion`.
+  - Added soft account deletion `DELETE /api/auth/account` with password verification, soft deletion (`isDeleted: true, isActive: false, deletedAt`), and immediate session invalidation.
+- **Automated Test Suite Expansion:**
+  - Added `backend/tests/security-profile-admin.test.mjs` with 14 comprehensive tests covering audit logs, invoices, VAT calculation, profile updates, email change verification, global logout, and account deletion.
+  - All 10 test suites passing (100% green).
+
+---
+
 ## [Phase 14–20 Release] — Server Cart Sync, Wishlist, Addresses, Coupons, Hardened Checkout & Review Moderation — 2026-09-16
 
 ### Added

@@ -21,6 +21,10 @@ import {
   importOpenLibraryBookService,
   updateAdminUserRoleService,
 } from "./service";
+import {
+  getAdminAuditLogsService,
+  recordAdminAuditLog,
+} from "./audit.service";
 
 export async function getAdminStatsController(
   req: Request,
@@ -91,6 +95,17 @@ export async function updateAdminUserRoleController(
       req.user.id
     );
 
+    recordAdminAuditLog({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: "UPDATE_USER_ROLE",
+      targetType: "User",
+      targetId: userId,
+      details: { newRole: data.role },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     res.status(200).json({
       message: "User role updated successfully",
       isSuccess: true,
@@ -109,6 +124,17 @@ export async function deleteAdminUserController(
   try {
     const userId = req.params.userId;
     const deletedUser = await deleteAdminUserService(userId, req.user.id);
+
+    recordAdminAuditLog({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: "DELETE_USER",
+      targetType: "User",
+      targetId: userId,
+      details: { username: deletedUser.username, email: deletedUser.email },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
 
     res.status(200).json({
       message: "User deleted successfully",
@@ -168,6 +194,17 @@ export async function quickUpdateStockController(
     }
 
     const updatedBook = await quickUpdateStockService(bookId, data);
+
+    recordAdminAuditLog({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: "UPDATE_STOCK",
+      targetType: "Book",
+      targetId: bookId,
+      details: { newStock: data.stock },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
 
     res.status(200).json({
       message: "Stock updated successfully",
@@ -261,6 +298,18 @@ export async function moderateAdminReviewController(
     }
 
     const review = await moderateAdminReviewService(reviewId, data);
+
+    recordAdminAuditLog({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: "MODERATE_REVIEW",
+      targetType: "Review",
+      targetId: reviewId,
+      details: { status: data.status },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     res.status(200).json({
       message: "Review moderated successfully",
       isSuccess: true,
@@ -279,6 +328,17 @@ export async function deleteAdminReviewController(
   try {
     const reviewId = req.params.reviewId;
     const review = await deleteAdminReviewService(reviewId);
+
+    recordAdminAuditLog({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: "DELETE_REVIEW",
+      targetType: "Review",
+      targetId: reviewId,
+      details: { reviewId },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
 
     res.status(200).json({
       message: "Review deleted permanently",
@@ -333,11 +393,48 @@ export async function importOpenLibraryBookController(
 
     const result = await importOpenLibraryBookService(data);
 
+    recordAdminAuditLog({
+      adminId: req.user.id,
+      adminUsername: req.user.username,
+      action: "IMPORT_BOOK",
+      targetType: "Book",
+      targetId: result.book?._id ? String(result.book._id) : undefined,
+      details: { title: data.title, isbn: data.isbn },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
     res.status(result.isNew ? 201 : 200).json({
       message: result.message,
       isSuccess: true,
       data: result.book,
       isNew: result.isNew,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAdminAuditLogsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { adminId, action, targetType, page, limit } = req.query;
+    const result = await getAdminAuditLogsService({
+      adminId: adminId ? String(adminId) : undefined,
+      action: action ? String(action) : undefined,
+      targetType: targetType ? String(targetType) : undefined,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+
+    res.status(200).json({
+      message: "Admin audit logs retrieved successfully",
+      isSuccess: true,
+      data: result.logs,
+      pagination: result.pagination,
     });
   } catch (error) {
     next(error);

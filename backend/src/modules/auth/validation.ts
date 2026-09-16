@@ -56,3 +56,33 @@ export const VerifyEmailSchema = z.object({
 });
 export type TVerifyEmailInput = z.TypeOf<typeof VerifyEmailSchema>;
 
+export const UpdateProfileSchema = z.object({
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(30, "Username must be at most 30 characters")
+    .regex(/^[a-zA-Z0-9_ -]+$/, "Username can only contain alphanumeric characters, dashes, and underscores")
+    .trim()
+    .optional(),
+  phone: z.string().max(20, "Phone number too long").optional(),
+  address: z.string().max(200, "Address too long").optional(),
+  avatar: z.string().url("Invalid avatar URL").optional().or(z.literal("")),
+});
+export type TUpdateProfileInput = z.TypeOf<typeof UpdateProfileSchema>;
+
+export const RequestEmailChangeSchema = z.object({
+  newEmail: z.string().email("Invalid email format").trim().toLowerCase(),
+});
+export type TRequestEmailChangeInput = z.TypeOf<typeof RequestEmailChangeSchema>;
+
+export const VerifyEmailChangeSchema = z.object({
+  token: z.string().min(10, "Valid verification token is required"),
+});
+export type TVerifyEmailChangeInput = z.TypeOf<typeof VerifyEmailChangeSchema>;
+
+export const DeleteAccountSchema = z.object({
+  password: z.string().min(1, "Password confirmation is required to delete account"),
+});
+export type TDeleteAccountInput = z.TypeOf<typeof DeleteAccountSchema>;
+
+
