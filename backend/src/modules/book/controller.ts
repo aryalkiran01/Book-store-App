@@ -9,6 +9,7 @@ import {
   getBookByIdService,
   getBooksService,
   getHomepageFeedsService,
+  getRecommendedBooksService,
   getSearchSuggestionsService,
   updateBookService,
 } from "./service";
@@ -305,6 +306,25 @@ export async function getSearchSuggestionsController(
       message: "Search suggestions fetched successfully",
       isSuccess: true,
       data: suggestions,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getRecommendationsController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const bookId = req.params.bookId || req.params.id;
+    const limit = Number(req.query.limit) || 6;
+    const recommendations = await getRecommendedBooksService(bookId, limit);
+    res.status(200).json({
+      message: "Book recommendations fetched successfully",
+      isSuccess: true,
+      data: recommendations,
     });
   } catch (error) {
     next(error);

@@ -8,6 +8,7 @@ import {
   getGenresController,
   getHomepageFeedsController,
   getNewArrivalsController,
+  getRecommendationsController,
   getSearchSuggestionsController,
   updateBookController,
 } from "./controller";
@@ -22,6 +23,7 @@ function createBookRouter() {
   router.get("/featured", getFeaturedBooksController);
   router.get("/new-arrivals", getNewArrivalsController);
   router.get("/homepage-feeds", getHomepageFeedsController);
+  router.get("/:bookId/recommendations", getRecommendationsController);
   router.get("/:bookId", getBookByIdController);
 
   router.post("/", checkAuth, checkAdmin, addBookController);

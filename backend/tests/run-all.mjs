@@ -19,6 +19,7 @@ const testFiles = [
   "unit-order-calc.test.mjs",
   "security-penetration.test.mjs",
   "e2e-lifecycle.test.mjs",
+  "observability-support-seo.test.mjs",
 ];
 
 console.log("=================================================");

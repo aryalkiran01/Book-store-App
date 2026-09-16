@@ -399,3 +399,47 @@ export async function getSearchSuggestionsService(query: string) {
   return suggestions;
 }
 
+export async function getRecommendedBooksService(bookId: string, limit = 6) {
+  validateObjectId(bookId, "Book ID");
+
+  const sourceBook = await BookModel.findOne({
+    _id: bookId,
+    isDeleted: { $ne: true },
+    isActive: { $ne: false },
+  }).lean();
+
+  if (!sourceBook) {
+    throw APIError.notFound("Book not found for recommendations");
+  }
+
+  // Primary: Same genre or author excluding current book
+  const primary = await BookModel.find({
+    _id: { $ne: sourceBook._id },
+    isDeleted: { $ne: true },
+    isActive: { $ne: false },
+    $or: [
+      { genre: sourceBook.genre },
+      { author: sourceBook.author },
+    ],
+  })
+    .sort({ averageRating: -1, totalReviews: -1, createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  if (primary.length < limit) {
+    const existingIds = [sourceBook._id, ...primary.map((b) => b._id)];
+    const backfill = await BookModel.find({
+      _id: { $nin: existingIds },
+      isDeleted: { $ne: true },
+      isActive: { $ne: false },
+    })
+      .sort({ averageRating: -1, totalReviews: -1, createdAt: -1 })
+      .limit(limit - primary.length)
+      .lean();
+
+    return [...primary, ...backfill];
+  }
+
+  return primary;
+}
+

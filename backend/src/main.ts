@@ -23,7 +23,9 @@ import { cartRouter } from "./modules/cart/router";
 import { wishlistRouter } from "./modules/wishlist/router";
 import { addressRouter } from "./modules/address/router";
 import { couponRouter } from "./modules/coupon/router";
+import { supportRouter } from "./modules/support/router";
 import { multerErrorHandler } from "./modules/auth/middleware";
+import { requestIdMiddleware, requestLoggerMiddleware } from "./utils/logger";
 
 dotenv.config();
 
@@ -62,6 +64,10 @@ app.use(
     contentSecurityPolicy: false, // Allow frontend flexibility while protecting core headers
   })
 );
+
+// Request tracking & structured logging
+app.use(requestIdMiddleware);
+app.use(requestLoggerMiddleware);
 
 // Body parser with size limits
 app.use(express.json({ limit: "1mb" }));
@@ -171,6 +177,7 @@ app.use("/api/addresses", addressRouter);
 app.use("/api/address", addressRouter); // Alias for singular
 app.use("/api/coupons", couponRouter);
 app.use("/api/coupon", couponRouter); // Alias for singular
+app.use("/api/support", supportRouter);
 
 // Multer-specific error handler
 app.use(multerErrorHandler);

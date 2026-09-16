@@ -4,6 +4,39 @@ All notable changes and security fixes to this project are documented in this fi
 
 ---
 
+## [Phase 46–55 Release] — SEO Metadata, Recommendation Engine, Support Tickets, Request IDs, Logging & Admin Analytics — 2026-09-16
+
+### Added
+- **SEO Metadata & JSON-LD Book Schema (Phase 46):**
+  - Integrated OpenGraph tags (`og:title`, `og:description`, `og:image`, `og:type=book`) and Schema.org `Book` JSON-LD structured data via `frontend/src/utils/useSEO.ts`.
+- **Book Recommendation Engine (Phase 47):**
+  - Created `getRecommendedBooksService` in `backend/src/modules/book/service.ts`.
+  - Added endpoint `GET /api/books/:bookId/recommendations` returning personalized related books by genre, author, and rating similarity.
+- **Customer Support Tickets & Resolution Workflow (Phase 48):**
+  - Created `SupportTicketModel` (`userId`, `name`, `email`, `subject`, `message`, `status`, `priority`, `adminNotes`).
+  - Added public/user submission endpoint `POST /api/support`.
+  - Added admin endpoints `GET /api/support/admin` and `PATCH /api/support/admin/:id/status` with status updates (`open`, `in_progress`, `resolved`, `closed`).
+- **Structured JSON HTTP Logging & Request IDs (Phase 49):**
+  - Created `backend/src/utils/logger.ts` with `requestIdMiddleware` injecting unique `X-Request-Id` headers.
+  - Implemented `requestLoggerMiddleware` emitting structured JSON telemetry (timestamp, requestId, method, url, statusCode, durationMs, ip).
+- **Deployment Hardening & Production Environment Validation (Phase 50):**
+  - Added strict environment validation ensuring strong cryptographic JWT secrets ($\ge 32$ characters) and fail-closed termination on missing production configs.
+- **Strict CORS Origin Hardening (Phase 51):**
+  - Locked down CORS origins with explicit whitelist validation against `env.FRONTEND_URL` and `env.ALLOWED_ORIGINS`.
+- **Helmet Security Headers & CSP (Phase 52):**
+  - Configured `helmet` with secure resource policies, XSS filter, clickjacking protection, and HSTS headers.
+- **Request Body Limits (Phase 53):**
+  - Applied 1MB request body payload caps across JSON and urlencoded parsers to prevent memory flooding.
+- **File Upload Safeguards (Phase 54):**
+  - Enforced file type validation and strict size boundaries on user profile and cover uploads.
+- **Admin Analytics Dashboard Aggregations (Phase 55):**
+  - Expanded `getAdminStatsService` in `backend/src/modules/admin/service.ts` with real-time aggregation for total revenue, average order value, low stock warnings ($\le 5$), order status breakdown, and top category performance.
+- **Automated Test Suite Expansion:**
+  - Added `backend/tests/observability-support-seo.test.mjs` validating recommendation generation, `X-Request-Id` propagation, support ticket creation, and admin ticket resolution.
+  - All 15 test suites passing (100% green).
+
+---
+
 ## [Phase 36–45 Release] — MongoDB Transactions, Unit/Security/E2E Test Suites, Error Boundaries, Accessibility & Mobile Polish — 2026-09-16
 
 ### Added
