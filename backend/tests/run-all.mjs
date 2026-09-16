@@ -16,6 +16,9 @@ const testFiles = [
   "ecommerce-core.test.mjs",
   "security-profile-admin.test.mjs",
   "resilience-catalog.test.mjs",
+  "unit-order-calc.test.mjs",
+  "security-penetration.test.mjs",
+  "e2e-lifecycle.test.mjs",
 ];
 
 console.log("=================================================");

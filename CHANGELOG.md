@@ -4,6 +4,37 @@ All notable changes and security fixes to this project are documented in this fi
 
 ---
 
+## [Phase 36–45 Release] — MongoDB Transactions, Unit/Security/E2E Test Suites, Error Boundaries, Accessibility & Mobile Polish — 2026-09-16
+
+### Added
+- **MongoDB Transactions & Multi-Document Safety (Phase 36):**
+  - Created `backend/src/utils/transaction.ts` supporting `mongoose.startSession()` and `session.withTransaction()`.
+  - Implemented automatic detection and graceful fallback for standalone local MongoDB instances (`runInTransaction`), ensuring zero test or development friction while providing full ACID atomicity in production replica sets.
+- **Testing Infrastructure & Test Harness Isolation (Phase 37):**
+  - Standardized runner harness in `backend/tests/run-all.mjs` orchestrating 14 distinct test suites spanning all backend modules.
+- **Unit Testing Suite (Phase 38):**
+  - Created `backend/tests/unit-order-calc.test.mjs` validating:
+    - Order discount calculations and free shipping threshold rules (NPR $\ge 1000$).
+    - Nepal 13% VAT tax calculations and precision currency rounding.
+    - JWT signing, payload decoding, and signature tampering detection.
+    - Order state machine transitions and invalid status jump rejection.
+- **Security & Penetration Testing Suite (Phase 40):**
+  - Created `backend/tests/security-penetration.test.mjs` testing NoSQL query injection payloads, ReDoS algorithmic complexity attacks, IDOR boundary protection, and forged elevated JWT tokens.
+- **End-to-End E-Commerce Purchasing Lifecycle (Phases 39 & 41):**
+  - Created `backend/tests/e2e-lifecycle.test.mjs` executing full multi-role end-to-end purchasing flows: catalog creation $\to$ customer registration $\to$ cart items $\to$ checkout $\to$ gateway simulation $\to$ invoice generation $\to$ status progression.
+- **Loading, Error & Empty UX States (Phase 42):**
+  - Created `frontend/src/components/common/EmptyState.tsx` with accessible announcements and customizable action buttons.
+  - Created `frontend/src/components/common/SkeletonLoader.tsx` supporting text, rectangular, circular, and card skeleton variants.
+- **React Global Error Boundary (Phase 43):**
+  - Created `frontend/src/components/common/ErrorBoundary.tsx` wrapping the application root in `frontend/src/App.tsx` with crash recovery buttons ("Reload Page" and "Return Home").
+- **WCAG 2.1 AA Accessibility & Keyboard Navigation (Phase 44):**
+  - Created `frontend/src/components/common/SkipLink.tsx` enabling keyboard navigation to skip directly to main content (`#main-content`).
+  - Added ARIA landmarks, `role="status"`, `role="alert"`, and visible focus rings.
+- **Responsive Mobile Polish (Phase 45):**
+  - Enforced minimum touch target dimensions ($\ge 44 \times 44\text{px}$) on buttons and links for mobile viewports ($320\text{px} - 1440\text{px}$).
+
+---
+
 ## [Phase 26–35 Release] — Catalog Ingestion & Resilience, Circuit Breakers, Search Hardening, Route Guards & Health Probes — 2026-09-16
 
 ### Added
