@@ -379,6 +379,8 @@ export async function toggleHelpfulService(reviewId: string, userId: string) {
   };
 }
 
+import { ReviewReportModel } from "./report.model";
+
 export async function reportReviewService(
   reviewId: string,
   userId: string,
@@ -409,6 +411,18 @@ export async function reportReviewService(
   review.reportReason = cleanReason;
   review.status = "flagged";
   await review.save();
+
+  // Create or update review report model entry
+  await ReviewReportModel.findOneAndUpdate(
+    { reviewId, reportedBy: userId },
+    {
+      reviewId,
+      reportedBy: userId,
+      reason: cleanReason,
+      status: "pending",
+    },
+    { upsert: true, new: true }
+  );
 
   return {
     message: "Review reported successfully for moderation review",
@@ -471,4 +485,63 @@ export async function adminModerateReviewService(
   await updateBookRatingAggregation(review.bookId.toString());
 
   return review;
+}
+
+export async function getReviewReportsService(query?: { status?: string; page?: number; limit?: number }) {
+  const page = Math.max(1, Number(query?.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
+  const skip = (page - 1) * limit;
+
+  const filter: any = {};
+  if (query?.status) {
+    filter.status = query.status;
+  }
+
+  const [total, reports] = await Promise.all([
+    ReviewReportModel.countDocuments(filter),
+    ReviewReportModel.find(filter)
+      .populate({
+        path: "reviewId",
+        populate: [
+          { path: "bookId", select: "title author image" },
+          { path: "userId", select: "username email" },
+        ],
+      })
+      .populate("reportedBy", "username email")
+      .populate("reviewedBy", "username email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+  ]);
+
+  return {
+    reports,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    },
+  };
+}
+
+export async function resolveReviewReportService(
+  reportId: string,
+  adminUserId: string,
+  status: "reviewed" | "dismissed" | "actioned",
+  resolutionNote?: string
+) {
+  validateObjectId(reportId, "Report ID");
+  validateObjectId(adminUserId, "Admin User ID");
+
+  const report = await ReviewReportModel.findById(reportId);
+  if (!report) throw APIError.notFound("Review report not found");
+
+  report.status = status;
+  report.reviewedBy = adminUserId as any;
+  if (resolutionNote) report.resolutionNote = resolutionNote;
+  await report.save();
+
+  return report;
 }

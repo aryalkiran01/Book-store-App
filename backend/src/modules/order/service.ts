@@ -12,6 +12,7 @@ import {
 } from "../inventory/service";
 import { RefundModel } from "../payment/refund.model";
 import { generateCryptoToken } from "../../utils/auth";
+import { recordCouponUsageService, validateCouponService } from "../coupon/service";
 
 export interface PaginationParams {
   page?: number;
@@ -229,7 +230,24 @@ export async function createOrderService(input: TCreateOrderInput) {
   const subtotal = Number(authoritativeSubtotal.toFixed(2));
   const discount = Number((rawSubtotal - subtotal).toFixed(2));
   const shippingCost = subtotal >= 1000 ? 0 : 100;
-  const finalTotalAmount = Number((subtotal + shippingCost).toFixed(2));
+
+  // Coupon evaluation
+  let couponCode = "";
+  let couponDiscount = 0;
+  if (input.couponCode && input.couponCode.trim()) {
+    try {
+      const couponRes = await validateCouponService(input.couponCode.trim(), subtotal);
+      couponCode = couponRes.code;
+      couponDiscount = couponRes.discountAmount;
+    } catch (couponErr: any) {
+      throw APIError.badRequest(`Invalid coupon: ${couponErr.message}`);
+    }
+  }
+
+  const finalTotalAmount = Math.max(
+    0,
+    Number((subtotal - couponDiscount + shippingCost).toFixed(2))
+  );
 
   // 2. Resolve contact information from request or user account fallback
   let inputFullName =
@@ -305,6 +323,8 @@ export async function createOrderService(input: TCreateOrderInput) {
     subtotal,
     shippingCost,
     discount,
+    couponCode,
+    couponDiscount,
     totalAmount: finalTotalAmount,
     shippingAddress: normalizedAddress,
     orderNote: input.orderNote || "",
@@ -328,21 +348,43 @@ export async function createOrderService(input: TCreateOrderInput) {
 
   await newOrder.save();
 
+  if (couponCode) {
+    try {
+      await recordCouponUsageService(couponCode);
+    } catch (err: any) {
+      console.warn("Coupon usage record note:", err.message);
+    }
+  }
+
   // 3. Perform atomic stock reservation in inventory
   try {
     if (isCOD) {
       // For COD, commit deduction immediately
       for (const item of sanitizedItems) {
-        await BookModel.findOneAndUpdate(
-          { _id: item.bookId, stock: { $gte: item.quantity } },
-          { $inc: { stock: -item.quantity } }
+        const updated = await BookModel.findOneAndUpdate(
+          {
+            _id: item.bookId,
+            $expr: {
+              $gte: [
+                { $subtract: [{ $ifNull: ["$stock", 0] }, { $ifNull: ["$reservedStock", 0] }] },
+                item.quantity,
+              ],
+            },
+          },
+          { $inc: { stock: -item.quantity } },
+          { new: true }
         );
+
+        if (!updated) {
+          throw APIError.badRequest("Insufficient stock available for this order.");
+        }
+
         await recordInventoryTransaction({
           bookId: item.bookId,
           quantity: -item.quantity,
           type: "SALE",
-          previousStock: 0,
-          newStock: 0,
+          previousStock: updated.stock + item.quantity,
+          newStock: updated.stock,
           referenceId: newOrder._id.toString(),
           reason: `Cash On Delivery Order #${newOrder._id}`,
           performedBy: input.userId,

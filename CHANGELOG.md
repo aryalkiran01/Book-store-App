@@ -4,6 +4,35 @@ All notable changes and security fixes to this project are documented in this fi
 
 ---
 
+## [Phase 14–20 Release] — Server Cart Sync, Wishlist, Addresses, Coupons, Hardened Checkout & Review Moderation — 2026-09-16
+
+### Added
+- **Server-Side Cart Synchronization (Phase 14):**
+  - Created `CartModel` supporting multi-device cart persistence.
+  - Endpoints `GET /api/cart`, `POST /api/cart/items`, `PUT /api/cart/items/:bookId`, `DELETE /api/cart/items/:bookId`, `POST /api/cart/sync`, and `DELETE /api/cart`.
+  - Automatic live stock recalculation and guest cart merge upon login.
+- **Persistent Wishlist (Phase 15):**
+  - Created `WishlistModel` with populated book details and active catalog filtering.
+  - Endpoints `GET /api/wishlist`, `POST /api/wishlist/toggle/:bookId`, `DELETE /api/wishlist/:bookId`, and `POST /api/wishlist/sync`.
+- **Checkout Hardening (Phase 16):**
+  - Enforced strict authoritative server calculations for book prices, discount percentage savings, coupon discounts, and free shipping thresholds (>= NPR 1000).
+- **Saved Shipping Address Management (Phase 17):**
+  - Created `AddressModel` with default address handling.
+  - Endpoints `GET /api/addresses`, `POST /api/addresses`, `PUT /api/addresses/:addressId`, `PATCH /api/addresses/:addressId/default`, and `DELETE /api/addresses/:addressId`.
+- **Coupon & Promotion Engine (Phase 18):**
+  - Created `CouponModel` supporting percentage/fixed discounts, minimum order requirements, maximum discount caps, usage limits, and expiration dates.
+  - Endpoints `POST /api/coupons/validate` and admin CRUD `/api/coupons`.
+  - Integrated automatic coupon validation and usage tracking into `createOrderService`.
+- **Review System Hardening & Verified Purchase (Phase 19):**
+  - Added `ReviewReportModel` to log community spam/abuse reports with resolution notes.
+  - Added `POST /api/reviews/:reviewId/report`.
+- **Review Moderation Dashboard (Phase 20):**
+  - Admin review moderation endpoints: `GET /api/reviews/admin/reports` and `PATCH /api/reviews/admin/reports/:reportId`.
+- **Test Suite Expansion:**
+  - Added `backend/tests/ecommerce-core.test.mjs` verifying all 7 e-commerce core flows (100% green).
+
+---
+
 ## [Phase 5–13 Release] — Order State Machine, Inventory Ledger, Payment Security, Refunds & Shipping — 2026-09-16
 
 ### Added

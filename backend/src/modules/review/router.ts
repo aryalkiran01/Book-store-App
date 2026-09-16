@@ -9,6 +9,8 @@ import {
   toggleHelpfulReviewController,
   reportReviewController,
   moderateReviewController,
+  getReviewReportsController,
+  resolveReviewReportController,
 } from "./controller";
 
 function createReviewRouter() {
@@ -16,6 +18,10 @@ function createReviewRouter() {
 
   // 1. Get all reviews (supports ?page=&limit=&status=)
   router.get("/", getAllReviewsController);
+
+  // Admin reports moderation dashboard
+  router.get("/admin/reports", checkAuth, checkAdmin, getReviewReportsController);
+  router.patch("/admin/reports/:reportId", checkAuth, checkAdmin, resolveReviewReportController);
 
   // 2. Add review for a book
   router.post("/addReview/:bookId", checkAuth, addReviewController);

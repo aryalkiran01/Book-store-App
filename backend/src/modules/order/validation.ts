@@ -81,6 +81,7 @@ export const CreateOrderSchema = z
       ])
       .optional(),
     orderNote: z.string().max(500).optional(),
+    couponCode: z.string().optional(),
     paymentMethod: z
       .enum(["khalti", "esewa", "cod", "card", "demo", "cash_on_delivery"])
       .default("cod"),

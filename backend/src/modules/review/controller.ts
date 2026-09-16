@@ -14,6 +14,8 @@ import {
   toggleHelpfulService,
   reportReviewService,
   adminModerateReviewService,
+  getReviewReportsService,
+  resolveReviewReportService,
 } from "./service";
 
 interface ReviewParams {
@@ -316,3 +318,61 @@ export const moderateReviewController = async (
     next(error);
   }
 };
+
+export const getReviewReportsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const status = req.query.status ? String(req.query.status) : undefined;
+
+    const result = await getReviewReportsService({ page, limit, status });
+    res.status(200).json({
+      message: "Review reports retrieved successfully",
+      isSuccess: true,
+      data: result.reports,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resolveReviewReportController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const reportId = req.params.reportId;
+    const { status, resolutionNote } = req.body;
+
+    if (!["reviewed", "dismissed", "actioned"].includes(status)) {
+      res.status(400).json({
+        message: "status must be reviewed, dismissed, or actioned",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const report = await resolveReviewReportService(
+      reportId,
+      req.user.id,
+      status,
+      resolutionNote
+    );
+
+    res.status(200).json({
+      message: `Report marked as ${status}`,
+      isSuccess: true,
+      data: report,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -19,6 +19,10 @@ import { reviewRouter } from "./modules/review/router";
 import { orderRouter } from "./modules/order/router";
 import paymentRoutes from "./modules/payment/router";
 import { adminRouter } from "./modules/admin/router";
+import { cartRouter } from "./modules/cart/router";
+import { wishlistRouter } from "./modules/wishlist/router";
+import { addressRouter } from "./modules/address/router";
+import { couponRouter } from "./modules/coupon/router";
 import { multerErrorHandler } from "./modules/auth/middleware";
 
 dotenv.config();
@@ -161,6 +165,12 @@ app.use("/api/orders", orderRouter); // Alias for plural
 app.use("/api/reviews", reviewRouter);
 app.use("/api/review", reviewRouter); // Alias for singular
 app.use("/api/payments", paymentRoutes);
+app.use("/api/cart", cartRouter);
+app.use("/api/wishlist", wishlistRouter);
+app.use("/api/addresses", addressRouter);
+app.use("/api/address", addressRouter); // Alias for singular
+app.use("/api/coupons", couponRouter);
+app.use("/api/coupon", couponRouter); // Alias for singular
 
 // Multer-specific error handler
 app.use(multerErrorHandler);

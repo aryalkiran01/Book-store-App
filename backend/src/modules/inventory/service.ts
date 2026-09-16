@@ -74,7 +74,17 @@ export async function reserveStockForOrder(
       const updated = await BookModel.findOneAndUpdate(
         {
           _id: item.bookId,
-          $expr: { $gte: [{ $subtract: ["$stock", "$reservedStock"] }, qty] },
+          $expr: {
+            $gte: [
+              {
+                $subtract: [
+                  { $ifNull: ["$stock", 0] },
+                  { $ifNull: ["$reservedStock", 0] },
+                ],
+              },
+              qty,
+            ],
+          },
         },
         {
           $inc: { reservedStock: qty },
