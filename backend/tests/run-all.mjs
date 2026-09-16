@@ -74,7 +74,7 @@ try {
     console.log(`\n▶ Running Suite: ${file}...`);
 
     await new Promise((resolve) => {
-      const proc = spawn(process.execPath, ["--test", filePath], {
+      const proc = spawn(process.execPath, ["--test", "--test-force-exit", filePath], {
         stdio: "inherit",
         env: process.env,
       });
