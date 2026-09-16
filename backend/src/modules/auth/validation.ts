@@ -40,3 +40,19 @@ export const ChangePasswordSchema = z.object({
 });
 export type TChangePasswordInput = z.TypeOf<typeof ChangePasswordSchema>;
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format").trim().toLowerCase(),
+});
+export type TForgotPasswordInput = z.TypeOf<typeof ForgotPasswordSchema>;
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(10, "Valid reset token is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+});
+export type TResetPasswordInput = z.TypeOf<typeof ResetPasswordSchema>;
+
+export const VerifyEmailSchema = z.object({
+  token: z.string().min(10, "Valid verification token is required"),
+});
+export type TVerifyEmailInput = z.TypeOf<typeof VerifyEmailSchema>;
+

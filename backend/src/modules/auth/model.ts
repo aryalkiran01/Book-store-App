@@ -22,6 +22,15 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, default: "" },
     phone: { type: String, default: "" },
     address: { type: String, default: "" },
+    sessionVersion: { type: Number, default: 1, required: true },
+    isActive: { type: Boolean, default: true, index: true },
+    isEmailVerified: { type: Boolean, default: false, index: true },
+    emailVerificationTokenHash: { type: String, default: "" },
+    emailVerificationExpiresAt: { type: Date },
+    passwordResetTokenHash: { type: String, default: "" },
+    passwordResetExpiresAt: { type: Date },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
   },
   {
     timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
@@ -29,6 +38,8 @@ const userSchema = new mongoose.Schema(
       virtuals: true,
       transform: (doc, ret) => {
         delete ret.password;
+        delete ret.passwordResetTokenHash;
+        delete ret.emailVerificationTokenHash;
         return ret;
       },
     },

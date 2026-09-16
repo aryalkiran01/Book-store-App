@@ -6,6 +6,9 @@ declare namespace Express {
       email: string;
       role: "admin" | "user";
       avatar?: string;
+      isActive?: boolean;
+      isEmailVerified?: boolean;
+      sessionVersion?: number;
     };
   }
 }

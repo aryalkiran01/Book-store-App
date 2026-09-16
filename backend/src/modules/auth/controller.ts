@@ -1,16 +1,23 @@
 import { Request, Response, NextFunction } from "express";
 import {
   ChangePasswordSchema,
+  ForgotPasswordSchema,
   LoginControllerSchema,
   RegisterControllerSchema,
+  ResetPasswordSchema,
   updateRoleControllerSchema,
+  VerifyEmailSchema,
 } from "./validation";
 import {
   changePasswordService,
   createUserService,
+  forgotPasswordService,
   getUserById,
   loginService,
+  resetPasswordService,
+  sendEmailVerificationService,
   updateroleservice,
+  verifyEmailService,
 } from "./service";
 import { APIError } from "../../utils/error";
 import { env } from "../../utils/config";
@@ -173,12 +180,139 @@ export async function changePasswordController(
       return;
     }
 
-    await changePasswordService(req.user.id, data);
+    const result = await changePasswordService(req.user.id, data);
+
+    if (result?.token) {
+      res.cookie("token", result.token, {
+        httpOnly: true,
+        secure: env.NODE_ENV === "production",
+        sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
+    }
 
     res.status(200).json({
-      message: "Password changed successfully",
+      message: "Password changed successfully. All other active sessions have been signed out.",
       isSuccess: true,
       data: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function forgotPasswordController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = ForgotPasswordSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Please provide a valid email address.",
+        isSuccess: false,
+        data: null,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const output = await forgotPasswordService(data.email);
+
+    res.status(200).json({
+      message: output.message,
+      isSuccess: true,
+      data: output.resetToken ? { resetToken: output.resetToken } : null,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resetPasswordController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = ResetPasswordSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid reset token or password.",
+        isSuccess: false,
+        data: null,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const output = await resetPasswordService(data.token, data.newPassword);
+
+    res.status(200).json({
+      message: output.message,
+      isSuccess: true,
+      data: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function sendEmailVerificationController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Authentication required",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const output = await sendEmailVerificationService(req.user.id);
+
+    res.status(200).json({
+      message: output.message,
+      isSuccess: true,
+      data:
+        "verificationToken" in output && output.verificationToken
+          ? { verificationToken: output.verificationToken }
+          : null,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function verifyEmailController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = VerifyEmailSchema.safeParse(req.body);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid verification token.",
+        isSuccess: false,
+        data: null,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const output = await verifyEmailService(data.token);
+
+    res.status(200).json({
+      message: output.message,
+      isSuccess: true,
+      data: output.user,
     });
   } catch (error) {
     next(error);

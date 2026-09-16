@@ -96,3 +96,53 @@ export const apiRateLimiter = rateLimit({
     data: null,
   },
 });
+
+/**
+ * CSRF and Origin validation middleware for state-modifying requests
+ */
+export function createCsrfProtectionMiddleware(allowedOriginsList: string[]) {
+  const allowedSet = new Set(allowedOriginsList.filter(Boolean));
+
+  return (req: any, res: any, next: any) => {
+    // Safe HTTP methods do not modify server state
+    const safeMethods = ["GET", "HEAD", "OPTIONS"];
+    if (safeMethods.includes(req.method)) {
+      return next();
+    }
+
+    const origin = req.headers["origin"] || "";
+    const referer = req.headers["referer"] || "";
+
+    // In production, validate Origin or Referer against allowed whitelist
+    if (process.env.NODE_ENV === "production") {
+      if (origin) {
+        if (!allowedSet.has(origin)) {
+          return res.status(403).json({
+            message: "CSRF Guard: Cross-Origin state modification prohibited.",
+            isSuccess: false,
+            data: null,
+          });
+        }
+      } else if (referer) {
+        try {
+          const refererOrigin = new URL(referer).origin;
+          if (!allowedSet.has(refererOrigin)) {
+            return res.status(403).json({
+              message: "CSRF Guard: Cross-Origin state modification prohibited.",
+              isSuccess: false,
+              data: null,
+            });
+          }
+        } catch {
+          return res.status(403).json({
+            message: "CSRF Guard: Malformed Referer header.",
+            isSuccess: false,
+            data: null,
+          });
+        }
+      }
+    }
+
+    next();
+  };
+}

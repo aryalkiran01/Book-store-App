@@ -7,8 +7,38 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 const PORT = Number(process.env.PORT) || 4000;
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/book_review_app_db";
+const rawJwtSecret = process.env.JWT_SECRET?.trim();
+const MIN_JWT_SECRET_LENGTH = 32;
+
+if (NODE_ENV === "production") {
+  if (!rawJwtSecret) {
+    throw new Error(
+      "CRITICAL: JWT_SECRET environment variable is missing in production! Please set a strong random secret with at least 32 characters in your environment."
+    );
+  }
+  if (rawJwtSecret.length < MIN_JWT_SECRET_LENGTH) {
+    throw new Error(
+      `CRITICAL: JWT_SECRET is too short (${rawJwtSecret.length} chars). Production requires a minimum length of ${MIN_JWT_SECRET_LENGTH} characters.`
+    );
+  }
+  if (
+    rawJwtSecret === "supersecretjwtkey_bookreviewapp_2025_secure" ||
+    rawJwtSecret.includes("replace_with") ||
+    rawJwtSecret.includes("placeholder")
+  ) {
+    throw new Error(
+      "CRITICAL: Insecure default or placeholder JWT_SECRET detected in production! You must generate a cryptographically random secret."
+    );
+  }
+}
+
+// In development or test, if JWT_SECRET is missing, provide a clear dev-only key with security notice
 const JWT_SECRET =
-  process.env.JWT_SECRET || "supersecretjwtkey_bookreviewapp_2025_secure";
+  rawJwtSecret ||
+  (NODE_ENV !== "production"
+    ? "dev_jwt_secret_key_minimum_32_characters_strictly_for_local_testing_only"
+    : "");
+
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || "";
 const KHALTI_SECRET_KEY =
@@ -22,8 +52,8 @@ const KHALTI_LOOKUP_URL =
   "https://dev.khalti.com/api/v2/epayment/lookup/";
 
 const ESEWA_TEST_MODE = process.env.ESEWA_TEST_MODE !== "false";
-const ESEWA_PRODUCT_CODE = process.env.ESEWA_PRODUCT_CODE || "EPAYTEST";
-const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY || "8gBm/:&EnhH.1/q";
+const ESEWA_PRODUCT_CODE = process.env.ESEWA_PRODUCT_CODE?.trim() || (ESEWA_TEST_MODE ? "EPAYTEST" : "");
+const ESEWA_SECRET_KEY = (process.env.ESEWA_SECRET_KEY || "").trim();
 const ESEWA_INITIATE_URL =
   process.env.ESEWA_INITIATE_URL ||
   "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
@@ -39,12 +69,6 @@ const SEED_DB =
 const INITIAL_ADMIN_EMAIL = process.env.INITIAL_ADMIN_EMAIL || "";
 const INITIAL_ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || "";
 const INITIAL_ADMIN_USERNAME = process.env.INITIAL_ADMIN_USERNAME || "Admin";
-
-if (NODE_ENV === "production" && JWT_SECRET === "supersecretjwtkey_bookreviewapp_2025_secure") {
-  console.warn(
-    "⚠️ [SECURITY WARNING] Default JWT_SECRET is being used in production. Please set a strong random JWT_SECRET in your production .env file."
-  );
-}
 
 const GOOGLE_BOOKS_API_KEY = (process.env.GOOGLE_BOOKS_API_KEY || "").trim();
 const GOOGLE_BOOKS_TIMEOUT_MS = Math.max(
@@ -71,6 +95,21 @@ export function isKhaltiConfigured(secret: string = KHALTI_SECRET_KEY): boolean 
     return false;
   }
   return s.length >= 10;
+}
+
+export function isEsewaConfigured(secret: string = ESEWA_SECRET_KEY): boolean {
+  if (!secret) return false;
+  const s = secret.trim().toLowerCase();
+  if (
+    !s ||
+    s.startsWith("your_") ||
+    s.startsWith("replace_") ||
+    s.startsWith("placeholder") ||
+    s.includes("example")
+  ) {
+    return false;
+  }
+  return s.length >= 8;
 }
 
 export const env = {

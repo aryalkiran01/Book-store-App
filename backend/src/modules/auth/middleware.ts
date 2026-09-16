@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import path from "path";
 import { TTokenPayload, verifyToken } from "../../utils/auth";
+import { UserModel } from "./model";
+import { APIError } from "../../utils/error";
+import { env } from "../../utils/config";
 
 // ------------------------- TYPE DECLARATIONS -------------------------
 declare global {
@@ -13,6 +16,9 @@ declare global {
         email: string;
         role: "admin" | "user";
         avatar?: string;
+        isActive?: boolean;
+        isEmailVerified?: boolean;
+        sessionVersion?: number;
       };
     }
   }
@@ -45,18 +51,9 @@ export async function checkAuth(
 
     const verifyTokenOutput = verifyToken(token);
 
-    if (!verifyTokenOutput.isValid) {
+    if (!verifyTokenOutput.isValid || !verifyTokenOutput.payload) {
       res.status(401).json({
-        message: verifyTokenOutput.message || "Invalid or expired token",
-        isSuccess: false,
-        data: null,
-      });
-      return;
-    }
-
-    if (!verifyTokenOutput.payload) {
-      res.status(401).json({
-        message: "Invalid token payload",
+        message: verifyTokenOutput.message || "Invalid or expired session token. Please log in again.",
         isSuccess: false,
         data: null,
       });
@@ -64,14 +61,60 @@ export async function checkAuth(
     }
 
     const payload = verifyTokenOutput.payload as TTokenPayload;
-    const userRole = payload.role || "user";
+    const userId = payload.sub || payload.id;
 
-    // Attach user information to request
+    if (!userId) {
+      res.status(401).json({
+        message: "Invalid token payload.",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    // Live Database Verification: Confirm user exists, is active, and sessionVersion is current
+    const user = await UserModel.findById(userId).lean();
+
+    if (!user || user.isDeleted) {
+      res.status(401).json({
+        message: "Your account could not be found. Please log in again.",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    if (user.isActive === false) {
+      res.status(403).json({
+        message: "Your account has been deactivated or suspended. Please contact support.",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const expectedSessionVersion = user.sessionVersion ?? 1;
+    const tokenSessionVersion = payload.sessionVersion ?? 1;
+
+    if (tokenSessionVersion !== expectedSessionVersion) {
+      res.status(401).json({
+        message: "Session has been invalidated due to a security update or password change. Please log in again.",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    // Attach verified user information directly from the fresh DB record
     req.user = {
-      id: payload.id,
-      username: payload.username,
-      email: payload.email,
-      role: userRole,
+      id: user._id.toString(),
+      username: user.username,
+      email: user.email,
+      role: user.role as "admin" | "user",
+      avatar: user.avatar || "",
+      isActive: user.isActive,
+      isEmailVerified: user.isEmailVerified,
+      sessionVersion: user.sessionVersion,
     };
 
     next();
@@ -84,6 +127,8 @@ export async function checkAuth(
     });
   }
 }
+
+export const requireAuth = checkAuth;
 
 // ------------------------- AUTHORIZATION MIDDLEWARE -------------------------
 export async function checkAdmin(
@@ -119,6 +164,41 @@ export async function checkAdmin(
       data: null,
     });
   }
+}
+
+export const requireAdmin = checkAdmin;
+
+export function requireRole(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          message: "Authentication required",
+          isSuccess: false,
+          data: null,
+        });
+        return;
+      }
+
+      if (!roles.includes(req.user.role)) {
+        res.status(403).json({
+          message: "Unauthorized: Required role not granted",
+          isSuccess: false,
+          data: null,
+        });
+        return;
+      }
+
+      next();
+    } catch (error) {
+      console.error("Role check error:", error);
+      res.status(500).json({
+        message: "Internal server error during role check",
+        isSuccess: false,
+        data: null,
+      });
+    }
+  };
 }
 
 

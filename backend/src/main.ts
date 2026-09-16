@@ -39,7 +39,11 @@ createDBConnection()
 
 
 import helmet from "helmet";
-import { apiRateLimiter, sanitizeInputMiddleware } from "./utils/security";
+import {
+  apiRateLimiter,
+  createCsrfProtectionMiddleware,
+  sanitizeInputMiddleware,
+} from "./utils/security";
 
 const app = express();
 
@@ -102,10 +106,26 @@ app.use(
   })
 );
 
+// CSRF Origin validation for state-modifying requests
+app.use(createCsrfProtectionMiddleware(allowedOrigins));
+
 // Apply rate limiting on all API routes
 app.use("/api", apiRateLimiter);
 
-// Health check & welcome
+// Health checks
+app.get("/health/live", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "live", isSuccess: true });
+});
+
+app.get("/health/ready", (_req: Request, res: Response) => {
+  const isDbReady = mongoose.connection.readyState === 1;
+  res.status(isDbReady ? 200 : 503).json({
+    status: isDbReady ? "ready" : "degraded",
+    isSuccess: isDbReady,
+  });
+});
+
+// Welcome endpoint
 app.get("/", (req: Request, res: Response) => {
   res.json({
     message: "Welcome to Book Review App API",
@@ -118,23 +138,13 @@ import mongoose from "mongoose";
 
 app.get("/api/health", (req: Request, res: Response) => {
   const dbState = mongoose.connection.readyState;
-  const dbStatusMap: Record<number, string> = {
-    0: "disconnected",
-    1: "connected",
-    2: "connecting",
-    3: "disconnecting",
-  };
-
   const isHealthy = dbState === 1;
 
   res.status(isHealthy ? 200 : 503).json({
     status: isHealthy ? "healthy" : "degraded",
-    database: dbStatusMap[dbState] || "unknown",
-    uptimeSeconds: Math.floor(process.uptime()),
-    memoryUsageMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-    environment: env.NODE_ENV,
-    timestamp: new Date().toISOString(),
     isSuccess: isHealthy,
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
   });
 });
 

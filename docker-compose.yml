@@ -26,10 +26,11 @@ services:
       PORT: 4000
       NODE_ENV: production
       MONGO_URI: mongodb://mongodb:27017/book_review_app_db
-      JWT_SECRET: ${JWT_SECRET:-production_secure_random_jwt_secret_key_2026}
+      JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
-      KHALTI_API_KEY: ${KHALTI_API_KEY:-test_secret_key_684f8841a134440092305a2e6462700a}
+      KHALTI_API_KEY: ${KHALTI_API_KEY}
+      ESEWA_SECRET_KEY: ${ESEWA_SECRET_KEY}
     depends_on:
       - mongodb
     volumes:
