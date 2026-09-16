@@ -2,6 +2,14 @@ import axios from "axios";
 import { env } from "../../../utils/config";
 import { IBookProvider, NormalizedBookData, ProviderSearchResult } from "./types";
 import { calculateStorePriceNPR } from "./googleBooksProvider";
+import { CircuitBreaker } from "../../../utils/circuitBreaker";
+
+const openLibraryBreaker = new CircuitBreaker({
+  name: "OpenLibraryAPI",
+  failureThreshold: 3,
+  recoveryTimeMs: 30000,
+  timeoutMs: env.OPEN_LIBRARY_TIMEOUT_MS,
+});
 
 /**
  * Normalizes raw Open Library document into standardized bookstore Book format.
@@ -129,35 +137,35 @@ export class OpenLibraryProvider implements IBookProvider {
     const targetPage = Math.max(1, page);
     const targetLimit = Math.min(50, Math.max(1, limit));
 
-    try {
-      const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(
-        cleanQuery
-      )}&page=${targetPage}&limit=${targetLimit}&fields=key,title,author_name,first_publish_year,isbn,cover_i,subject,number_of_pages_median,publisher,language`;
+    return openLibraryBreaker.execute(
+      async () => {
+        const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(
+          cleanQuery
+        )}&page=${targetPage}&limit=${targetLimit}&fields=key,title,author_name,first_publish_year,isbn,cover_i,subject,number_of_pages_median,publisher,language`;
 
-      const response = await axios.get(searchUrl, {
-        timeout: env.OPEN_LIBRARY_TIMEOUT_MS,
-        headers: {
-          "User-Agent": "KitabGhar-Bookstore-App/1.0 (catalog-discovery)",
-        },
-      });
+        const response = await axios.get(searchUrl, {
+          timeout: env.OPEN_LIBRARY_TIMEOUT_MS,
+          headers: {
+            "User-Agent": "KitabGhar-Bookstore-App/1.0 (catalog-discovery)",
+          },
+        });
 
-      const resData = response.data as { docs?: any[]; numFound?: number } | undefined;
-      const docs = Array.isArray(resData?.docs) ? resData.docs : [];
-      const total = resData?.numFound || docs.length;
+        const resData = response.data as { docs?: any[]; numFound?: number } | undefined;
+        const docs = Array.isArray(resData?.docs) ? resData.docs : [];
+        const total = resData?.numFound || docs.length;
 
-      const books = docs
-        .map(normalizeOpenLibraryBook)
-        .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
+        const books = docs
+          .map(normalizeOpenLibraryBook)
+          .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
 
-      return {
-        books,
-        total,
-        provider: "openlibrary",
-      };
-    } catch (error: any) {
-      console.warn("Open Library search warning:", error.message || error);
-      return { books: [], total: 0, provider: "openlibrary" };
-    }
+        return {
+          books,
+          total,
+          provider: "openlibrary",
+        };
+      },
+      () => ({ books: [], total: 0, provider: "openlibrary" })
+    );
   }
 
   async discoverBySubject(
@@ -169,45 +177,44 @@ export class OpenLibraryProvider implements IBookProvider {
     const cleanSubject = subject.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
     const targetLimit = Math.min(40, Math.max(1, limit));
 
-    try {
-      const subjectUrl = `https://openlibrary.org/subjects/${encodeURIComponent(
-        cleanSubject
-      )}.json?limit=${targetLimit}`;
+    return openLibraryBreaker.execute(
+      async () => {
+        const subjectUrl = `https://openlibrary.org/subjects/${encodeURIComponent(
+          cleanSubject
+        )}.json?limit=${targetLimit}`;
 
-      const response = await axios.get(subjectUrl, {
-        timeout: env.OPEN_LIBRARY_TIMEOUT_MS,
-        headers: {
-          "User-Agent": "KitabGhar-Bookstore-App/1.0 (subject-discovery)",
-        },
-      });
+        const response = await axios.get(subjectUrl, {
+          timeout: env.OPEN_LIBRARY_TIMEOUT_MS,
+          headers: {
+            "User-Agent": "KitabGhar-Bookstore-App/1.0 (subject-discovery)",
+          },
+        });
 
-      const resData = response.data as { works?: any[] } | undefined;
-      const works = Array.isArray(resData?.works) ? resData.works : [];
-      const books = works
-        .map(normalizeOpenLibraryBook)
-        .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
+        const resData = response.data as { works?: any[] } | undefined;
+        const works = Array.isArray(resData?.works) ? resData.works : [];
+        const books = works
+          .map(normalizeOpenLibraryBook)
+          .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
 
-      return books;
-    } catch (error: any) {
-      console.warn(`Open Library subject discovery warning for '${subject}':`, error.message || error);
-      return [];
-    }
+        return books;
+      },
+      () => []
+    );
   }
-
 
   async getByIdOrIsbn(identifier: string): Promise<NormalizedBookData | null> {
     if (!identifier || !identifier.trim()) return null;
     const cleanId = identifier.trim();
 
-    try {
-      const searchRes = await this.search(cleanId, 1, 1);
-      if (searchRes.books.length > 0) {
-        return searchRes.books[0];
-      }
-    } catch (error: any) {
-      console.warn(`Open Library getByIdOrIsbn warning for '${identifier}':`, error.message || error);
-    }
-
-    return null;
+    return openLibraryBreaker.execute(
+      async () => {
+        const searchRes = await this.search(cleanId, 1, 1);
+        if (searchRes.books.length > 0) {
+          return searchRes.books[0];
+        }
+        return null;
+      },
+      () => null
+    );
   }
 }

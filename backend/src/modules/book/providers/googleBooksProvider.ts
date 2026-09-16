@@ -1,6 +1,14 @@
 import axios from "axios";
 import { env } from "../../../utils/config";
 import { IBookProvider, NormalizedBookData, ProviderSearchResult } from "./types";
+import { CircuitBreaker } from "../../../utils/circuitBreaker";
+
+const googleBooksBreaker = new CircuitBreaker({
+  name: "GoogleBooksAPI",
+  failureThreshold: 3,
+  recoveryTimeMs: 30000,
+  timeoutMs: env.GOOGLE_BOOKS_TIMEOUT_MS,
+});
 
 /**
  * Calculates a realistic, deterministic store selling price in NPR.
@@ -204,35 +212,35 @@ export class GoogleBooksProvider implements IBookProvider {
     const targetLimit = Math.min(40, Math.max(1, limit)); // Google Books API max is 40
     const startIndex = (targetPage - 1) * targetLimit;
 
-    try {
-      const response = await axios.get(
-        this.getBaseUrl(),
-        this.buildRequestConfig({
-          q: cleanQuery,
-          startIndex,
-          maxResults: targetLimit,
-          printType: "books",
-          orderBy: "relevance",
-        })
-      );
+    return googleBooksBreaker.execute(
+      async () => {
+        const response = await axios.get(
+          this.getBaseUrl(),
+          this.buildRequestConfig({
+            q: cleanQuery,
+            startIndex,
+            maxResults: targetLimit,
+            printType: "books",
+            orderBy: "relevance",
+          })
+        );
 
-      const resData = response.data as { items?: any[]; totalItems?: number } | undefined;
-      const items = Array.isArray(resData?.items) ? resData.items : [];
-      const total = typeof resData?.totalItems === "number" ? resData.totalItems : items.length;
+        const resData = response.data as { items?: any[]; totalItems?: number } | undefined;
+        const items = Array.isArray(resData?.items) ? resData.items : [];
+        const total = typeof resData?.totalItems === "number" ? resData.totalItems : items.length;
 
-      const books = items
-        .map(normalizeGoogleBook)
-        .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
+        const books = items
+          .map(normalizeGoogleBook)
+          .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
 
-      return {
-        books,
-        total,
-        provider: "google_books",
-      };
-    } catch (error: any) {
-      console.warn("Google Books API query warning:", error.message || error);
-      return { books: [], total: 0, provider: "google_books" };
-    }
+        return {
+          books,
+          total,
+          provider: "google_books",
+        };
+      },
+      () => ({ books: [], total: 0, provider: "google_books" })
+    );
   }
 
   async discoverBySubject(
@@ -244,73 +252,73 @@ export class GoogleBooksProvider implements IBookProvider {
     const cleanSubject = subject.trim();
     const targetLimit = Math.min(40, Math.max(1, limit));
 
-    try {
-      const response = await axios.get(
-        this.getBaseUrl(),
-        this.buildRequestConfig({
-          q: `subject:"${cleanSubject}"`,
-          startIndex: 0,
-          maxResults: targetLimit,
-          printType: "books",
-          orderBy: "relevance",
-        })
-      );
+    return googleBooksBreaker.execute(
+      async () => {
+        const response = await axios.get(
+          this.getBaseUrl(),
+          this.buildRequestConfig({
+            q: `subject:"${cleanSubject}"`,
+            startIndex: 0,
+            maxResults: targetLimit,
+            printType: "books",
+            orderBy: "relevance",
+          })
+        );
 
-      const resData = response.data as { items?: any[] } | undefined;
-      const items = Array.isArray(resData?.items) ? resData.items : [];
-      const books = items
-        .map(normalizeGoogleBook)
-        .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
+        const resData = response.data as { items?: any[] } | undefined;
+        const items = Array.isArray(resData?.items) ? resData.items : [];
+        const books = items
+          .map(normalizeGoogleBook)
+          .filter((b: NormalizedBookData | null): b is NormalizedBookData => b !== null && Boolean(b.title));
 
-      return books;
-    } catch (error: any) {
-      console.warn(`Google Books subject discovery warning for '${subject}':`, error.message || error);
-      return [];
-    }
+        return books;
+      },
+      () => []
+    );
   }
 
   async getByIdOrIsbn(identifier: string): Promise<NormalizedBookData | null> {
     if (!identifier || !identifier.trim()) return null;
     const cleanId = identifier.trim();
 
-    try {
-      // 1. Try direct volume ID lookup
-      if (!cleanId.startsWith("978") && !cleanId.startsWith("979") && cleanId.length < 20) {
-        try {
-          const directUrl = `${this.getBaseUrl()}/${encodeURIComponent(cleanId)}`;
-          const response = await axios.get(directUrl, this.buildRequestConfig({}));
-          if (response.data) {
-            const normalized = normalizeGoogleBook(response.data);
-            if (normalized) return normalized;
+    return googleBooksBreaker.execute(
+      async () => {
+        // 1. Try direct volume ID lookup
+        if (!cleanId.startsWith("978") && !cleanId.startsWith("979") && cleanId.length < 20) {
+          try {
+            const directUrl = `${this.getBaseUrl()}/${encodeURIComponent(cleanId)}`;
+            const response = await axios.get(directUrl, this.buildRequestConfig({}));
+            if (response.data) {
+              const normalized = normalizeGoogleBook(response.data);
+              if (normalized) return normalized;
+            }
+          } catch {
+            // Continue to ISBN query
           }
-        } catch {
-          // Continue to ISBN query
         }
-      }
 
-      // 2. Try ISBN lookup
-      const isbnClean = cleanId.replace(/[^0-9X]/gi, "");
-      const query = isbnClean.length === 10 || isbnClean.length === 13 ? `isbn:${isbnClean}` : cleanId;
+        // 2. Try ISBN lookup
+        const isbnClean = cleanId.replace(/[^0-9X]/gi, "");
+        const query = isbnClean.length === 10 || isbnClean.length === 13 ? `isbn:${isbnClean}` : cleanId;
 
-      const response = await axios.get(
-        this.getBaseUrl(),
-        this.buildRequestConfig({
-          q: query,
-          maxResults: 1,
-          printType: "books",
-        })
-      );
+        const response = await axios.get(
+          this.getBaseUrl(),
+          this.buildRequestConfig({
+            q: query,
+            maxResults: 1,
+            printType: "books",
+          })
+        );
 
-      const resData = response.data as { items?: any[] } | undefined;
-      const items = Array.isArray(resData?.items) ? resData.items : [];
-      if (items.length > 0) {
-        return normalizeGoogleBook(items[0]);
-      }
-    } catch (error: any) {
-      console.warn(`Google Books getByIdOrIsbn warning for '${identifier}':`, error.message || error);
-    }
-
-    return null;
+        const resData = response.data as { items?: any[] } | undefined;
+        const items = Array.isArray(resData?.items) ? resData.items : [];
+        if (items.length > 0) {
+          return normalizeGoogleBook(items[0]);
+        }
+        return null;
+      },
+      () => null
+    );
   }
 }
 

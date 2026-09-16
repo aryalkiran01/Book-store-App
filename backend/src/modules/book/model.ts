@@ -96,6 +96,9 @@ bookSchema.index(
 
 // Secondary compound indexes for common query patterns
 bookSchema.index({ genre: 1, price: 1 });
+bookSchema.index({ isDeleted: 1, stock: 1, createdAt: -1 });
+bookSchema.index({ featured: 1, isDeleted: 1, createdAt: -1 });
+bookSchema.index({ isNewArrival: 1, isDeleted: 1, createdAt: -1 });
 bookSchema.index({ createdAt: -1 });
 
 export const BookModel = mongoose.model("Book", bookSchema);

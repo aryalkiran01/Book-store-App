@@ -164,7 +164,7 @@ export interface BookQueryParams {
 }
 
 export async function getBooksService(query?: BookQueryParams) {
-  const page = Math.max(1, Number(query?.page) || 1);
+  const page = Math.min(500, Math.max(1, Number(query?.page) || 1));
   const limit = Math.min(50, Math.max(1, Number(query?.limit) || 20));
   const skip = (page - 1) * limit;
 
@@ -174,11 +174,13 @@ export async function getBooksService(query?: BookQueryParams) {
   };
 
   if (query?.genre && query.genre !== "All") {
-    filter.genre = { $regex: new RegExp(query.genre, "i") };
+    const escapedGenre = query.genre.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filter.genre = { $regex: new RegExp(escapedGenre, "i") };
   }
 
   if (query?.author) {
-    filter.author = { $regex: new RegExp(query.author, "i") };
+    const escapedAuthor = query.author.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filter.author = { $regex: new RegExp(escapedAuthor, "i") };
   }
 
   if (query?.featured !== undefined) {

@@ -15,6 +15,7 @@ const testFiles = [
   "openlibrary-cache.test.mjs",
   "ecommerce-core.test.mjs",
   "security-profile-admin.test.mjs",
+  "resilience-catalog.test.mjs",
 ];
 
 console.log("=================================================");

@@ -98,6 +98,38 @@ export const apiRateLimiter = rateLimit({
 });
 
 /**
+ * Rate Limiter for Checkout and Payment transactions
+ */
+export const checkoutRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === "production" ? 30 : 5000,
+  skip: () => process.env.NODE_ENV === "test",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many checkout requests. Please try again after 15 minutes.",
+    isSuccess: false,
+    data: null,
+  },
+});
+
+/**
+ * Rate Limiter for Search & Discovery routes
+ */
+export const searchRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: process.env.NODE_ENV === "production" ? 60 : 5000,
+  skip: () => process.env.NODE_ENV === "test",
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many search requests. Please slow down.",
+    isSuccess: false,
+    data: null,
+  },
+});
+
+/**
  * CSRF and Origin validation middleware for state-modifying requests
  */
 export function createCsrfProtectionMiddleware(allowedOriginsList: string[]) {

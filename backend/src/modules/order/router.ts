@@ -15,6 +15,7 @@ import {
   getOrderInvoiceHtmlController,
 } from "./controller";
 import { checkAdmin, checkAuth } from "../auth/middleware";
+import { checkoutRateLimiter } from "../../utils/security";
 
 function createOrderRouter() {
   const router = Router();
@@ -27,7 +28,7 @@ function createOrderRouter() {
   router.get("/admin/all", checkAuth, checkAdmin, getAllOrdersController);
 
   // User & Order routes
-  router.post("/", checkAuth, createOrderController);
+  router.post("/", checkAuth, checkoutRateLimiter, createOrderController);
   router.get("/my-orders", checkAuth, getMyOrdersController);
   router.get("/user/:userId", checkAuth, getOrdersByUserController);
   router.get("/:orderId/invoice/html", checkAuth, getOrderInvoiceHtmlController);

@@ -12,11 +12,12 @@ import {
   updateBookController,
 } from "./controller";
 import { checkAdmin, checkAuth } from "../auth/middleware";
+import { searchRateLimiter } from "../../utils/security";
 
 function createBookRouter() {
   const router = Router();
-  router.get("/", getBooksController);
-  router.get("/suggestions", getSearchSuggestionsController);
+  router.get("/", searchRateLimiter, getBooksController);
+  router.get("/suggestions", searchRateLimiter, getSearchSuggestionsController);
   router.get("/genres", getGenresController);
   router.get("/featured", getFeaturedBooksController);
   router.get("/new-arrivals", getNewArrivalsController);

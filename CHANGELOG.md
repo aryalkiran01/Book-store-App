@@ -4,6 +4,40 @@ All notable changes and security fixes to this project are documented in this fi
 
 ---
 
+## [Phase 26–35 Release] — Catalog Ingestion & Resilience, Circuit Breakers, Search Hardening, Route Guards & Health Probes — 2026-09-16
+
+### Added
+- **Circuit Breaker for External Book Providers (Phases 26 & 27):**
+  - Created `backend/src/utils/circuitBreaker.ts` with configurable state machine (`CLOSED` $\to$ `OPEN` $\to$ `HALF_OPEN`).
+  - Integrated circuit breaker into `OpenLibraryProvider` and `GoogleBooksProvider` to automatically stop calling failing upstream providers, serving graceful empty fallbacks without blocking requests or crashing the server.
+- **Search Query Hardening & Boundary Defense (Phase 28):**
+  - Implemented regex escape utility in `backend/src/modules/book/service.ts` to neutralize ReDoS attacks and NoSQL injection patterns in `search`, `genre`, and `author` parameters.
+  - Enforced strict pagination boundaries: `page` capped at `[1, 500]` and `limit` capped at `[1, 50]`.
+- **Standardized Frontend API Client (Phases 29 & 30):**
+  - Created `frontend/src/lib/apiClient.ts` with typed methods (`api.get`, `api.post`, `api.put`, `api.delete`, `api.patch`).
+  - Automatic query parameter serialization, header injection, and centralized `401 Unauthorized` interception that redirects expired sessions to `/login?redirect=...`.
+- **Frontend Route Protection & RBAC Guards (Phase 31):**
+  - Implemented `frontend/src/components/auth/ProtectedRoute.tsx` for private user routes (`/cart`, `/wishlist`, `/orders`, `/account`, `/checkout`).
+  - Implemented `frontend/src/components/auth/AdminRoute.tsx` for administrative dashboards (`/admin`, `/admin/books`, `/admin/orders`, `/admin/reviews`, `/admin/import`).
+  - Protected all routes in `frontend/src/router.tsx`.
+- **Standardized Health Probes (Phase 32):**
+  - Created `/health/live` (lightweight liveness probe for orchestrators/load balancers).
+  - Created `/health/ready` (deep readiness probe checking MongoDB connection state).
+  - Maintained `/api/health` providing uptime and system timestamp.
+- **Granular Endpoint Rate Limiting (Phase 33):**
+  - Added `checkoutRateLimiter` (30 requests / 15 minutes) protecting `/api/orders` against checkout denial-of-service or bot exhaustion.
+  - Added `searchRateLimiter` (60 requests / minute) protecting `/api/books` catalog searching.
+- **MongoDB Compound & Performance Indexes (Phase 35):**
+  - Added high-performance compound indexes on `BookModel`:
+    - `{ isDeleted: 1, stock: 1, createdAt: -1 }` (catalog listing)
+    - `{ featured: 1, isDeleted: 1, createdAt: -1 }` (featured books carousel)
+    - `{ isNewArrival: 1, isDeleted: 1, createdAt: -1 }` (new arrivals tab)
+- **Automated Test Suite Expansion:**
+  - Added `backend/tests/resilience-catalog.test.mjs` verifying circuit breaker transitions, search regex sanitization, pagination bounding, health probes, and database indexes.
+  - All 11 test suites passing (100% green).
+
+---
+
 ## [Phase 21–25 Release] — Admin Audit Trail, Email Engine, Invoices, Tax Engine & Profile Security — 2026-09-16
 
 ### Added

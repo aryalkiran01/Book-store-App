@@ -4,6 +4,8 @@ import {
   RouterProvider as RouterProviderD,
 } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { AdminRoute } from "./components/auth/AdminRoute";
 
 // Lazy load pages for code splitting & faster initial paint
 const HomePage = lazy(() =>
@@ -118,15 +120,27 @@ const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    element: withSuspense(DashboardPage),
+    element: (
+      <AdminRoute>
+        {withSuspense(DashboardPage)}
+      </AdminRoute>
+    ),
   },
   {
     path: "/admin",
-    element: withSuspense(DashboardPage),
+    element: (
+      <AdminRoute>
+        {withSuspense(DashboardPage)}
+      </AdminRoute>
+    ),
   },
   {
     path: "/admin/*",
-    element: withSuspense(DashboardPage),
+    element: (
+      <AdminRoute>
+        {withSuspense(DashboardPage)}
+      </AdminRoute>
+    ),
   },
   {
     path: "/memes",
@@ -134,15 +148,27 @@ const router = createBrowserRouter([
   },
   {
     path: "/checkout",
-    element: withSuspense(CheckoutPage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(CheckoutPage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/Checkout",
-    element: withSuspense(CheckoutPage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(CheckoutPage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/payment",
-    element: withSuspense(PaymentPage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(PaymentPage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/payment/callback",
@@ -158,23 +184,43 @@ const router = createBrowserRouter([
   },
   {
     path: "/orders",
-    element: withSuspense(OrderHistoryPage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(OrderHistoryPage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/my-orders",
-    element: withSuspense(OrderHistoryPage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(OrderHistoryPage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/orders/:orderId",
-    element: withSuspense(OrderDetailsPage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(OrderDetailsPage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/profile",
-    element: withSuspense(ProfilePage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(ProfilePage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/my-profile",
-    element: withSuspense(ProfilePage),
+    element: (
+      <ProtectedRoute>
+        {withSuspense(ProfilePage)}
+      </ProtectedRoute>
+    ),
   },
   {
     path: "*",
