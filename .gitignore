@@ -18,7 +18,7 @@ frontend/.env.*
 # Uploads
 uploads/
 
-# Test & Scratch Scripts
+# Test & Scratch Scripts hidden
 *.mjs
 !backend/tests/*.mjs
 !backend/scripts/*.mjs
