@@ -160,11 +160,12 @@ export async function getAdminUsersService(query: TAdminQueryInput) {
   const [total, users] = await Promise.all([
     UserModel.countDocuments(filter),
     UserModel.find(filter)
-      .select("-password")
+      .select("-password -passwordResetTokenHash -emailVerificationTokenHash -pendingEmailVerificationTokenHash -sessionVersion")
       .sort(sort)
       .skip(skip)
       .limit(limit)
       .lean(),
+
   ]);
 
   const totalPages = Math.ceil(total / limit) || 1;

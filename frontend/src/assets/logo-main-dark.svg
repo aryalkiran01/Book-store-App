@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 100" fill="none">
+  <!-- Icon Mark (Dark #0F172A) -->
+  <g transform="translate(10, 0)" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 60 76 C 42 67 22 67 10 74 L 10 24 C 22 17 42 17 60 26 C 78 17 98 17 110 24 L 110 74 C 98 67 78 67 60 76 Z" />
+    <path d="M 18 26 L 18 70 C 28 65 44 65 58 72" />
+    <path d="M 102 26 L 102 70 C 92 65 76 65 62 72" />
+    <path d="M 32 66 L 32 44 L 60 20 L 88 44 L 88 66" />
+    <path d="M 40 37 L 60 54 L 80 37" />
+    <rect x="54" y="55" width="12" height="17" rx="1.5" fill="#0F172A" stroke="none" />
+  </g>
+  <!-- Typography "Kitab Ghar" -->
+  <text x="145" y="65" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Outfit', 'Plus Jakarta Sans', sans-serif" font-size="46" font-weight="800" letter-spacing="-0.5" fill="#0F172A">
+    Kitab Ghar
+  </text>
+</svg>

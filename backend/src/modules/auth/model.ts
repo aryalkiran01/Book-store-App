@@ -19,9 +19,19 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: true },
     role: { type: String, enum: ["admin", "user"], default: "user", index: true },
+    firstName: { type: String, default: "", trim: true },
+    lastName: { type: String, default: "", trim: true },
+    displayName: { type: String, default: "", trim: true },
+    bio: { type: String, default: "", trim: true, maxlength: 500 },
     avatar: { type: String, default: "" },
-    phone: { type: String, default: "" },
-    address: { type: String, default: "" },
+    phone: { type: String, default: "", trim: true },
+    location: {
+      city: { type: String, default: "", trim: true },
+      district: { type: String, default: "", trim: true },
+      province: { type: String, default: "", trim: true },
+      country: { type: String, default: "Nepal", trim: true },
+    },
+    address: { type: String, default: "", trim: true },
     sessionVersion: { type: Number, default: 1, required: true },
     isActive: { type: Boolean, default: true, index: true },
     isEmailVerified: { type: Boolean, default: false, index: true },
@@ -39,10 +49,12 @@ const userSchema = new mongoose.Schema(
     timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
     toJSON: {
       virtuals: true,
-      transform: (doc, ret) => {
+      transform: (_doc, ret) => {
         delete ret.password;
         delete ret.passwordResetTokenHash;
         delete ret.emailVerificationTokenHash;
+        delete ret.pendingEmailVerificationTokenHash;
+        delete ret.sessionVersion;
         return ret;
       },
     },
@@ -50,3 +62,4 @@ const userSchema = new mongoose.Schema(
 );
 
 export const UserModel = mongoose.model("User", userSchema);
+

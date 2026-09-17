@@ -7,7 +7,7 @@ import { useLoginUserMutation } from "../../api/auth/query";
 import { successToast, errorToast } from "../toaster";
 import { useQueryClient } from "@tanstack/react-query";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
-import { IoBookSharp } from "react-icons/io5";
+import { KitabGharLogo } from "../common/KitabGharLogo";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -66,17 +66,28 @@ export function LoginForm() {
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/10 blur-3xl pointer-events-none rounded-full"></div>
 
       {/* Header */}
-      <div className="text-center space-y-2 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center mx-auto shadow-lg shadow-indigo-600/30 text-white">
-          <IoBookSharp className="text-2xl" />
+      <div className="text-center space-y-3 mb-8">
+        <Link to="/" className="inline-block group focus-ring rounded-2xl p-1">
+          <KitabGharLogo
+            variant="full"
+            size="lg"
+            className="h-12 w-auto mx-auto hover:scale-105 transition-transform"
+            alt="Kitab Ghar"
+          />
+        </Link>
+        <div>
+          <span className="inline-block px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 text-[11px] font-bold tracking-wide uppercase text-indigo-600 dark:text-indigo-400 mb-1">
+            Your Literary Haven
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            Welcome Back
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Sign in to access your reading list, orders, and reviews
+          </p>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-          Welcome Back
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          Sign in to access your reading list, orders, and reviews
-        </p>
       </div>
+
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Email Field */}

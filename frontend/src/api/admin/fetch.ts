@@ -43,10 +43,25 @@ export interface AdminUser {
   username: string;
   email: string;
   role: "admin" | "user";
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  bio?: string;
   avatar?: string;
+  phone?: string;
+  location?: {
+    city?: string;
+    district?: string;
+    province?: string;
+    country?: string;
+  };
+  address?: string;
+  isActive?: boolean;
+  isEmailVerified?: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
 
 export interface PaginationData {
   total: number;

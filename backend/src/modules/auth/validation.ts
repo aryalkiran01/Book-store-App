@@ -56,19 +56,47 @@ export const VerifyEmailSchema = z.object({
 });
 export type TVerifyEmailInput = z.TypeOf<typeof VerifyEmailSchema>;
 
+export const LocationSchema = z.object({
+  city: z.string().max(80, "City name too long").trim().optional().default(""),
+  district: z.string().max(80, "District name too long").trim().optional().default(""),
+  province: z.string().max(80, "Province name too long").trim().optional().default(""),
+  country: z.string().max(80, "Country name too long").trim().optional().default("Nepal"),
+});
+export type TLocationInput = z.TypeOf<typeof LocationSchema>;
+
 export const UpdateProfileSchema = z.object({
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
     .max(30, "Username must be at most 30 characters")
-    .regex(/^[a-zA-Z0-9_ -]+$/, "Username can only contain alphanumeric characters, dashes, and underscores")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain alphanumeric characters, underscores, and hyphens")
     .trim()
     .optional(),
-  phone: z.string().max(20, "Phone number too long").optional(),
-  address: z.string().max(200, "Address too long").optional(),
-  avatar: z.string().url("Invalid avatar URL").optional().or(z.literal("")),
+  firstName: z.string().max(60, "First name too long").trim().optional(),
+  lastName: z.string().max(60, "Last name too long").trim().optional(),
+  displayName: z.string().max(100, "Display name too long").trim().optional(),
+  bio: z.string().max(500, "Bio cannot exceed 500 characters").trim().optional(),
+  phone: z
+    .string()
+    .max(20, "Phone number too long")
+    .regex(/^$|^[+]?[\d\s-]{7,20}$/, "Please enter a valid phone number (7-20 digits)")
+    .trim()
+    .optional(),
+  address: z.string().max(200, "Address too long").trim().optional(),
+  avatar: z.string().max(1000, "Avatar path too long").trim().optional().or(z.literal("")),
+  location: LocationSchema.partial().optional(),
 });
 export type TUpdateProfileInput = z.TypeOf<typeof UpdateProfileSchema>;
+
+export const UsernameAvailabilitySchema = z.object({
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(30, "Username must be at most 30 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain alphanumeric characters, underscores, and hyphens")
+    .trim(),
+});
+export type TUsernameAvailabilityInput = z.TypeOf<typeof UsernameAvailabilitySchema>;
 
 export const RequestEmailChangeSchema = z.object({
   newEmail: z.string().email("Invalid email format").trim().toLowerCase(),
@@ -84,5 +112,6 @@ export const DeleteAccountSchema = z.object({
   password: z.string().min(1, "Password confirmation is required to delete account"),
 });
 export type TDeleteAccountInput = z.TypeOf<typeof DeleteAccountSchema>;
+
 
 

@@ -1,7 +1,9 @@
+import mongoose from "mongoose";
 import {
   TChangePasswordInput,
   TLoginControllerInput,
   TRegisterControllerInput,
+  TUpdateProfileInput,
   TUpdateRolecontrollerInput,
 } from "./validation";
 import {
@@ -13,8 +15,13 @@ import {
 } from "../../utils/auth";
 import { APIError } from "../../utils/error";
 import { UserModel } from "./model";
+import { OrderModel } from "../order/model";
+import { ReviewModel } from "../review/model";
+import { WishlistModel } from "../wishlist/model";
+import { recordAdminAuditLog } from "../admin/audit.service";
 import { validateObjectId } from "../../utils/security";
 import { env } from "../../utils/config";
+
 
 export async function createUserService(input: TRegisterControllerInput) {
   const { email, username, password } = input;
@@ -249,14 +256,176 @@ export async function updateroleservice(input: TUpdateRolecontrollerInput) {
   return user;
 }
 
+export function formatUserProfile(user: any, statistics?: any, completion?: any) {
+  const loc = user.location || {};
+  return {
+    id: user._id.toString(),
+    username: user.username,
+    email: user.email,
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+    displayName:
+      user.displayName ||
+      [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+      user.username,
+    bio: user.bio || "",
+    role: user.role || "user",
+    avatar: user.avatar || "",
+    phone: user.phone || "",
+    location: {
+      city: loc.city || "",
+      district: loc.district || "",
+      province: loc.province || "",
+      country: loc.country || "Nepal",
+    },
+    address: user.address || "",
+    isActive: user.isActive !== false,
+    isEmailVerified: Boolean(user.isEmailVerified),
+    memberSince: user.createdAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    ...(statistics ? { statistics } : {}),
+    ...(completion ? { completion } : {}),
+  };
+}
+
+export function calculateProfileCompletion(user: any) {
+  const loc = user.location || {};
+  const steps = [
+    {
+      key: "username",
+      label: "Username",
+      completed: Boolean(user.username && user.username.trim().length >= 3),
+    },
+    {
+      key: "name",
+      label: "Full Name",
+      completed: Boolean(
+        user.displayName?.trim() ||
+          user.firstName?.trim() ||
+          user.lastName?.trim()
+      ),
+    },
+    {
+      key: "email",
+      label: "Email Address",
+      completed: Boolean(user.email && user.email.trim().length > 0),
+    },
+    {
+      key: "phone",
+      label: "Phone Number",
+      completed: Boolean(user.phone && user.phone.trim().length >= 7),
+    },
+    {
+      key: "location",
+      label: "Location",
+      completed: Boolean(loc.city?.trim() || loc.province?.trim() || loc.district?.trim()),
+    },
+    {
+      key: "avatar",
+      label: "Profile Photo",
+      completed: Boolean(user.avatar && user.avatar.trim().length > 0),
+    },
+    {
+      key: "address",
+      label: "Street Address",
+      completed: Boolean(user.address && user.address.trim().length > 0),
+    },
+  ];
+
+  const completedCount = steps.filter((s) => s.completed).length;
+  const percentage = Math.round((completedCount / steps.length) * 100);
+
+  return {
+    percentage,
+    completedCount,
+    totalCount: steps.length,
+    steps,
+  };
+}
+
+export async function calculateUserStatistics(userId: string) {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  const [ordersCount, reviewsCount, wishlistDoc, purchasedAgg] =
+    await Promise.all([
+      OrderModel.countDocuments({
+        userId: userObjectId,
+        isDeleted: { $ne: true },
+      }),
+      ReviewModel.countDocuments({
+        userId: userObjectId,
+        status: { $ne: "hidden" },
+      }),
+      WishlistModel.findOne({ userId: userObjectId }),
+      OrderModel.aggregate([
+        {
+          $match: {
+            userId: userObjectId,
+            isDeleted: { $ne: true },
+            status: { $nin: ["cancelled", "refunded"] },
+          },
+        },
+        { $unwind: "$items" },
+        { $group: { _id: null, total: { $sum: "$items.quantity" } } },
+      ]),
+    ]);
+
+  const wishlistCount = wishlistDoc?.books?.length || 0;
+  const booksPurchased = purchasedAgg[0]?.total || 0;
+
+  return {
+    orders: ordersCount,
+    reviews: reviewsCount,
+    wishlist: wishlistCount,
+    booksPurchased,
+  };
+}
+
+export async function getUserAccountSummaryService(userId: string) {
+  validateObjectId(userId, "User ID");
+  const user = await UserModel.findById(userId);
+  if (!user || user.isDeleted) {
+    throw APIError.notFound("User not found");
+  }
+
+  const [stats, completion] = await Promise.all([
+    calculateUserStatistics(userId),
+    Promise.resolve(calculateProfileCompletion(user)),
+  ]);
+
+  return formatUserProfile(user, stats, completion);
+}
+
+export async function checkUsernameAvailabilityService(
+  username: string,
+  currentUserId?: string
+) {
+  const cleanUsername = username.trim();
+  if (!cleanUsername || cleanUsername.length < 3) {
+    return { available: false, message: "Username must be at least 3 characters" };
+  }
+
+  const filter: any = {
+    username: { $regex: `^${cleanUsername}$`, $options: "i" },
+  };
+
+  if (currentUserId && mongoose.Types.ObjectId.isValid(currentUserId)) {
+    filter._id = { $ne: new mongoose.Types.ObjectId(currentUserId) };
+  }
+
+  const existing = await UserModel.findOne(filter);
+  return {
+    available: !existing,
+    message: existing
+      ? "Username is already taken"
+      : "Username is available",
+  };
+}
+
 export async function updateUserProfileService(
   userId: string,
-  input: {
-    username?: string;
-    phone?: string;
-    address?: string;
-    avatar?: string;
-  }
+  input: TUpdateProfileInput
 ) {
   validateObjectId(userId, "User ID");
   const user = await UserModel.findById(userId);
@@ -264,34 +433,95 @@ export async function updateUserProfileService(
     throw APIError.notFound("User not found");
   }
 
-  if (input.username && input.username !== user.username) {
+  const changesTracked: string[] = [];
+
+  // Username update & uniqueness check
+  if (input.username && input.username.trim() !== user.username) {
+    const cleanUsername = input.username.trim();
     const existing = await UserModel.findOne({
-      username: input.username,
+      username: { $regex: `^${cleanUsername}$`, $options: "i" },
       _id: { $ne: user._id },
     });
     if (existing) {
       throw APIError.conflict("Username is already taken by another account");
     }
-    user.username = input.username;
+    changesTracked.push(`username changed from ${user.username} to ${cleanUsername}`);
+    user.username = cleanUsername;
   }
 
-  if (input.phone !== undefined) user.phone = input.phone;
-  if (input.address !== undefined) user.address = input.address;
-  if (input.avatar !== undefined) user.avatar = input.avatar;
+  if (input.firstName !== undefined) {
+    user.firstName = input.firstName.trim();
+  }
+  if (input.lastName !== undefined) {
+    user.lastName = input.lastName.trim();
+  }
+  if (input.displayName !== undefined) {
+    user.displayName = input.displayName.trim();
+  }
+  if (input.bio !== undefined) {
+    user.bio = input.bio.trim();
+  }
+  if (input.phone !== undefined) {
+    user.phone = input.phone.trim();
+  }
+  if (input.address !== undefined) {
+    user.address = input.address.trim();
+  }
+  if (input.avatar !== undefined) {
+    user.avatar = input.avatar.trim();
+  }
+
+  if (input.location) {
+    const currentLoc: any = user.location || {};
+    user.location = {
+      city: input.location.city !== undefined ? input.location.city.trim() : (currentLoc.city || ""),
+      district: input.location.district !== undefined ? input.location.district.trim() : (currentLoc.district || ""),
+      province: input.location.province !== undefined ? input.location.province.trim() : (currentLoc.province || ""),
+      country: input.location.country !== undefined ? input.location.country.trim() : (currentLoc.country || "Nepal"),
+    };
+  }
+
 
   await user.save();
 
-  return {
-    id: user._id.toString(),
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    phone: user.phone,
-    address: user.address,
-    avatar: user.avatar,
-    isEmailVerified: user.isEmailVerified,
-  };
+  // Audit logging
+  if (changesTracked.length > 0) {
+    recordAdminAuditLog({
+      adminId: user._id.toString(),
+      adminUsername: user.username,
+      action: "UPDATE_PROFILE",
+      targetType: "User",
+      targetId: user._id.toString(),
+      details: { changes: changesTracked },
+    });
+  }
+
+  const [stats, completion] = await Promise.all([
+    calculateUserStatistics(userId),
+    Promise.resolve(calculateProfileCompletion(user)),
+  ]);
+
+  return formatUserProfile(user, stats, completion);
 }
+
+export async function removeAvatarService(userId: string) {
+  validateObjectId(userId, "User ID");
+  const user = await UserModel.findById(userId);
+  if (!user || user.isDeleted) {
+    throw APIError.notFound("User not found");
+  }
+
+  user.avatar = "";
+  await user.save();
+
+  const [stats, completion] = await Promise.all([
+    calculateUserStatistics(userId),
+    Promise.resolve(calculateProfileCompletion(user)),
+  ]);
+
+  return formatUserProfile(user, stats, completion);
+}
+
 
 export async function requestEmailChangeService(userId: string, newEmail: string) {
   validateObjectId(userId, "User ID");

@@ -5,13 +5,14 @@ import { Toaster } from "react-hot-toast";
 import { User } from "./auth/user";
 import { Link, useLocation } from "react-router-dom";
 import { Logout } from "./auth/logout";
-import { IoBookSharp } from "react-icons/io5";
 import SearchBar from "./searchbar";
 import { FaOpencart } from "react-icons/fa6";
+
 import { Heart, Compass, BookOpen, ShoppingBag, ShieldCheck, UserCircle } from "lucide-react";
 import { getCart, getWishlist } from "../utils/cartStorage";
 import { useUserDetailsStore } from "../store/useUsersDetails";
 import { ThemeToggle } from "./common/ThemeToggle";
+import { KitabGharLogo } from "./common/KitabGharLogo";
 
 export function AppShell() {
   const location = useLocation();
@@ -91,19 +92,28 @@ export function AppShell() {
       >
         <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
-            {/* Logo */}
+            {/* Brand Logo Link */}
             <Link
               to="/"
-              className="flex items-center space-x-2 sm:space-x-2.5 flex-shrink-0 group focus-ring rounded-xl p-1"
-              aria-label="KitabGhar Homepage"
+              className="flex items-center flex-shrink-0 group focus-ring rounded-xl p-0.5 transition-transform duration-200 group-hover:scale-105"
+              aria-label="Kitab Ghar Homepage"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-600/30 group-hover:scale-105 transition-transform duration-200">
-                <IoBookSharp className="text-lg sm:text-xl text-white" />
-              </div>
-              <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                Kitab<span className="text-indigo-600 dark:text-indigo-400">Ghar</span>
-              </span>
+              {/* Mobile compact icon mark */}
+              <KitabGharLogo
+                variant="icon-only"
+                size="sm"
+                className="sm:hidden h-7.5 w-7.5 hover:scale-105 transition-transform"
+                alt="Kitab Ghar"
+              />
+              {/* Tablet & Desktop full horizontal lockup */}
+              <KitabGharLogo
+                variant="full"
+                size="sm"
+                className="hidden sm:inline-flex h-8 sm:h-9 hover:opacity-95 transition-opacity"
+                alt="Kitab Ghar"
+              />
             </Link>
+
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-1">
@@ -194,6 +204,12 @@ export function AppShell() {
                       </Link>
                     )}
                     <Link
+                      to="/account"
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition focus-ring"
+                    >
+                      <UserCircle size={14} className="text-indigo-600 dark:text-indigo-400" /> Account Overview
+                    </Link>
+                    <Link
                       to="/profile"
                       className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition focus-ring"
                     >
@@ -211,6 +227,13 @@ export function AppShell() {
                     >
                       <Heart size={14} className="text-rose-500 dark:text-rose-400" /> My Wishlist
                     </Link>
+                    <Link
+                      to="/account/security"
+                      className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition focus-ring"
+                    >
+                      <ShieldCheck size={14} className="text-indigo-600 dark:text-indigo-400" /> Security & Login
+                    </Link>
+
                   </div>
                   <MenuItem>
                     <div className="p-1">

@@ -7,6 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const testFiles = [
   "book-provider.test.mjs",
   "auth.test.mjs",
+  "account-profile.test.mjs",
   "authorization.test.mjs",
   "orders.test.mjs",
   "payments.test.mjs",
@@ -21,6 +22,7 @@ const testFiles = [
   "e2e-lifecycle.test.mjs",
   "observability-support-seo.test.mjs",
 ];
+
 
 console.log("=================================================");
 console.log("🚀 STARTING AUTOMATED BUSINESS-CRITICAL TEST SUITE");

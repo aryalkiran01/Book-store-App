@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useMeQuery } from "../../api/auth/query";
 import { useUserDetailsStore } from "../../store/useUsersDetails";
 import { Link } from "react-router-dom";
-import { User as UserIcon } from "lucide-react";
+
 
 export function User() {
   const { data, isLoading, isError } = useMeQuery();
@@ -10,12 +10,7 @@ export function User() {
 
   useEffect(() => {
     if (data?.data) {
-      setUserDetails({
-        id: data.data.id,
-        email: data.data.email,
-        role: data.data.role,
-        username: data.data.username,
-      });
+      setUserDetails(data.data);
     } else if (isError) {
       clearUserDetails();
     }
@@ -48,14 +43,25 @@ export function User() {
     );
   }
 
+  const user = data.data;
+  const nameToDisplay = user.displayName || user.username || "Account";
+
   return (
-    <div className="flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-slate-200 dark:border-transparent transition cursor-pointer">
-      <div className="w-7 h-7 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white text-xs font-bold uppercase shadow">
-        {data.data.username ? data.data.username.charAt(0) : <UserIcon size={14} />}
-      </div>
-      <div className="text-left text-slate-900 dark:text-white leading-tight pr-1">
-        <div className="font-semibold text-xs">{data.data.username}</div>
-        {data.data.role === "admin" && (
+    <div className="flex items-center space-x-2 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-slate-200 dark:border-transparent transition cursor-pointer">
+      {user.avatar ? (
+        <img
+          src={user.avatar}
+          alt={nameToDisplay}
+          className="w-7 h-7 rounded-full object-cover shadow"
+        />
+      ) : (
+        <div className="w-7 h-7 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white text-xs font-bold uppercase shadow">
+          {nameToDisplay.charAt(0)}
+        </div>
+      )}
+      <div className="text-left text-slate-900 dark:text-white leading-tight pr-1 hidden sm:block">
+        <div className="font-semibold text-xs truncate max-w-[100px]">{nameToDisplay}</div>
+        {user.role === "admin" && (
           <span className="text-[10px] text-amber-600 dark:text-amber-300 uppercase tracking-wider font-bold">
             Admin
           </span>
@@ -64,3 +70,4 @@ export function User() {
     </div>
   );
 }
+

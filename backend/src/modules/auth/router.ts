@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   changePasswordController,
+  checkUsernameAvailabilityController,
   deleteAccountController,
   forgotPasswordController,
   loginController,
@@ -8,15 +9,17 @@ import {
   logoutController,
   meController,
   registerController,
+  removeAvatarController,
   requestEmailChangeController,
   resetPasswordController,
   sendEmailVerificationController,
   updateProfileController,
   updateRoleController,
+  uploadAvatarController,
   verifyEmailChangeController,
   verifyEmailController,
 } from "./controller";
-import { checkAdmin, checkAuth } from "./middleware";
+import { checkAdmin, checkAuth, upload } from "./middleware";
 import { authRateLimiter } from "../../utils/security";
 
 function createAuthRouter() {
@@ -26,12 +29,17 @@ function createAuthRouter() {
   router.post("/logout", logoutController);
   router.post("/logout-all", checkAuth, logoutAllSessionsController);
 
-  // Profile management
+  // Profile management & Summary
   router.get("/me", checkAuth, meController);
   router.get("/profile", checkAuth, meController);
+  router.get("/summary", checkAuth, meController);
+  router.get("/username-availability", checkUsernameAvailabilityController);
   router.put("/profile", checkAuth, updateProfileController);
   router.patch("/profile", checkAuth, updateProfileController);
+  router.post("/avatar", checkAuth, upload.single("avatar"), uploadAvatarController);
+  router.delete("/avatar", checkAuth, removeAvatarController);
   router.delete("/account", checkAuth, deleteAccountController);
+
 
   // Password & Security
   router.post("/change-password", checkAuth, changePasswordController);

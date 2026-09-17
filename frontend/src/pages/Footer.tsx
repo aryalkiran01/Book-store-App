@@ -10,9 +10,11 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { FaFacebookF, FaTwitter, FaInstagram, FaGithub } from "react-icons/fa";
-import { IoBookSharp } from "react-icons/io5";
+import { KitabGharLogo } from "../components/common/KitabGharLogo";
 
 export function Footer() {
+
+
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
@@ -78,17 +80,20 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
           {/* Brand & Mission */}
           <div className="lg:col-span-2 space-y-4">
-            <Link to="/" className="flex items-center space-x-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 group-hover:scale-105 transition-transform">
-                <IoBookSharp className="text-xl text-white" />
-              </div>
-              <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-                Kitab<span className="text-indigo-600 dark:text-indigo-400">Ghar</span>
-              </span>
+            <Link to="/" className="inline-block group focus-ring rounded-xl p-0.5">
+              <KitabGharLogo
+                variant="full"
+                size="md"
+                className="h-10 w-auto hover:opacity-95 transition-opacity"
+                alt="Kitab Ghar"
+              />
             </Link>
+
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-sm">
               Nepal's premier book community and bookstore platform. Explore thousands of bestselling books, share genuine reviews, and support avid reading cultures.
             </p>
+
+
 
             {/* Newsletter Subscription */}
             <div className="pt-2">

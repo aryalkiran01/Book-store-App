@@ -1490,69 +1490,119 @@ export function AdminDashboardPage() {
                 <thead className="bg-slate-50 dark:bg-slate-950/80 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4">User</th>
-                    <th className="px-6 py-4">Email</th>
-                    <th className="px-6 py-4">Role</th>
+                    <th className="px-6 py-4">Contact Info</th>
+                    <th className="px-6 py-4">Location</th>
+                    <th className="px-6 py-4">Status & Role</th>
                     <th className="px-6 py-4">Joined Date</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                  {users.map((user) => (
-                    <tr
-                      key={user._id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-700/80 flex items-center justify-center font-bold text-indigo-700 dark:text-indigo-300 uppercase">
-                            {user.username.charAt(0)}
+                  {users.map((user) => {
+                    const fullName =
+                      user.displayName ||
+                      [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+                      user.username;
+                    const loc = [user.location?.city, user.location?.province, user.location?.country]
+                      .filter(Boolean)
+                      .join(", ");
+
+                    return (
+                      <tr
+                        key={user._id}
+                        className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {user.avatar ? (
+                              <img
+                                src={user.avatar}
+                                alt={user.username}
+                                className="w-10 h-10 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-700/80 flex items-center justify-center font-bold text-indigo-700 dark:text-indigo-300 uppercase">
+                                {user.username.charAt(0)}
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                                {fullName}
+                              </div>
+                              <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                                @{user.username}
+                              </div>
+                            </div>
                           </div>
-                          <span className="font-bold text-slate-900 dark:text-slate-100">
-                            {user.username}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.email}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                            user.role === "admin"
-                              ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
-                          }`}
-                        >
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleToggleUserRole(user)}
-                            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
-                          >
-                            {user.role === "admin"
-                              ? "Demote to User"
-                              : "Promote to Admin"}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user)}
-                            disabled={
-                              deletingUserId === user._id ||
-                              user._id === userDetails.id
-                            }
-                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 disabled:opacity-30 transition-colors"
-                            title="Delete User"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4 text-xs">
+                          <div className="text-slate-800 dark:text-slate-200 font-medium">
+                            {user.email}
+                          </div>
+                          <div className="text-slate-400 dark:text-slate-500 mt-0.5">
+                            {user.phone || "No phone"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-slate-600 dark:text-slate-300">
+                          {loc || "Nepal"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                user.role === "admin"
+                                  ? "bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                              }`}
+                            >
+                              {user.role}
+                            </span>
+                            {user.isEmailVerified ? (
+                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                ✓ Email Verified
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                                Unverified
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-slate-400 dark:text-slate-500">
+                          {new Date(user.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleToggleUserRole(user)}
+                              className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+                            >
+                              {user.role === "admin"
+                                ? "Demote to User"
+                                : "Promote to Admin"}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user)}
+                              disabled={
+                                deletingUserId === user._id ||
+                                user._id === userDetails.id
+                              }
+                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 disabled:opacity-30 transition-colors"
+                              title="Delete User"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
+
               </table>
 
               {/* User Pagination */}

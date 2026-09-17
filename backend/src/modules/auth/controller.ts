@@ -9,17 +9,21 @@ import {
   ResetPasswordSchema,
   updateRoleControllerSchema,
   UpdateProfileSchema,
+  UsernameAvailabilitySchema,
   VerifyEmailChangeSchema,
   VerifyEmailSchema,
 } from "./validation";
 import {
   changePasswordService,
+  checkUsernameAvailabilityService,
   createUserService,
   deleteAccountService,
   forgotPasswordService,
+  getUserAccountSummaryService,
   getUserById,
   loginService,
   logoutAllSessionsService,
+  removeAvatarService,
   requestEmailChangeService,
   resetPasswordService,
   sendEmailVerificationService,
@@ -145,23 +149,18 @@ export async function meController(
       return;
     }
 
-    const user = await getUserById(req.user.id);
+    const summary = await getUserAccountSummaryService(req.user.id);
 
     res.status(200).json({
       message: "User profile retrieved successfully",
       isSuccess: true,
-      data: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        created_at: (user as any).created_at,
-      },
+      data: summary,
     });
   } catch (error) {
     next(error);
   }
 }
+
 
 export async function changePasswordController(
   req: Request,
@@ -510,5 +509,105 @@ export async function deleteAccountController(
     next(error);
   }
 }
+
+export async function checkUsernameAvailabilityController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { success, error, data } = UsernameAvailabilitySchema.safeParse(req.query);
+    if (!success) {
+      res.status(400).json({
+        message: "Invalid username format for query",
+        isSuccess: false,
+        data: null,
+        errors: error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    const currentUserId = req.user?.id;
+    const result = await checkUsernameAvailabilityService(data.username, currentUserId);
+
+    res.status(200).json({
+      message: result.message,
+      isSuccess: true,
+      data: {
+        available: result.available,
+        username: data.username,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function uploadAvatarController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Authentication required",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({
+        message: "Please select a valid image file (PNG, JPG, JPEG, WEBP)",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    const updatedProfile = await updateUserProfileService(req.user.id, {
+      avatar: avatarUrl,
+    });
+
+    res.status(200).json({
+      message: "Avatar uploaded successfully",
+      isSuccess: true,
+      data: updatedProfile,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function removeAvatarController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Authentication required",
+        isSuccess: false,
+        data: null,
+      });
+      return;
+    }
+
+    const updatedProfile = await removeAvatarService(req.user.id);
+
+    res.status(200).json({
+      message: "Avatar removed successfully",
+      isSuccess: true,
+      data: updatedProfile,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 
 
